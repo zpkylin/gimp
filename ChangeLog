@@ -1,3 +1,8 @@
+Thu Jul 29 23:20:54 PDT 1999 Manish Singh <yosh@gimp.org>
+
+	* plug-ins/gbr/gbr.c: use the g_[nh]ton[sl] functions instead
+	of the system native ones
+
 Thu Jul 29 15:41:28 PDT 1999 Manish Singh <yosh@gimp.org>
 
 	* merged with mainline 1.0.4.. now requires GTK+ 1.2

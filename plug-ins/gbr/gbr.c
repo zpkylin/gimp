@@ -17,7 +17,6 @@
 #include "gtk/gtk.h"
 #include "libgimp/gimp.h"
 #include "app/brush_header.h"
-#include <netinet/in.h>
 
 
 /* Declare local data types
@@ -225,13 +224,13 @@ static gint32 load_image (char *filename) {
 	}
 
 	/*  rearrange the bytes in each unsigned int  */
-	ph.header_size = ntohl(ph.header_size);
-	ph.version = ntohl(ph.version);
-	ph.width = ntohl(ph.width);
-	ph.height = ntohl(ph.height);
-	ph.type = ntohl(ph.type);
-	ph.magic_number = ntohl(ph.magic_number);
-	ph.spacing = ntohl(ph.spacing);
+	ph.header_size = g_ntohl(ph.header_size);
+	ph.version = g_ntohl(ph.version);
+	ph.width = g_ntohl(ph.width);
+	ph.height = g_ntohl(ph.height);
+	ph.type = g_ntohl(ph.type);
+	ph.magic_number = g_ntohl(ph.magic_number);
+	ph.spacing = g_ntohl(ph.spacing);
 
 	if (ph.magic_number != GBRUSH_MAGIC || ph.version < 2 ||
 			ph.header_size <= sizeof(ph)) {
@@ -411,13 +410,13 @@ static gint save_image (char *filename, gint32 image_ID, gint32 drawable_ID) {
 		return 0;
 	}
 
-	ph.header_size = htonl(sizeof(ph) + strlen(info.description) + 1);
-	ph.version = htonl(3);
-	ph.width = htonl(drawable->width);
-	ph.height = htonl(drawable->height);
-	ph.type = htonl(type);
-	ph.magic_number = htonl(GBRUSH_MAGIC);
-	ph.spacing = htonl(info.spacing);
+	ph.header_size = g_htonl(sizeof(ph) + strlen(info.description) + 1);
+	ph.version = g_htonl(3);
+	ph.width = g_htonl(drawable->width);
+	ph.height = g_htonl(drawable->height);
+	ph.type = g_htonl(type);
+	ph.magic_number = g_htonl(GBRUSH_MAGIC);
+	ph.spacing = g_htonl(info.spacing);
 
 	if (write(fd, &ph, sizeof(ph)) != sizeof(ph)) {
 		close(fd);
@@ -519,7 +518,7 @@ static guchar * buffer_to_host_order ( guchar *buffer,
 	  guint16 *b = (guint16 *)buffer;
 	  for(i = 0 ; i < width; i++)
 	    for( k = 0 ; k < num_channels; k++)
-	      ntohs (*b++);
+	      g_ntohs (*b++);
 	}
       break;
     case FLOAT_RGB_IMAGE:
@@ -530,7 +529,7 @@ static guchar * buffer_to_host_order ( guchar *buffer,
 	  gfloat *b = (gfloat *)buffer;
 	  for(i = 0 ; i < width; i++)
 	    for( k = 0 ; k < num_channels; k++)
-	      ntohl (*b++);
+	      g_ntohl (*b++);
 	}
       break;
    } 
@@ -566,7 +565,7 @@ static guchar * buffer_to_network_order ( guchar *buffer,
 	  guint16 *b = (guint16 *)buffer;
 	  for(i = 0 ; i < width; i++)
 	    for( k = 0 ; k < num_channels; k++)
-	      htons (*b++);
+	      g_htons (*b++);
 	}
       break;
     case FLOAT_RGB_IMAGE:
@@ -577,7 +576,7 @@ static guchar * buffer_to_network_order ( guchar *buffer,
 	  gfloat *b = (gfloat *)buffer;
 	  for(i = 0 ; i < width; i++)
 	    for( k = 0 ; k < num_channels; k++)
-	      htonl (*b++);
+	      g_htonl (*b++);
 	}
       break;
    } 
