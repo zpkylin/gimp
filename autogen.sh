@@ -42,7 +42,7 @@ if test -z "$*"; then
 fi
 
 echo processing...
-(aclocal; automake; autoconf)
+(aclocal -I ../gnome-common/macros; automake; autoconf)
 ./configure "$@"
 
 echo 

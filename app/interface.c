@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
+#include "config.h"
+
 #include <stdlib.h>
+
 #include "appenv.h"
 #include "actionarea.h"
 #include "app_procs.h"
@@ -35,6 +38,11 @@
 #include "tools.h"
 
 #include "pixmaps.h"
+
+#ifdef HAVE_GNOME
+#include <gnome.h>
+#include "wilber.h"
+#endif
 
 
 /*  local functions  */
@@ -60,6 +68,9 @@ static GdkPixmap *create_pixmap    (GdkWindow  *parent,
 				    char      **data,
 				    int         width,
 				    int         height);
+
+static void gimp_ui_handle_dropped_data(GtkWidget *irrelevant,
+					GdkEvent *drop_event);
 
 typedef struct _ToolButton ToolButton;
 
@@ -500,10 +511,15 @@ create_toolbox ()
   GtkWidget *vbox;
   GtkWidget *menubar;
   GtkAcceleratorTable *table;
+  GtkWidget *wilber_pixmap;
 
+#ifdef HAVE_GNOME
+  window = gnome_app_new ("gimp", "The GIMP");
+#else
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_wmclass (GTK_WINDOW (window), "toolbox", "Gimp");
   gtk_window_set_title (GTK_WINDOW (window), "The GIMP");
+#endif
+  gtk_window_set_wmclass (GTK_WINDOW (window), "toolbox", "Gimp");
   gtk_widget_set_uposition (window, toolbox_x, toolbox_y);
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (toolbox_delete),
@@ -515,8 +531,12 @@ create_toolbox ()
 
   main_vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (main_vbox), 1);
+#ifdef HAVE_GNOME
+  gnome_app_set_contents(GNOME_APP(window), main_vbox);
+#else
   gtk_container_add (GTK_CONTAINER (window), main_vbox);
   gtk_widget_show (main_vbox);
+#endif
 
   /*  allocate the colors for creating pixmaps  */
   allocate_colors (main_vbox);
@@ -531,16 +551,60 @@ create_toolbox ()
 
   /*  Build the menu bar with menus  */
   menus_get_toolbox_menubar (&menubar, &table);
+#ifdef HAVE_GNOME
+  gtk_object_set_data(GTK_OBJECT(window), "GtkAcceleratorTable", table);
+  gnome_app_set_menus(GNOME_APP(window), GTK_MENU_BAR(menubar));
+#else
   gtk_box_pack_start (GTK_BOX (main_vbox), menubar, FALSE, TRUE, 0);
   gtk_widget_show (menubar);
 
   /*  Install the accelerator table in the main window  */
   gtk_window_add_accelerator_table (GTK_WINDOW (window), table);
+#endif
 
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_box_pack_start (GTK_BOX (main_vbox), vbox, TRUE, TRUE, 0);
   gtk_container_border_width (GTK_CONTAINER (vbox), 0);
   gtk_widget_show (vbox);
+
+#ifdef HAVE_GNOME
+  {
+    guchar *temp, *src, *dest;
+    gint x, y;
+    gchar *accepted_drop_types[] = {"file:ALL", "url:ALL"};
+
+    wilber_pixmap = gtk_preview_new (GTK_PREVIEW_COLOR);
+    gtk_preview_size (GTK_PREVIEW (wilber_pixmap), wilber_width, wilber_height);
+    temp = g_malloc (wilber_width * 3);
+    src = (guchar *)wilber_data;
+    for (y = 0; y < wilber_height; y++)
+      {
+	dest = temp;
+	for (x = 0; x < wilber_width; x++)
+	  {
+	    HEADER_PIXEL(src, dest);
+	    dest += 3;
+	  }
+	gtk_preview_draw_row (GTK_PREVIEW (wilber_pixmap), temp,
+			      0, y, wilber_width); 
+      }
+    g_free(temp);
+
+    gtk_container_add(GTK_CONTAINER(vbox),
+		      wilber_pixmap);
+    gtk_widget_realize(wilber_pixmap);
+    gtk_widget_show(wilber_pixmap);
+
+    gtk_signal_connect(GTK_OBJECT(wilber_pixmap),
+		       "drop_data_available_event",
+		       GTK_SIGNAL_FUNC(gimp_ui_handle_dropped_data),
+		       NULL);
+
+    gtk_widget_dnd_drop_set(wilber_pixmap, TRUE, accepted_drop_types,
+			    sizeof(accepted_drop_types)/sizeof(gchar *),
+			    FALSE);
+  }
+#endif
 
   create_tools (vbox);
   /*create_tool_label (vbox);*/
@@ -1038,4 +1102,14 @@ progress_end ()
 
       gtk_progress_bar_update (GTK_PROGRESS_BAR (progress_area), 0.0);
     }
+}
+
+static void
+gimp_ui_handle_dropped_data(GtkWidget *irrelevant,
+			    GdkEvent *drop_event)
+{
+  g_return_if_fail(drop_event->type == GDK_DROP_DATA_AVAIL);
+    
+  file_open(drop_event->dropdataavailable.data,
+	    drop_event->dropdataavailable.data);
 }

@@ -292,10 +292,13 @@ CPPFLAGS = \
 INCLUDES = \
 	$(X_CFLAGS)			\
 	-I$(top_srcdir)			\
-	-I$(includedir)
+	-I$(includedir)			\
+	$(GNOME_INCLUDEDIR)
 
 gimp_LDADD = \
 	$(top_builddir)/libgimp/libgimpi.a	\
+	$(GNOME_LIBDIR)				\
+	$(GNOMEUI_LIBS)
 	$(X_LIBS)
 
 DEPS = \

@@ -88,7 +88,11 @@ main (int argc, char **argv)
   /* Initialize Gtk toolkit */
   gtk_set_locale ();
   setlocale(LC_NUMERIC, "C");  /* must use dot, not comma, as decimal separator */
+#ifdef HAVE_GNOME
+  gnome_init ("gimp", 0, 1 /* argc */, argv, 0, NULL);
+#else
   gtk_init (&argc, &argv);
+#endif
   gtk_accelerator_table_set_mod_mask (NULL, GDK_SHIFT_MASK |
                                             GDK_CONTROL_MASK |
                                             GDK_MOD1_MASK);

@@ -32,6 +32,12 @@ fi)
 
 AC_ARG_ENABLE(ansi, [  --enable-ansi           turn on strict ansi [default=no]],
 		    , enable_ansi=no)
+GNOME_INIT
+set
+if eval "test x$with_gnome != x"; then
+AC_DEFINE(HAVE_GNOME)
+AC_SUBST(HAVE_GNOME)
+fi
 
 dnl Possibly change default gimpdir from .gimp
 gimpdir=.gimp

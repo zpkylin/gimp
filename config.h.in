@@ -72,6 +72,8 @@
 #undef RAND_FUNC
 #undef SRAND_FUNC
 
+#undef HAVE_GNOME
+
 /* #undef PACKAGE */
 /* #undef VERSION */
 
