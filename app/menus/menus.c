@@ -326,15 +326,17 @@ menus_set_sensitive (char *path,
   GtkWidget *widget = NULL;
 
   if (initialize)
+    {
     menus_init ();
-
+    }
   ifactory = gtk_item_factory_from_path (path);
 
   if (ifactory)
     {
       widget = gtk_item_factory_get_widget (ifactory, path);
-      
-      gtk_widget_set_sensitive (widget, sensitive);
+    
+      if (widget)
+	gtk_widget_set_sensitive (widget, sensitive);
     }
   if (!ifactory || !widget)
     printf ("Unable to set sensitivity for menu which doesn't exist:\n%s", path);

@@ -407,10 +407,7 @@ clone_cursor_func (PaintCore *paint_core,
 	  src_gdisp_ID = gdisp->ID;
 	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
 	}
-      if (src_gdisp != gdisp)
 	dont_dist = 1;
-      else
-	dont_dist = 0;
 
       if (src_gdisp && clone_point_set && second_mv)
 	{
@@ -518,7 +515,10 @@ clone_paint_func (PaintCore *paint_core,
 
 		}
 	      if (gdisp->gimage->onionskin)
-		frame_manager_onionskin_offset (offset_x, offset_y); 
+		{
+		  printf ("offset image\n"); 
+		frame_manager_onionskin_offset (gdisp, offset_x, offset_y); 
+		}
 	      first_down = FALSE;
 	      dont_draw = 1; 
 	      clone_set_offset (clone_options, offset_x, offset_y); 
@@ -575,19 +575,18 @@ clone_paint_func (PaintCore *paint_core,
 
     case INIT_PAINT :
       if (clone_point_set && gdisp->framemanager && 
-	  source_drawable != frame_manager_bg_drawable ())
+	  source_drawable != frame_manager_bg_drawable (gdisp))
 	{
-
-	  source_drawable = frame_manager_bg_drawable (); 
+	  source_drawable = frame_manager_bg_drawable (gdisp); 
 	}
       if (clone_point_set && gdisp->gimage->onionskin)
 	{
-	 source_drawable = frame_manager_onionskin_drawable (); 
+	 source_drawable = frame_manager_onionskin_drawable (gdisp); 
 	}
       if (!clone_point_set && gdisp->framemanager  
-	  && (src_gdisp_ID = frame_manager_bg_display ()))
+	  && (src_gdisp_ID = frame_manager_bg_display (gdisp)))
 	{
-	  source_drawable = frame_manager_bg_drawable ();
+	  source_drawable = frame_manager_bg_drawable (gdisp);
 	  saved_x = src_x = paint_core->curx + offset_x;
 	  saved_y = src_y = paint_core->cury + offset_y;
 	  clone_point_set = TRUE;
@@ -596,8 +595,8 @@ clone_paint_func (PaintCore *paint_core,
 	}
       if (gdisp->gimage->onionskin && !clone_point_set)
 	{
-	  src_gdisp_ID = frame_manager_onionskin_display ();
-	  source_drawable = frame_manager_onionskin_drawable ();
+	  src_gdisp_ID = frame_manager_onionskin_display (gdisp);
+	  source_drawable = frame_manager_onionskin_drawable (gdisp);
 	  saved_x = src_x = paint_core->curx + offset_x;
 	  saved_y = src_y = paint_core->cury + offset_y;
 	  clone_point_set = TRUE;
@@ -609,8 +608,8 @@ clone_paint_func (PaintCore *paint_core,
 	{
 	  if (gdisp->gimage->onionskin)
 	    {
-	      src_gdisp_ID = frame_manager_onionskin_display (); 
-	      source_drawable = frame_manager_onionskin_drawable ();
+	      src_gdisp_ID = frame_manager_onionskin_display (gdisp); 
+	      source_drawable = frame_manager_onionskin_drawable (gdisp);
 	    }
 	  else
 	    {
@@ -706,17 +705,21 @@ tools_free_clone (Tool *tool)
 static void
 clone_draw (Tool *tool)
 {
+  GDisplay *gdisplay; 
   PaintCore * paint_core = NULL;
   paint_core = (PaintCore *) tool->private;
 
+  
   if (tool && paint_core && clone_point_set && !expose)
     {
-      static int radius; 
-      if (get_active_brush () && gdisplay_active () && get_active_brush ()->mask && draw)
+      static int radius;
+      gdisplay = gdisplay_get_ID (drawable_gimage (source_drawable)->ID); 
+      if (get_active_brush () && gdisplay && get_active_brush ()->mask && draw)
 	{
 	  radius = (canvas_width (get_active_brush ()->mask) > canvas_height (get_active_brush ()->mask) ?
 	      canvas_width (get_active_brush ()->mask) : canvas_height (get_active_brush ()->mask))* 
-	    ((double)SCALEDEST (gdisplay_active ()) / (double)SCALESRC (gdisplay_active ()));
+	    ((double)SCALEDEST (gdisplay) / 
+	     (double)SCALESRC (gdisplay));
 	}
       else if (draw)
 	{
@@ -1039,68 +1042,123 @@ clone_line_image  (PaintCore * paint_core,
 static gint
 clone_x_offset (GtkWidget *w, gpointer client_data)
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
   char *tmp;
   offset_x = atoi (gtk_entry_get_text (co->x_offset_entry));
-  frame_manager_onionskin_offset (offset_x, 0);
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, offset_x, 0);
+      list = g_slist_next (list);
+    }
+
   return TRUE;
 }
 
 static gint	    
 clone_x_offset_down (GtkWidget *w, gpointer client_data)
 {
+  extern GSList *display_list;
+  GSList *list = display_list;
+  GDisplay *d;
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_x --;
   sprintf (tmp, "%d\0", offset_x);  
   gtk_entry_set_text (co->x_offset_entry, tmp);
-  frame_manager_onionskin_offset (offset_x, 0); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, offset_x, 0); 
+      list = g_slist_next (list);
+    }
+
   return TRUE; 
 }
 
 static gint	    
 clone_x_offset_up (GtkWidget *w, gpointer client_data)
 {
+  extern GSList *display_list;
+  GSList *list = display_list;
+  GDisplay *d;
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_x ++;
   sprintf (tmp, "%d\0", offset_x);  
   gtk_entry_set_text (co->x_offset_entry, tmp);
-  frame_manager_onionskin_offset (offset_x, 0); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, offset_x, 0); 
+      list = g_slist_next (list);
+    }
+
   return TRUE; 
 }
 
 static gint
 clone_y_offset (GtkWidget *w, gpointer client_data)
 {
+  extern GSList *display_list;
+  GSList *list = display_list;
+  GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
   char *tmp;
   offset_y = atoi (gtk_entry_get_text (co->y_offset_entry));
-  frame_manager_onionskin_offset (0, offset_y);
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, offset_y);
+      list = g_slist_next (list);
+    }
+
   return TRUE;
 }
 
 static gint 	    
 clone_y_offset_down (GtkWidget *w, gpointer client_data) 
 {
+  extern GSList *display_list;
+  GSList *list = display_list;
+  GDisplay *d;
+
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_y --;
   sprintf (tmp, "%d\0", offset_y);  
   gtk_entry_set_text (co->y_offset_entry, tmp);
-  frame_manager_onionskin_offset (0, offset_y); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, offset_y); 
+      list = g_slist_next (list);
+    }
+
   return TRUE; 
 }
 
 static gint 	    
 clone_y_offset_up (GtkWidget *w, gpointer client_data) 
 {
+  extern GSList *display_list;
+  GSList *list = display_list;
+  GDisplay *d;
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_y ++;
   sprintf (tmp, "%d\0", offset_y);  
   gtk_entry_set_text (co->y_offset_entry, tmp);
-  frame_manager_onionskin_offset (0, offset_y); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, offset_y); 
+      list = g_slist_next (list);
+    }
+
   return TRUE; 
 }
 
@@ -1155,54 +1213,98 @@ clone_set_offset (CloneOptions *co, int x, int y)
 void
 clone_x_offset_increase ()
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   char tmp[20];
   offset_x ++; 
   sprintf (tmp, "%d\0", offset_x);  
   if (clone_options)
     gtk_entry_set_text (clone_options->x_offset_entry, tmp);
-  frame_manager_onionskin_offset (offset_x, 0); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, offset_x, 0); 
+      list = g_slist_next (list);
+    }
+
 }
 
 void
 clone_x_offset_decrease ()
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   char tmp[20];
   offset_x --; 
   sprintf (tmp, "%d\0", offset_x);  
   if (clone_options)
     gtk_entry_set_text (clone_options->x_offset_entry, tmp);
-  frame_manager_onionskin_offset (offset_x, 0); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, offset_x, 0); 
+      list = g_slist_next (list);
+    }
+
+
 }
 
 void
 clone_y_offset_increase ()
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   char tmp[20];
   offset_y ++;
   sprintf (tmp, "%d\0", offset_y);
   if (clone_options)
     gtk_entry_set_text (clone_options->y_offset_entry, tmp);
-  frame_manager_onionskin_offset (0, offset_y); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, offset_y); 
+      list = g_slist_next (list);
+    }
 }
 
 void
 clone_y_offset_decrease ()
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   char tmp[20];
   offset_y --;
   sprintf (tmp, "%d\0", offset_y);
   if (clone_options)
     gtk_entry_set_text (clone_options->y_offset_entry, tmp);
-  frame_manager_onionskin_offset (0, offset_y); 
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, offset_y); 
+      list = g_slist_next (list);
+    }
 }
 
 void
 clone_reset_offset ()
 {
+  extern GSList *display_list;
+  GSList *list = display_list; 
+  GDisplay *d;
   offset_x = offset_y = 0; 
   if (clone_options)
     clone_set_offset (clone_options, offset_x, offset_y); 
-  frame_manager_onionskin_offset (0, 0);  
+  while (list)
+    {
+      if ((d=((GDisplay *) list->data))->frame_manager)
+	frame_manager_onionskin_offset (d, 0, 0);  
+      list = g_slist_next (list);
+    }
+
 }
 
 int

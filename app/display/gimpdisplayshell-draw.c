@@ -172,7 +172,7 @@ static ToolButton tool_data[] =
     "Airbrush with variable pressure",
     (gpointer) AIRBRUSH },
   { (char **) clone_bits,
-    "Paint using patterns or image regions",
+    "Clone image regions",
     (gpointer) CLONE },
   { (char **) blur_bits,
     "Blur or sharpen",

@@ -3233,8 +3233,8 @@ plug_in_progress_init (PlugIn *plug_in,
 
       vbox = gtk_vbox_new (FALSE, 2);
       gtk_container_border_width (GTK_CONTAINER (vbox), 2);
-      gtk_box_pack_start (GTK_BOX (GTK_DIALOG (plug_in->progress)->vbox), vbox, TRUE, TRUE, 0);
-      gtk_widget_show (vbox);
+	 gtk_box_pack_start (GTK_BOX (GTK_DIALOG (plug_in->progress)->vbox), vbox, TRUE, TRUE, 0);
+	gtk_widget_show (vbox);
 
       plug_in->progress_label = gtk_label_new (message);
       gtk_misc_set_alignment (GTK_MISC (plug_in->progress_label), 0.0, 0.5);

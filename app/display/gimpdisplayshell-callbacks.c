@@ -354,7 +354,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
         default:
           break;
       }
-      frame_manager_set_dirty_flag (0);
+      frame_manager_set_dirty_flag (gdisp, 0);
       break;
 
     case GDK_MOTION_NOTIFY:

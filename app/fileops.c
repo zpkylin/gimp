@@ -1987,8 +1987,9 @@ file_reload_warning_callback (GtkWidget *w,
   */
   gimage = cur_gdisplay->gimage;
 
-  file_load (cur_gdisplay->gimage->filename,
-	prune_filename (gimage_filename(cur_gdisplay->gimage)), cur_gdisplay);
+  if (!file_load (cur_gdisplay->gimage->filename,
+	prune_filename (gimage_filename(cur_gdisplay->gimage)), cur_gdisplay))
+    return;
 
   if (enable_channel_revert)
     {
@@ -2052,7 +2053,7 @@ file_reload_warning_callback (GtkWidget *w,
   cur_gdisplay->ID = cur_gdisplay->gimage->ID;
 
   /* fix frame manager */
-  frame_manager_image_reload (gimage, cur_gdisplay->gimage);
+  frame_manager_image_reload (cur_gdisplay, gimage, cur_gdisplay->gimage);
 
   /* image channels */
   gimage_delete (gimage);
@@ -2069,7 +2070,7 @@ file_reload_cancel_warning_callback (GtkWidget *w,
                                   gpointer   client_data)
 {
   GtkWidget *mbox;
-  menus_set_sensitive ("<Image>/File/Reload", TRUE);
+  menus_set_sensitive ("<Image>/File/Revert to Saved", TRUE);
   mbox = (GtkWidget *) client_data;
   gtk_widget_destroy (mbox);
   warning_dialog = NULL; 

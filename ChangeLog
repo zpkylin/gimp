@@ -1,3 +1,17 @@
+Wed Feb 14 10:05:22 PST 2001 caro@rhythm.com
+	
+	* change the way fm works. Now each display can
+	have its own fm.
+
+	* fix a problem with revert to save
+
+	* fixed some clone problems.
+
+Thu Jan 25 15:18:52 PST 2001 caro@rhythm.com
+
+	* Rm contrained for level so that the input and
+	output values dont have any restrictions.
+
 Mon Feb 12 08:24:17 PST 2001 caro@rhythm.com
 
 	* rm left over clone icons.

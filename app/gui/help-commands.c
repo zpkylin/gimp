@@ -2721,65 +2721,83 @@ void
 dialogs_frame_manager_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_create ();
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_create (gdisplay);
 }
 
 void
 dialogs_frame_manager_step_forward_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_step_forward (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_step_forward (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_step_backwards_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_step_backwards (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_step_backwards (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_flip_forward_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_forward (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_forward (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_flip_backwards_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_backwards (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_backwards (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_raise_store_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_raise (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_raise (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_lower_store_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_lower (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_lower (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_lower_step_forward_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_lower (widget, NULL/*client_data*/);
-  frame_manager_step_forward (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_lower (widget, gdisplay);
+  frame_manager_step_forward (widget, gdisplay);
 }
 
 void
 dialogs_frame_manager_lower_step_backwards_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_flip_lower (widget, NULL/*client_data*/);
-  frame_manager_step_backwards (widget, NULL/*client_data*/);
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  frame_manager_flip_lower (widget, gdisplay);
+  frame_manager_step_backwards (widget, gdisplay);
 }
 
 void

@@ -54,7 +54,6 @@ GSList *               display_list = NULL;
 static int             display_num  = 1;
 static GdkCursorType   default_gdisplay_cursor = GDK_TOP_LEFT_ARROW;
 extern char 	       BRUSH_CHANGED;
-extern frame_manager_t *frame_manager;
 
 #define ROUND(x) ((int) (x + 0.5))
 
@@ -115,6 +114,8 @@ gdisplay_new (GImage       *gimage,
 
   gdisp->framemanager = 0;
 
+  gdisp->frame_manager = NULL;
+
   /* format the title */
   gdisplay_format_title (gimage, title, gdisp);
 
@@ -144,7 +145,9 @@ GDisplay*
 gdisplay_fm (GImage *gimage,
 	      unsigned int  scale)
 {
-  return frame_manager_load (gimage);
+  GDisplay *gdisplay = gdisplay_active ();
+  
+  return frame_manager_load (gdisplay, gimage);
 }
 
 static void
@@ -200,6 +203,10 @@ gdisplay_delete (GDisplay *gdisp)
   /*  free the area lists  */
   gdisplay_free_area_list (gdisp->update_areas);
   gdisplay_free_area_list (gdisp->display_areas);
+
+  /*  free the display */
+  printf ("free\n"); 
+  frame_manager_free (gdisp);
 
   /*  free the gimage  */
   gimage_delete (gdisp->gimage);
@@ -1129,7 +1136,7 @@ gdisplay_active ()
   toplevel_widget = gtk_widget_get_toplevel (event_widget);
 
   if (display_ht)
-    gdisp = g_hash_table_lookup (display_ht, toplevel_widget);
+    gdisp = g_hash_table_lookup (display_ht, event_widget /*toplevel_widget*/);
 
   if (gdisp)
     return gdisp;

@@ -284,7 +284,6 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
       */
       
       tool->preserve = FALSE;
-
       /*  Flush the gdisplays  */
       if (gdisp->disp_xoffset || gdisp->disp_yoffset)
 	{

@@ -41,7 +41,7 @@ typedef struct
 }store_t;
 
 
-typedef struct 
+struct _frame_manager_t 
 {
   GtkWidget *shell;
   GtkWidget *vbox; 
@@ -59,14 +59,15 @@ typedef struct
   char auto_save_on;
   GtkAdjustment *trans_data; 
   GDisplay *linked_display; 
-  GDisplay *gdisplay; 
   GtkWidget *store_option;
   GtkWidget *change_frame_num; 
-  GtkWidget *warning; 
-}frame_manager_t;
+  GtkWidget *warning;
+  char onionskin; 
 
-void frame_manager_create (void);
-void frame_manager_free (void);
+};
+
+void frame_manager_create (GDisplay *gdisplay);
+void frame_manager_free (GDisplay *gdisplay);
 gint frame_manager_step_forward (GtkWidget *, gpointer);
 gint frame_manager_step_backwards (GtkWidget *, gpointer);
 gint frame_manager_flip_forward (GtkWidget *, gpointer);
@@ -75,15 +76,15 @@ gint frame_manager_flip_raise (GtkWidget *, gpointer);
 gint frame_manager_flip_lower (GtkWidget *, gpointer);
 GimpDrawable *frame_manager_onionskin_drawable (); 
 int frame_manager_onionskin_display (); 
-void frame_manager_onionskin_offset (int, int); 
-void frame_manager_rm_onionskin (frame_manager_t *); 
-void frame_manager_image_reload (GImage *, GImage*);
-GimpDrawable *frame_manager_bg_drawable ();
-int frame_manager_bg_display ();
-void frame_manager_set_bg (GDisplay *display);
-void frame_manager_store_add (GImage *, frame_manager_t *, int);
-store_t* frame_manager_store_new (GImage *gimage, char active);
-GDisplay* frame_manager_load (GImage *gimage);
-void frame_manager_set_dirty_flag (int flag); 
+void frame_manager_onionskin_offset (GDisplay *, int, int); 
+void frame_manager_rm_onionskin (GDisplay *); 
+void frame_manager_image_reload (GDisplay *, GImage *, GImage*);
+GimpDrawable *frame_manager_bg_drawable (GDisplay *gdisplay);
+int frame_manager_bg_display (GDisplay *);
+void frame_manager_set_bg (GDisplay *);
+void frame_manager_store_add (GImage *, GDisplay *, int);
+store_t* frame_manager_store_new (GDisplay *gdisplay, GImage *gimage, char active);
+GDisplay* frame_manager_load (GDisplay *, GImage *);
+void frame_manager_set_dirty_flag (GDisplay *gdisplay, int); 
 
 #endif /* __FRAME_MANAGER_H__ */
