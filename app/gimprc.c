@@ -323,7 +323,7 @@ parse_gimprc ()
   gimp_dir = gimp_directory ();
   add_gimp_directory_token (gimp_dir);
 
-  sprintf (libfilename, "%s/gimprc", DATADIR);
+  sprintf (libfilename, "%s/plug-ins/gimprc", LIBDIR);
   app_init_update_status("Resource configuration", libfilename, -1);
   parse_gimprc_file (libfilename);
 
