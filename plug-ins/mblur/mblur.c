@@ -25,7 +25,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /* Version 1.2
@@ -46,10 +46,14 @@
 
 #include <signal.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <gtk/gtk.h>
 #include <libgimp/gimp.h>
 
+#ifndef M_PI
+#define M_PI    3.14159265358979323846
+#endif /* M_PI */
 
 #define PLUG_IN_NAME 	"plug_in_mblur"
 #define PLUG_IN_VERSION	"Sep 1997, 1.2"
@@ -69,8 +73,10 @@ typedef struct {
 typedef struct {
 	gint       col, row;
 	gint       img_width, img_height, img_bpp, img_has_alpha;
+	gint 	   img_num_channels;
+	GPrecisionType img_precision;
 	gint       tile_width, tile_height;
-	guchar     bg_color[4];
+	guchar    *bg_color;
 	GDrawable *drawable;
 	GTile     *tile;
 } pixel_fetcher_t;
@@ -85,9 +91,11 @@ static void run(char    *name,
 		GParam **return_vals);
 
 static pixel_fetcher_t *pixel_fetcher_new(GDrawable *drawable);
-static void             pixel_fetcher_set_bg_color(pixel_fetcher_t *pf, guchar r, guchar g, guchar b, guchar a);
 static void             pixel_fetcher_get_pixel(pixel_fetcher_t *pf, int x, int y, guchar *pixel);
 static void             pixel_fetcher_destroy(pixel_fetcher_t *pf);
+static void 		pixel_fetcher_set_bg_color (pixel_fetcher_t *pf, 
+						    guchar * col, 
+							gint has_alpha);
 
 static void		mblur(void);
 static void 		mblur_linear(void);
@@ -101,7 +109,7 @@ static void    dialog_help_callback(GtkWidget *, gpointer);
 static void    dialog_scale_update(GtkAdjustment *, gint32 *);
 static void    dialog_toggle_update(GtkWidget *, gint32);
 
-static gint 		mblur_dialog(void);
+static gboolean		mblur_dialog(void);
 /***** Variables *****/
 
 GPlugInInfo PLUG_IN_INFO = {
@@ -117,15 +125,48 @@ static mblur_vals_t mbvals = {
 	45		/* radius */
 }; /* mb_vals */
 
-static mb_run= FALSE;
+static gboolean mb_run = FALSE;
 
 static GDrawable *drawable;
 
-static gint img_width, img_height, img_bpp, img_has_alpha;
+static gint img_width, img_height, img_bpp, img_has_alpha, img_num_channels;
+static GPrecisionType img_precision;
 static gint sel_x1, sel_y1, sel_x2, sel_y2;
 static gint sel_width, sel_height;
 
 static double cen_x, cen_y;
+
+static void 
+palette_get_background (guchar *color)
+{
+  switch(img_precision)
+  {
+      case PRECISION_U8:
+	{
+	  guint8* c = (guint8*)color;
+	  c[0] = 0; c[1] = 0; c[2] = 0; c[3] = 0;
+	}
+	break;
+      case PRECISION_U16:
+	{
+	  guint16* c = (guint16*)color;
+	  c[0] = 0; c[1] = 0; c[2] = 0; c[3] = 0;
+	}
+	break;
+      case PRECISION_FLOAT:
+	{
+	  gfloat* c = (gfloat*)color;
+	  c[0] = 0; c[1] = 0; c[2] = 0; c[3] = 0;
+	}
+	break;
+      case PRECISION_FLOAT16: 
+	{
+	  guint16* c = (guint16*)color;
+	  c[0] = 0; c[1] = 0; c[2] = 0; c[3] = 0;
+	}
+	break;
+  }
+}
 
 /***** Functions *****/
 
@@ -160,7 +201,7 @@ query(void)
 			 "Torsten Martinsen, Federico Mena Quintero and Daniel Skarda",			       
 			 PLUG_IN_VERSION,
 			 "<Image>/Filters/Blur/Motion Blur",
-			 "RGB*, GRAY*",
+			 "RGB*, GRAY*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
 			 PROC_PLUG_IN,
 			 nargs,
 			 nreturn_vals,
@@ -182,11 +223,6 @@ run(char 	*name,
   GRunModeType run_mode;
   GStatusType  status;
 
-#if 0
-  printf("Waiting... (pid %d)\n", getpid());
-  kill(getpid(), SIGSTOP);
-#endif
-
   status   = STATUS_SUCCESS;
   run_mode = param[0].data.d_int32;
 
@@ -203,6 +239,8 @@ run(char 	*name,
   img_width     = gimp_drawable_width(drawable->id);
   img_height    = gimp_drawable_height(drawable->id);
   img_bpp       = gimp_drawable_bpp(drawable->id);
+  img_precision = gimp_drawable_precision(drawable->id);
+  img_num_channels = gimp_drawable_num_channels(drawable->id);
   img_has_alpha = gimp_drawable_has_alpha(drawable->id);
 
   gimp_drawable_mask_bounds(drawable->id, &sel_x1, &sel_y1, &sel_x2, &sel_y2);
@@ -283,7 +321,6 @@ run(char 	*name,
   gimp_drawable_detach(drawable);
 } /* run */
 
-/*****/
 static void 
 mblur_linear(void)
 {
@@ -291,12 +328,13 @@ mblur_linear(void)
   pixel_fetcher_t *pft;
   gpointer	pr;
 
-  guchar	*dest, *d;
-  guchar	pixel[4], bg_color[4];
-  gint32	sum[4];
+  guchar	*dest;
+  guchar	*pixel; 
+  guchar        *bg_color;
 
   gint          progress, max_progress;
   gint		c;
+  gint          channel_bytes;
 
   int 		x, y, i, xx, yy, n;
   int 		dx, dy, px, py, swapdir, err, e, s1, s2;
@@ -306,8 +344,13 @@ mblur_linear(void)
   
   pft 	       = pixel_fetcher_new(drawable);
 
-  gimp_palette_get_background(&bg_color[0], &bg_color[1], &bg_color[2]);
-  pixel_fetcher_set_bg_color(pft, bg_color[0], bg_color[1], bg_color[2], (img_has_alpha ? 0 : 255));
+  channel_bytes = drawable->bpp/drawable->num_channels;
+
+  pixel = (guchar*) g_malloc (channel_bytes * 4);
+  bg_color = (guchar*) g_malloc (channel_bytes * 4);
+
+  palette_get_background(bg_color);
+  pixel_fetcher_set_bg_color(pft, bg_color, img_has_alpha);
 
   progress     = 0;
   max_progress = sel_width * sel_height;
@@ -358,52 +401,202 @@ mblur_linear(void)
     dest = dest_rgn.data;
 
     for (y = dest_rgn.y; y < (dest_rgn.y + dest_rgn.h); y++) {
-      d = dest;
+        switch(img_precision)
+	{
+	    case PRECISION_U8:
+		{
+		  gint32 	sum[4];
+		  guint8* d = (guint8*)dest;
+		  guint8* p = (guint8*)pixel;
+			
+		  for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
 
-      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+		    xx = x; yy = y; e = err;
+		    for (c= 0; c < img_num_channels; c++) sum[c]= 0;
 
-	xx = x; yy = y; e = err;
-	for (c= 0; c < img_bpp; c++) sum[c]= 0;
+		    for (i = 0; i < n; ) {
+		      pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		      for (c= 0; c < img_num_channels; c++)
+			sum[c]+= p[c];
+		      i++;
 
-	for (i = 0; i < n; ) {
-	  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
-	  for (c= 0; c < img_bpp; c++)
-	    sum[c]+= pixel[c];
-	  i++;
+		      while (e >= 0) {
+			if (swapdir)
+			  xx += s1;
+			else
+			  yy += s2;
+			e -= dx;
+		      }
+		      if (swapdir)
+			yy += s2;
+		      else
+			xx += s1;
+		      e += dy;
+		      if ((xx < sel_x1)||(xx >= sel_x2)||(yy < sel_y1)||(yy >= sel_y2))
+			break;
+		    }
 
-	  while (e >= 0) {
-	    if (swapdir)
-	      xx += s1;
-	    else
-	      yy += s2;
-	    e -= dx;
-	  }
-	  if (swapdir)
-	    yy += s2;
-	  else
-	    xx += s1;
-	  e += dy;
-	  if ((xx < sel_x1)||(xx >= sel_x2)||(yy < sel_y1)||(yy >= sel_y2))
-	    break;
+		    if ( i==0 )
+		      {
+			pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		      }
+		    else
+		      {
+			for (c=0; c < img_num_channels; c++)
+			  d[c]= sum[c] / i;
+		      }
+		    d+= img_num_channels;
+		    }
+	      }
+	      break;
+	    case PRECISION_U16:
+		{
+		  gint32 	sum[4];
+		  guint16* d = (guint16*)dest;
+		  guint16* p = (guint16*)pixel;
+			
+		  for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		    xx = x; yy = y; e = err;
+		    for (c= 0; c < img_num_channels; c++) sum[c]= 0;
+
+		    for (i = 0; i < n; ) {
+		      pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		      for (c= 0; c < img_num_channels; c++)
+			sum[c]+= p[c];
+		      i++;
+
+		      while (e >= 0) {
+			if (swapdir)
+			  xx += s1;
+			else
+			  yy += s2;
+			e -= dx;
+		      }
+		      if (swapdir)
+			yy += s2;
+		      else
+			xx += s1;
+		      e += dy;
+		      if ((xx < sel_x1)||(xx >= sel_x2)||(yy < sel_y1)||(yy >= sel_y2))
+			break;
+		    }
+
+		    if ( i==0 )
+		      {
+			pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		      }
+		    else
+		      {
+			for (c=0; c < img_num_channels; c++)
+			  d[c]= sum[c] / i;
+		      }
+		    d+= img_num_channels;
+		    }
+	      }
+	      break;
+	    case PRECISION_FLOAT:
+		{
+		  gfloat  sum[4];
+		  gfloat* d = (gfloat*)dest;
+		  gfloat* p = (gfloat*)pixel;
+			
+		  for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		    xx = x; yy = y; e = err;
+		    for (c= 0; c < img_num_channels; c++) sum[c]= 0;
+
+		    for (i = 0; i < n; ) {
+		      pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		      for (c= 0; c < img_num_channels; c++)
+			sum[c]+= p[c];
+		      i++;
+
+		      while (e >= 0) {
+			if (swapdir)
+			  xx += s1;
+			else
+			  yy += s2;
+			e -= dx;
+		      }
+		      if (swapdir)
+			yy += s2;
+		      else
+			xx += s1;
+		      e += dy;
+		      if ((xx < sel_x1)||(xx >= sel_x2)||(yy < sel_y1)||(yy >= sel_y2))
+			break;
+		    }
+
+		    if ( i==0 )
+		      {
+			pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		      }
+		    else
+		      {
+			for (c=0; c < img_num_channels; c++)
+			  d[c]= sum[c] / (gfloat)i;
+		      }
+		    d+= img_num_channels;
+		    }
+	      }
+	      break;
+	    case PRECISION_FLOAT16: 
+		{
+		  gfloat  sum[4];
+		  guint16* d = (guint16*)dest;
+		  guint16* p = (guint16*)pixel;
+		  ShortsFloat u;
+			
+		  for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		    xx = x; yy = y; e = err;
+		    for (c= 0; c < img_num_channels; c++) sum[c]= 0;
+
+		    for (i = 0; i < n; ) {
+		      pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		      for (c= 0; c < img_num_channels; c++)
+			sum[c]+= FLT(p[c], u);
+		      i++;
+
+		      while (e >= 0) {
+			if (swapdir)
+			  xx += s1;
+			else
+			  yy += s2;
+			e -= dx;
+		      }
+		      if (swapdir)
+			yy += s2;
+		      else
+			xx += s1;
+		      e += dy;
+		      if ((xx < sel_x1)||(xx >= sel_x2)||(yy < sel_y1)||(yy >= sel_y2))
+			break;
+		    }
+
+		    if ( i==0 )
+		      {
+			pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		      }
+		    else
+		      {
+			for (c=0; c < img_num_channels; c++)
+			  d[c]= FLT16 (sum[c] / (gfloat)i, u);
+		      }
+		    d+= img_num_channels;
+		    }
+	      }
+	      break;
 	}
-
-	if ( i==0 )
-	  {
-	    pixel_fetcher_get_pixel(pft,xx,yy,d); 
-	  }
-	else
-	  {
-	    for (c=0; c < img_bpp; c++)
-	      d[c]= sum[c] / i;
-	  }
-	d+= dest_rgn.bpp;
-      }
       dest += dest_rgn.rowstride;
     }
     progress += dest_rgn.w * dest_rgn.h;
     gimp_progress_update((double) progress / max_progress);
   }
   pixel_fetcher_destroy(pft);
+  g_free (pixel);
+  g_free (bg_color);
 }
 
 static void
@@ -413,11 +606,12 @@ mblur_radial(void)
   pixel_fetcher_t *pft;
   gpointer	pr;
 
-  guchar	*dest, *d;
-  guchar	pixel[4], bg_color[4];
-  gint32	sum[4];
+  guchar	*dest; 
+  guchar	*pixel;
+  guchar     *bg_color;
 
   gint          progress, max_progress, c;
+  gint          channel_bytes;
 
   int 		x, y, i, n, xr, yr;
   int 		count, R, r, w, h, step;
@@ -432,8 +626,14 @@ mblur_radial(void)
   
   pft 	       = pixel_fetcher_new(drawable);
 
+#if 0
   gimp_palette_get_background(&bg_color[0], &bg_color[1], &bg_color[2]);
   pixel_fetcher_set_bg_color(pft, bg_color[0], bg_color[1], bg_color[2], (img_has_alpha ? 0 : 255));
+#endif
+
+  channel_bytes = drawable->bpp/drawable->num_channels;
+  pixel = (guchar*) g_malloc (channel_bytes * 4);
+  bg_color = (guchar*) g_malloc (channel_bytes * 4);
 
   progress     = 0;
   max_progress = sel_width * sel_height;
@@ -445,8 +645,8 @@ mblur_radial(void)
   n = 4*angle*sqrt(R)+2;
   theta = angle/((float) (n-1));
 
-  if (((ct = malloc(n*sizeof(float))) == NULL) ||
-      ((st = malloc(n*sizeof(float))) == NULL))
+  if (((ct = g_malloc(n*sizeof(float))) == NULL) ||
+      ((st = g_malloc(n*sizeof(float))) == NULL))
     return;
   offset = theta*(n-1)/2;
   for (i = 0; i < n; ++i) {
@@ -458,46 +658,196 @@ mblur_radial(void)
     dest = dest_rgn.data;
 
     for (y = dest_rgn.y; y < (dest_rgn.y + dest_rgn.h); y++) {
-      d = dest;
 
-      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+	switch(img_precision)
+	{
+	  case PRECISION_U8:
+	    {
+	      gint32  sum[4];
+	      guint8* d = (guint8*)dest;
+	      guint8* p = (guint8*)pixel;
 
-	xr = x-cen_x;
-	yr = y-cen_y;
-	r = sqrt(xr*xr + yr*yr);
-	if (r == 0)
-	  step = 1;
-	else if ((step = R/r) == 0)
-	  step = 1;
-	else if (step > n-1)
-	  step = n-1;
+	      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
 
-	for (c=0; c < img_bpp; c++) sum[c]=0;
+		xr = x-cen_x;
+		yr = y-cen_y;
+		r = sqrt(xr*xr + yr*yr);
+		if (r == 0)
+		  step = 1;
+		else if ((step = R/r) == 0)
+		  step = 1;
+		else if (step > n-1)
+		  step = n-1;
 
-	for (i = 0, count = 0; i < n; i += step) {
-	  xx = cen_x + xr*ct[i] - yr*st[i];
-	  yy = cen_y + xr*st[i] + yr*ct[i];
-	  if ((yy < sel_y1) || (yy >= sel_y2) ||
-	      (xx < sel_x1) || (xx >= sel_x2))
-	    continue;
+		for (c=0; c < img_num_channels; c++) sum[c]=0;
 
-	  ++count;
-	  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
-	  for (c=0; c < img_bpp; c++) 
-	    sum[c]+= pixel[c];
+		for (i = 0, count = 0; i < n; i += step) {
+		  xx = cen_x + xr*ct[i] - yr*st[i];
+		  yy = cen_y + xr*st[i] + yr*ct[i];
+		  if ((yy < sel_y1) || (yy >= sel_y2) ||
+		      (xx < sel_x1) || (xx >= sel_x2))
+		    continue;
+
+		  ++count;
+		  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		  for (c=0; c < img_num_channels; c++) 
+		    sum[c]+= p[c];
+		}
+
+		if ( count==0 )
+		  {
+		    pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		  }
+		else
+		  {
+		    for (c=0; c < img_num_channels; c++)
+		      d[c]= sum[c] / count;
+		  }
+		d+= img_num_channels;
+	      }
+	    }
+	    break;
+	  case PRECISION_U16:
+	    {
+	      gint32  sum[4];
+	      guint16* d = (guint16*)dest;
+	      guint16* p = (guint16*)pixel;
+
+	      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		xr = x-cen_x;
+		yr = y-cen_y;
+		r = sqrt(xr*xr + yr*yr);
+		if (r == 0)
+		  step = 1;
+		else if ((step = R/r) == 0)
+		  step = 1;
+		else if (step > n-1)
+		  step = n-1;
+
+		for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+		for (i = 0, count = 0; i < n; i += step) {
+		  xx = cen_x + xr*ct[i] - yr*st[i];
+		  yy = cen_y + xr*st[i] + yr*ct[i];
+		  if ((yy < sel_y1) || (yy >= sel_y2) ||
+		      (xx < sel_x1) || (xx >= sel_x2))
+		    continue;
+
+		  ++count;
+		  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		  for (c=0; c < img_num_channels; c++) 
+		    sum[c]+= p[c];
+		}
+
+		if ( count==0 )
+		  {
+		    pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		  }
+		else
+		  {
+		    for (c=0; c < img_num_channels; c++)
+		      d[c]= sum[c] / count;
+		  }
+		d+= img_num_channels;
+	      }
+	    }
+	    break;
+	  case PRECISION_FLOAT:
+	    {
+	      gfloat  sum[4];
+	      gfloat* d = (gfloat*)dest;
+	      gfloat* p = (gfloat*)pixel;
+
+	      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		xr = x-cen_x;
+		yr = y-cen_y;
+		r = sqrt(xr*xr + yr*yr);
+		if (r == 0)
+		  step = 1;
+		else if ((step = R/r) == 0)
+		  step = 1;
+		else if (step > n-1)
+		  step = n-1;
+
+		for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+		for (i = 0, count = 0; i < n; i += step) {
+		  xx = cen_x + xr*ct[i] - yr*st[i];
+		  yy = cen_y + xr*st[i] + yr*ct[i];
+		  if ((yy < sel_y1) || (yy >= sel_y2) ||
+		      (xx < sel_x1) || (xx >= sel_x2))
+		    continue;
+
+		  ++count;
+		  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		  for (c=0; c < img_num_channels; c++) 
+		    sum[c]+= p[c];
+		}
+
+		if ( count==0 )
+		  {
+		    pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		  }
+		else
+		  {
+		    for (c=0; c < img_num_channels; c++)
+		      d[c]= sum[c] / (gfloat)count;
+		  }
+		d+= img_num_channels;
+	      }
+	    }
+	    break;
+	  case PRECISION_FLOAT16: 
+	    {
+	      gfloat  sum[4];
+	      guint16* d = (guint16*)dest;
+	      guint16* p = (guint16*)pixel;
+	      ShortsFloat u;
+
+	      for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+		xr = x-cen_x;
+		yr = y-cen_y;
+		r = sqrt(xr*xr + yr*yr);
+		if (r == 0)
+		  step = 1;
+		else if ((step = R/r) == 0)
+		  step = 1;
+		else if (step > n-1)
+		  step = n-1;
+
+		for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+		for (i = 0, count = 0; i < n; i += step) {
+		  xx = cen_x + xr*ct[i] - yr*st[i];
+		  yy = cen_y + xr*st[i] + yr*ct[i];
+		  if ((yy < sel_y1) || (yy >= sel_y2) ||
+		      (xx < sel_x1) || (xx >= sel_x2))
+		    continue;
+
+		  ++count;
+		  pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		  for (c=0; c < img_num_channels; c++) 
+		    sum[c]+= FLT(p[c], u);
+		}
+
+		if ( count==0 )
+		  {
+		    pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		  }
+		else
+		  {
+		    for (c=0; c < img_num_channels; c++)
+		      d[c]= FLT16 (sum[c] / (gfloat)count, u);
+		  }
+		d+= img_num_channels;
+	      }
+	    }
+	    break;
 	}
 
-	if ( count==0 )
-	  {
-	    pixel_fetcher_get_pixel(pft,xx,yy,d); 
-	  }
-	else
-	  {
-	    for (c=0; c < img_bpp; c++)
-	      d[c]= sum[c] / count;
-	  }
-	d+= dest_rgn.bpp;
-      }
       dest += dest_rgn.rowstride;
     }
     progress += dest_rgn.w * dest_rgn.h;
@@ -505,8 +855,10 @@ mblur_radial(void)
   }
 
   pixel_fetcher_destroy(pft);
-  free(ct);
-  free(st);
+  g_free(ct);
+  g_free(st);
+  g_free (pixel);
+  g_free (bg_color);
 }
 
 static void
@@ -516,12 +868,13 @@ mblur_zoom(void)
   pixel_fetcher_t *pft;
   gpointer	pr;
 
-  guchar	*dest, *d;
-  guchar	pixel[4], bg_color[4];
-  gint32	sum[4];
+  guchar	*dest;
+  guchar	*pixel; 
+  guchar        *bg_color;
 
   gint          progress, max_progress;
   int 		x, y, i, xx, yy, n, c;
+  gint 		channel_bytes;
   float 	f;
     
   /* initialize */
@@ -533,8 +886,14 @@ mblur_zoom(void)
   
   pft 	       = pixel_fetcher_new(drawable);
 
+#if 0
   gimp_palette_get_background(&bg_color[0], &bg_color[1], &bg_color[2]);
   pixel_fetcher_set_bg_color(pft, bg_color[0], bg_color[1], bg_color[2], (img_has_alpha ? 0 : 255));
+#endif
+
+  channel_bytes = drawable->bpp/drawable->num_channels;
+  pixel = (guchar*) g_malloc (channel_bytes * 4);
+  bg_color = (guchar*) g_malloc (channel_bytes * 4);
 
   progress     = 0;
   max_progress = sel_width * sel_height;
@@ -547,36 +906,158 @@ mblur_zoom(void)
       dest = dest_rgn.data;
 
       for (y = dest_rgn.y; y < (dest_rgn.y + dest_rgn.h); y++) {
-	d = dest;
 
-	for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+	switch (img_precision)
+	{
+	  case PRECISION_U8:
+	  {
+	    guint8 *d = (guint8*)dest;
+	    guint8 *p = (guint8*)pixel;
+	    gint32  sum[4];
 
-	  for (c=0; c < img_bpp; c++) sum[c]=0;
+	    for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
 
-	  for (i = 0; i < n; ++i) {
-	    xx = cen_x + (x-cen_x)*(1.0 + f*i);
-	    yy = cen_y + (y-cen_y)*(1.0 + f*i);
+	      for (c=0; c < img_num_channels; c++) sum[c]=0;
 
-	    if ((yy < sel_y1) || (yy >= sel_y2) ||
-		(xx < sel_x1) || (xx >= sel_x2))
-	      break;
+	      for (i = 0; i < n; ++i) {
+		xx = cen_x + (x-cen_x)*(1.0 + f*i);
+		yy = cen_y + (y-cen_y)*(1.0 + f*i);
 
-	    pixel_fetcher_get_pixel(pft,xx,yy,pixel);
-	    for (c= 0; c < img_bpp; c++)
-	      sum[c]+= pixel[c];	  
+		if ((yy < sel_y1) || (yy >= sel_y2) ||
+		    (xx < sel_x1) || (xx >= sel_x2))
+		  break;
+
+		pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		for (c= 0; c < img_num_channels; c++)
+		  sum[c]+= p[c];	  
+	      }
+
+
+	      if ( i==0 )
+		{
+		  pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		}
+	      else
+		{
+		  for (c=0; c < img_num_channels; c++)
+		    d[c]= sum[c] / i;
+		}
+	      d += img_num_channels;
+	    }
 	  }
+	  break;	
+	  case PRECISION_U16:
+	  {
+	    guint16 *d = (guint16*)dest;
+	    guint16 *p = (guint16*)pixel;
+	    gint32  sum[4];
+
+	    for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+	      for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+	      for (i = 0; i < n; ++i) {
+		xx = cen_x + (x-cen_x)*(1.0 + f*i);
+		yy = cen_y + (y-cen_y)*(1.0 + f*i);
+
+		if ((yy < sel_y1) || (yy >= sel_y2) ||
+		    (xx < sel_x1) || (xx >= sel_x2))
+		  break;
+
+		pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		for (c= 0; c < img_num_channels; c++)
+		  sum[c]+= p[c];	  
+	      }
 
 
-	  if ( i==0 )
-	    {
-	      pixel_fetcher_get_pixel(pft,xx,yy,d); 
+	      if ( i==0 )
+		{
+		  pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		}
+	      else
+		{
+		  for (c=0; c < img_num_channels; c++)
+		    d[c]= sum[c] / i;
+		}
+	      d += img_num_channels;
 	    }
-	  else
-	    {
-	      for (c=0; c < img_bpp; c++)
-		d[c]= sum[c] / i;
+	  }
+	  break;	
+	  case PRECISION_FLOAT:
+	  {
+	    gfloat *d = (gfloat*)dest;
+	    gfloat *p = (gfloat*)pixel;
+	    gfloat  sum[4];
+
+	    for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+	      for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+	      for (i = 0; i < n; ++i) {
+		xx = cen_x + (x-cen_x)*(1.0 + f*i);
+		yy = cen_y + (y-cen_y)*(1.0 + f*i);
+
+		if ((yy < sel_y1) || (yy >= sel_y2) ||
+		    (xx < sel_x1) || (xx >= sel_x2))
+		  break;
+
+		pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		for (c= 0; c < img_num_channels; c++)
+		  sum[c]+= p[c];	  
+	      }
+
+
+	      if ( i==0 )
+		{
+		  pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		}
+	      else
+		{
+		  for (c=0; c < img_num_channels; c++)
+		    d[c]= sum[c] / (gfloat)i;
+		}
+	      d += img_num_channels;
 	    }
-	  d+= dest_rgn.bpp;
+	  }
+	  break;	
+	  case PRECISION_FLOAT16: 
+	  {
+	    guint16 *d = (guint16*)dest;
+	    guint16 *p = (guint16*)pixel;
+	    gfloat  sum[4];
+	    ShortsFloat u;
+
+	    for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++) {
+
+	      for (c=0; c < img_num_channels; c++) sum[c]=0;
+
+	      for (i = 0; i < n; ++i) {
+		xx = cen_x + (x-cen_x)*(1.0 + f*i);
+		yy = cen_y + (y-cen_y)*(1.0 + f*i);
+
+		if ((yy < sel_y1) || (yy >= sel_y2) ||
+		    (xx < sel_x1) || (xx >= sel_x2))
+		  break;
+
+		pixel_fetcher_get_pixel(pft,xx,yy,pixel);
+		for (c= 0; c < img_num_channels; c++)
+		  sum[c]+= FLT (p[c], u);	  
+	      }
+
+
+	      if ( i==0 )
+		{
+		  pixel_fetcher_get_pixel(pft,xx,yy,(guchar*)d); 
+		}
+	      else
+		{
+		  for (c=0; c < img_num_channels; c++)
+		    d[c]= FLT16 (sum[c] / (gfloat)i, u);
+		}
+	      d += img_num_channels;
+	    }
+	  }
+	  break;	
 	}
 	dest += dest_rgn.rowstride;
       }
@@ -584,6 +1065,8 @@ mblur_zoom(void)
       gimp_progress_update((double) progress / max_progress);
     }
   pixel_fetcher_destroy(pft);
+  g_free (pixel);
+  g_free (bg_color);
 }
 
 static void
@@ -621,6 +1104,7 @@ static pixel_fetcher_t *
 pixel_fetcher_new(GDrawable *drawable)
 {
   pixel_fetcher_t *pf;
+  gint channel_bytes;
 
   pf = g_malloc(sizeof(pixel_fetcher_t));
 
@@ -629,13 +1113,55 @@ pixel_fetcher_new(GDrawable *drawable)
   pf->img_width     = gimp_drawable_width(drawable->id);
   pf->img_height    = gimp_drawable_height(drawable->id);
   pf->img_bpp       = gimp_drawable_bpp(drawable->id);
+  pf->img_num_channels  = gimp_drawable_num_channels(drawable->id);
+  pf->img_precision = gimp_drawable_precision(drawable->id);
   pf->img_has_alpha = gimp_drawable_has_alpha(drawable->id);
   pf->tile_width    = gimp_tile_width();
   pf->tile_height   = gimp_tile_height();
-  pf->bg_color[0]   = 0;
-  pf->bg_color[1]   = 0;
-  pf->bg_color[2]   = 0;
-  pf->bg_color[3]   = 0;
+
+  channel_bytes = pf->img_bpp/pf->img_num_channels; 
+
+  pf->bg_color = (guchar*) g_malloc (channel_bytes * 4); 
+
+  switch(pf->img_precision)
+  {
+      case PRECISION_U8:
+	{
+	  guint8* d = (guint8*)(pf->bg_color);
+	  d[0] = 0;
+	  d[1] = 0;
+	  d[2] = 0;
+	  d[3] = 0;
+	}
+	break;
+      case PRECISION_U16:
+	{
+	  guint16* d = (guint16*)(pf->bg_color);
+	  d[0] = 0;
+	  d[1] = 0;
+	  d[2] = 0;
+	  d[3] = 0;
+	}
+	break;
+      case PRECISION_FLOAT:
+	{
+	  gfloat* d = (gfloat*)(pf->bg_color);
+	  d[0] = 0;
+	  d[1] = 0;
+	  d[2] = 0;
+	  d[3] = 0;
+	}
+	break;
+      case PRECISION_FLOAT16: 
+	{
+	  guint16* d = (guint16*)(pf->bg_color);
+	  d[0] = ZERO_FLOAT16;
+	  d[1] = ZERO_FLOAT16;
+	  d[2] = ZERO_FLOAT16;
+	  d[3] = ZERO_FLOAT16;
+	}
+	break;
+  }
 
   pf->drawable    = drawable;
   pf->tile        = NULL;
@@ -643,9 +1169,64 @@ pixel_fetcher_new(GDrawable *drawable)
   return pf;
 } /* pixel_fetcher_new */
 
+static void
+pixel_fetcher_set_bg_color (pixel_fetcher_t *pf, guchar * col, gint has_alpha)
+{
+  switch(pf->img_precision)
+  {
+      case PRECISION_U8:
+	{
+	  guint8* d = (guint8*)(pf->bg_color);
+	  guint8* c = (guint8*)col;
+	  d[0] = c[0];
+	  d[1] = c[1];
+	  d[2] = c[2];
+	  d[3] = c[3];
+	  if (pf->img_has_alpha)
+	    d[pf->img_num_channels-1] = 0; 
+	}
+	break;
+      case PRECISION_U16:
+	{
+	  guint16* d = (guint16*)(pf->bg_color);
+	  guint16* c = (guint16*)col;
+	  d[0] = c[0];
+	  d[1] = c[1];
+	  d[2] = c[2];
+	  d[3] = c[3];
+	  if (pf->img_has_alpha)
+	    d[pf->img_num_channels-1] = 0; 
+	}
+	break;
+      case PRECISION_FLOAT:
+	{
+	  gfloat* d = (gfloat*)(pf->bg_color);
+	  gfloat* c = (gfloat*)col;
+	  d[0] = c[0];
+	  d[1] = c[1];
+	  d[2] = c[2];
+	  d[3] = c[3];
+	  if (pf->img_has_alpha)
+	    d[pf->img_num_channels-1] = 0.0; 
+	}
+	break;
+      case PRECISION_FLOAT16: 
+	{
+	  gfloat* d = (gfloat*)(pf->bg_color);
+	  gfloat* c = (gfloat*)col;
+	  d[0] = c[0];
+	  d[1] = c[1];
+	  d[2] = c[2];
+	  d[3] = c[3];
+	  if (pf->img_has_alpha)
+	    d[pf->img_num_channels-1] = ZERO_FLOAT16; 
+	}
+  }
+} 
 
 /*****/
 
+#if 0
 static void
 pixel_fetcher_set_bg_color(pixel_fetcher_t *pf, guchar r, guchar g, guchar b, guchar a)
 {
@@ -656,6 +1237,7 @@ pixel_fetcher_set_bg_color(pixel_fetcher_t *pf, guchar r, guchar g, guchar b, gu
   if (pf->img_has_alpha)
     pf->bg_color[pf->img_bpp - 1] = a;
 } /* pixel_fetcher_set_bg_color */
+#endif
 
 
 /*****/
@@ -709,6 +1291,7 @@ pixel_fetcher_destroy(pixel_fetcher_t *pf)
   if (pf->tile != NULL)
     gimp_tile_unref(pf->tile, FALSE);
 
+  g_free(pf->bg_color);
   g_free(pf);
 } /* pixel_fetcher_destroy */
 
@@ -718,7 +1301,7 @@ pixel_fetcher_destroy(pixel_fetcher_t *pf)
  *
  ****************************************/
 
-static gint
+static gboolean
 mblur_dialog(void)
 {
   GtkWidget	*dialog;

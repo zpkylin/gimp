@@ -58,11 +58,13 @@ static gint      gauss_rle_dialog  (void);
 /*
  * Gaussian blur helper functions
  */
-static gint *    make_curve        (gdouble    sigma,
-				    gint *     length);
-static void      run_length_encode (guchar *   src,
-				    gint *     dest,
-				    gint       bytes,
+static gfloat *    make_curve        (gdouble    sigma,
+				    gint *     length,
+				    gfloat     cutoff);
+static void      run_length_encode (guint16 *   src,
+				    gint *     buf_number,
+				    guint16 *   buf_values,
+				    gint       num_channels,
 				    gint       width);
 
 static void      gauss_close_callback  (GtkWidget *widget,
@@ -119,8 +121,8 @@ query ()
 			  "Spencer Kimball & Peter Mattis",
 			  "Spencer Kimball & Peter Mattis",
 			  "1995-1996",
-			  "<Image>/Filters/Blur/Gaussian Blur (RLE)",
-			  "RGB*, GRAY*",
+			  "<Image>/Filters/Blur/Gaussian Blur",
+			  "FLOAT16_RGB*, FLOAT16_GRAY*",
 			  PROC_PLUG_IN,
 			  nargs, nreturn_vals,
 			  args, return_vals);
@@ -137,7 +139,7 @@ run (gchar   *name,
   GDrawable *drawable;
   GRunModeType run_mode;
   GStatusType status = STATUS_SUCCESS;
-  gdouble radius, std_dev;
+  gdouble radius, std_dev, cutoff;
 
   run_mode = param[0].data.d_int32;
 
@@ -195,7 +197,8 @@ run (gchar   *name,
 				   gimp_tile_width () + 1));
 
       radius = fabs (bvals.radius) + 1.0;
-      std_dev = sqrt (-(radius * radius) / (2 * log (1.0 / 255.0)));
+      cutoff = .000001;
+      std_dev = sqrt (-(radius * radius) / (2 * log (cutoff)));
 
       /*  run the gaussian blur  */
       gauss_rle (drawable, bvals.horizontal, bvals.vertical, std_dev);
@@ -367,24 +370,33 @@ gauss_rle (GDrawable *drawable,
   GPixelRgn src_rgn, dest_rgn;
   gint width, height;
   gint bytes;
+  gint channel_bytes;
+  gint num_channels;
   gint has_alpha;
-  guchar *dest, *dp;
-  guchar *src, *sp;
-  gint *buf, *bb;
+
+  guint16 *dest, *dp;
+  guint16 *src, *sp;
+  guint16 *buf_values; /*rle values array*/
+  guint16 *bb_values;
+  guint16 initial_p, initial_m;
+
+  gint *buf_number;   /*rle numbers array*/
+  gint *bb_number;  
   gint pixels;
-  gint total;
   gint x1, y1, x2, y2;
   gint i, row, col, b;
   gint start, end;
   gint progress, max_progress;
-  gint *curve;
-  gint *sum;
-  gint val;
+  gfloat *curve;
+  gfloat *sum;
+  gfloat val;
+  gfloat total;
   gint length;
-  gint initial_p, initial_m;
+  gfloat cutoff = .000001;
+  ShortsFloat u;
 
-  curve = make_curve (std_dev, &length);
-  sum = malloc (sizeof (gint) * (2 * length + 1));
+  curve = make_curve (std_dev, &length, cutoff);
+  sum = malloc (sizeof (gfloat) * (2 * length + 1));
 
   sum[0] = 0;
 
@@ -398,14 +410,17 @@ gauss_rle (GDrawable *drawable,
   height = (y2 - y1);
   bytes = drawable->bpp;
   has_alpha = gimp_drawable_has_alpha(drawable->id);
+  num_channels = gimp_drawable_num_channels(drawable->id);
+  channel_bytes = bytes/num_channels;
 
-  buf = (gint *) malloc (sizeof (gint) * MAX (width, height) * 2);
+  buf_number = (gint *) malloc (sizeof (gint) * MAX (width, height));
+  buf_values = (guint16 *) malloc (MAX (width, height) * channel_bytes);
 
   total = sum[length] - sum[-length];
 
-  /*  allocate buffers for source and destination pixels  */
-  src = (guchar *) malloc (MAX (width, height) * bytes);
-  dest = (guchar *) malloc (MAX (width, height) * bytes);
+  /*  allocate data for source and destination pixels  */
+  src = (guint16 *) malloc (MAX (width, height) * num_channels * channel_bytes);
+  dest = (guint16 *) malloc (MAX (width, height) * num_channels * channel_bytes);
 
   gimp_pixel_rgn_init (&src_rgn, drawable, 0, 0, drawable->width, drawable->height, FALSE, FALSE);
   gimp_pixel_rgn_init (&dest_rgn, drawable, 0, 0, drawable->width, drawable->height, TRUE, TRUE);
@@ -418,21 +433,18 @@ gauss_rle (GDrawable *drawable,
     {
       for (col = 0; col < width; col++)
 	{
-	  gimp_pixel_rgn_get_col (&src_rgn, src, col + x1, y1, (y2 - y1));
-
-	  if (has_alpha)
-	    multiply_alpha (src, height, bytes);
+	  gimp_pixel_rgn_get_col (&src_rgn, (guchar*)src, col + x1, y1, (y2 - y1));
 
 	  sp = src;
 	  dp = dest;
 
-	  for (b = 0; b < bytes; b++)
+	  for (b = 0; b < num_channels; b++)
 	    {
 	      initial_p = sp[b];
-	      initial_m = sp[(height-1) * bytes + b];
+	      initial_m = sp[(height-1) * num_channels + b];
 
 	      /*  Determine a run-length encoded version of the row  */
-	      run_length_encode (sp + b, buf, bytes, height);
+	      run_length_encode (sp + b, buf_number, buf_values, num_channels, height);
 
 	      for (row = 0; row < height; row++)
 		{
@@ -441,33 +453,33 @@ gauss_rle (GDrawable *drawable,
 
 		  val = 0;
 		  i = start;
-		  bb = buf + (row + i) * 2;
+
+		  bb_number = buf_number + (row + i);
+		  bb_values = buf_values + (row + i);
 
 		  if (start != -length)
-		    val += initial_p * (sum[start] - sum[-length]);
+		    val += FLT(initial_p,u) * (sum[start] - sum[-length]);
 
 		  while (i < end)
 		    {
-		      pixels = bb[0];
+		      pixels = *bb_number;
 		      i += pixels;
 		      if (i > end)
 			i = end;
-		      val += bb[1] * (sum[i] - sum[start]);
-		      bb += (pixels * 2);
+		      val += FLT(*bb_values,u) * (sum[i] - sum[start]);
+		      bb_number += pixels;
+		      bb_values += pixels;
 		      start = i;
 		    }
 
 		  if (end != length)
-		    val += initial_m * (sum[length] - sum[end]);
+		    val += FLT(initial_m,u) * (sum[length] - sum[end]);
 
-		  dp[row * bytes + b] = val / total;
+		  dp[row * num_channels + b] = FLT16 (val / total, u);
 		}
 	    }
 
-	  if (has_alpha && !horz)
-	    separate_alpha (dest, height, bytes);
-
-	  gimp_pixel_rgn_set_col (&dest_rgn, dest, col + x1, y1, (y2 - y1));
+	  gimp_pixel_rgn_set_col (&dest_rgn, (guchar*)dest, col + x1, y1, (y2 - y1));
 	  progress += height;
 	  if ((col % 5) == 0)
 	    gimp_progress_update ((double) progress / (double) max_progress);
@@ -481,21 +493,18 @@ gauss_rle (GDrawable *drawable,
     {
       for (row = 0; row < height; row++)
 	{
-	  gimp_pixel_rgn_get_row (&src_rgn, src, x1, row + y1, (x2 - x1));
-
-	  if (has_alpha && !vert)
-	    multiply_alpha (src, height, bytes);
+	  gimp_pixel_rgn_get_row (&src_rgn, (guchar*)src, x1, row + y1, (x2 - x1));
 
 	  sp = src;
 	  dp = dest;
 
-	  for (b = 0; b < bytes; b++)
+	  for (b = 0; b < num_channels; b++)
 	    {
 	      initial_p = sp[b];
-	      initial_m = sp[(width-1) * bytes + b];
+	      initial_m = sp[(width-1) * num_channels + b];
 
 	      /*  Determine a run-length encoded version of the row  */
-	      run_length_encode (sp + b, buf, bytes, width);
+	      run_length_encode (sp + b, buf_number, buf_values, num_channels, width);
 
 	      for (col = 0; col < width; col++)
 		{
@@ -504,33 +513,32 @@ gauss_rle (GDrawable *drawable,
 
 		  val = 0;
 		  i = start;
-		  bb = buf + (col + i) * 2;
+		  bb_number = buf_number + (col + i);
+		  bb_values = buf_values + (col + i);
 
 		  if (start != -length)
-		    val += initial_p * (sum[start] - sum[-length]);
+		    val += FLT(initial_p,u) * (sum[start] - sum[-length]);
 
 		  while (i < end)
 		    {
-		      pixels = bb[0];
+		      pixels = *bb_number;
 		      i += pixels;
 		      if (i > end)
 			i = end;
-		      val += bb[1] * (sum[i] - sum[start]);
-		      bb += (pixels * 2);
+		      val += FLT(*bb_values, u) * (sum[i] - sum[start]);
+		      bb_number += pixels;
+		      bb_values += pixels;
 		      start = i;
 		    }
 
 		  if (end != length)
-		    val += initial_m * (sum[length] - sum[end]);
+		    val += FLT(initial_m,u) * (sum[length] - sum[end]);
 
-		  dp[col * bytes + b] = val / total;
+		  dp[col * num_channels + b] = FLT16 (val / total,u);
 		}
 	    }
 
-	  if (has_alpha)
-	    separate_alpha (dest, width, bytes);
-
-	  gimp_pixel_rgn_set_row (&dest_rgn, dest, x1, row + y1, (x2 - x1));
+	  gimp_pixel_rgn_set_row (&dest_rgn, (guchar*)dest, x1, row + y1, (x2 - x1));
 	  progress += width;
 	  if ((row % 5) == 0)
 	    gimp_progress_update ((double) progress / (double) max_progress);
@@ -543,7 +551,8 @@ gauss_rle (GDrawable *drawable,
   gimp_drawable_update (drawable->id, x1, y1, (x2 - x1), (y2 - y1));
 
   /*  free buffers  */
-  free (buf);
+  free (buf_number);
+  free (buf_values);
   free (src);
   free (dest);
 }
@@ -553,32 +562,33 @@ gauss_rle (GDrawable *drawable,
  *                   r = sqrt (x^2 + y ^2)
  */
 
-static gint *
+static gfloat *
 make_curve (gdouble  sigma,
-	    gint    *length)
+	    gint    *length,
+	    gfloat   cutoff)
 {
-  gint *curve;
+  gfloat *curve;
   gdouble sigma2;
   gdouble l;
-  gint temp;
+  gfloat temp;
   gint i, n;
 
   sigma2 = 2 * sigma * sigma;
-  l = sqrt (-sigma2 * log (1.0 / 255.0));
+  l = sqrt (-sigma2 * log (cutoff));
 
   n = ceil (l) * 2;
   if ((n % 2) == 0)
     n += 1;
 
-  curve = malloc (sizeof (gint) * n);
+  curve = malloc (sizeof (gfloat) * n);
 
   *length = n / 2;
   curve += *length;
-  curve[0] = 255;
+  curve[0] = 1.0;
 
   for (i = 1; i <= *length; i++)
     {
-      temp = (gint) (exp (- (i * i) / sigma2) * 255);
+      temp = (gfloat) exp (- (i * i) / sigma2);
       curve[-i] = temp;
       curve[i] = temp;
     }
@@ -587,18 +597,20 @@ make_curve (gdouble  sigma,
 }
 
 static void
-run_length_encode (guchar *src,
-		   gint   *dest,
-		   gint    bytes,
+run_length_encode (guint16 *src,
+		   gint   *number,        /*dest*/
+		   guint16 *values,        /*dest*/
+		   gint    num_channels,
 		   gint    width)
 {
   gint start;
   gint i;
   gint j;
-  guchar last;
+
+  gfloat last;
 
   last = *src;
-  src += bytes;
+  src += num_channels;
   start = 0;
 
   for (i = 1; i < width; i++)
@@ -607,19 +619,19 @@ run_length_encode (guchar *src,
 	{
 	  for (j = start; j < i; j++)
 	    {
-	      *dest++ = (i - j);
-	      *dest++ = last;
+	      *number++ = i - j;
+	      *values++ = last;
 	    }
 	  start = i;
 	  last = *src;
 	}
-      src += bytes;
+      src += num_channels;
     }
 
   for (j = start; j < i; j++)
     {
-      *dest++ = (i - j);
-      *dest++ = last;
+      *number++ = i - j;
+      *values++ = last;
     }
 }
 

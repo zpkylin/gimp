@@ -34,6 +34,14 @@
  * Revision History:
  *
  *   $Log$
+ *   Revision 1.1.1.1.2.4  2000/09/06 21:29:52  yosh
+ *   Merge with R&H tree
+ *
+ *   -Yosh
+ *
+ * Revision 1.1.1.1  2000/02/17  00:54:04  calvin
+ * Importing the v1.0 r & h hollywood branch. No longer cvs-ed at gnome.
+ *
  *   Revision 1.1.1.1.2.3  1998/05/05 10:35:19  film
  *   Small bug fix for HOLLYWOODS sgi plugin for converting shorts from
  *   sgilib to unsigned shorts which everyone using 16bit channel

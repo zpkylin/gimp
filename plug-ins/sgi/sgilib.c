@@ -37,6 +37,14 @@
  * Revision History:
  *
  *   $Log$
+ *   Revision 1.1.1.1.2.2  2000/09/06 21:29:53  yosh
+ *   Merge with R&H tree
+ *
+ *   -Yosh
+ *
+ * Revision 1.1.1.1  2000/02/17  00:54:05  calvin
+ * Importing the v1.0 r & h hollywood branch. No longer cvs-ed at gnome.
+ *
  *   Revision 1.1.1.1.2.1  1998/03/20 22:30:45  film
  *   sgi can save 16bit too.
  *   -calvin (cwilliamson@berlin.snafu.de)

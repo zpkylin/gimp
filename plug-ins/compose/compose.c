@@ -57,15 +57,6 @@ static void      compose_rgb  (unsigned char **src, int numpix,
                                unsigned char *dst);
 static void      compose_rgba (unsigned char **src, int numpix,
                                unsigned char *dst);
-static void      compose_hsv  (unsigned char **src, int numpix,
-                               unsigned char *dst);
-static void      compose_cmy  (unsigned char **src, int numpix,
-                               unsigned char *dst);
-static void      compose_cmyk (unsigned char **src, int numpix,
-                               unsigned char *dst);
-
-static void      hsv_to_rgb (unsigned char *h, unsigned char *s,
-                             unsigned char *v, unsigned char *rgb);
 
 static gint      compose_dialog (char *compose_type,
                                  gint32 image_ID);
@@ -85,7 +76,7 @@ static void      compose_type_toggle_update  (GtkWidget *widget,
                                               gpointer   data);
 
 /* Maximum number of images to compose */
-#define MAX_COMPOSE_IMAGES 4
+#define MAX_COMPOSE_IMAGES 3
 
 
 /* Description of a composition */
@@ -100,16 +91,8 @@ typedef struct {
 
 /* Array of available compositions. */
 static COMPOSE_DSC compose_dsc[] = {
- { "RGB",  3, { "Red:",   "Green:     ", "Blue:",   "N/A" },
-              "rgb-compose",  compose_rgb },
- { "RGBA", 4, { "Red:",   "Green:     ", "Blue:",   "Alpha:" },
-              "rgba-compose",  compose_rgba },
- { "HSV",  3, { "Hue:",   "Saturation:", "Value:",  "N/A" },
-              "hsv-compose",  compose_hsv },
- { "CMY",  3, { "Cyan:",  "Magenta:   ", "Yellow:", "N/A" },
-              "cmy-compose",  compose_cmy },
- { "CMYK", 4, { "Cyan:",  "Magenta:   ", "Yellow:", "Black:" },
-              "cmyk-compose", compose_cmyk }
+ { "FLOAT16_RGB",  3, { "Red:",   "Green:     ", "Blue:" },
+              "rgb-compose",  compose_rgb }
 };
 
 #define MAX_COMPOSE_TYPES (sizeof (compose_dsc) / sizeof (compose_dsc[0]))
@@ -185,7 +168,7 @@ query ()
 			  "Peter Kirchgessner (pkirchg@aol.com)",
 			  "1997",
 			  "<Image>/Image/Channel Ops/Compose",
-			  "GRAY",
+			  "FLOAT16_GRAY",
 			  PROC_PLUG_IN,
 			  nargs, nreturn_vals,
 			  args, return_vals);
@@ -333,7 +316,7 @@ compose (char *compose_type,
 
     /* Get drawable for layer */
     drawable_src[j] = gimp_drawable_get (layer_ID_src[j]);
-    if (drawable_src[j]->bpp != 1)
+    if (drawable_src[j]->bpp != 2)
     {
       printf ("compose: image is not a gray image\n");
       return (-1);
@@ -355,7 +338,7 @@ compose (char *compose_type,
 
   /* Create new image */
   gdtype_dst = (compose_dsc[compose_idx].compose_fun == compose_rgba)
-              ? RGBA_IMAGE : RGB_IMAGE;
+              ? FLOAT16_RGBA_IMAGE : FLOAT16_RGB_IMAGE;
   image_ID_dst = create_new_image (compose_dsc[compose_idx].filename,
                       width, height, gdtype_dst,
                       &layer_ID_dst, &drawable_dst, &pixel_rgn_dst);
@@ -417,12 +400,10 @@ create_new_image (char *filename,
 {gint32 image_ID;
  GImageType gitype;
 
- if ((gdtype == GRAY_IMAGE) || (gdtype == GRAYA_IMAGE))
-   gitype = GRAY;
- else if ((gdtype == INDEXED_IMAGE) || (gdtype == INDEXEDA_IMAGE))
-   gitype = INDEXED;
+ if ((gdtype == FLOAT16_GRAY_IMAGE) || (gdtype == FLOAT16_GRAYA_IMAGE))
+   gitype = FLOAT16_GRAY;
  else
-   gitype = RGB;
+   gitype = FLOAT16_RGB;
 
  image_ID = gimp_image_new (width, height, gitype);
  gimp_image_set_filename (image_ID, filename);
@@ -469,7 +450,10 @@ compose_rgb (unsigned char **src,
  while (count-- > 0)
  {
    *(rgb_dst++) = *(red_src++);
+   *(rgb_dst++) = *(red_src++);
    *(rgb_dst++) = *(green_src++);
+   *(rgb_dst++) = *(green_src++);
+   *(rgb_dst++) = *(blue_src++);
    *(rgb_dst++) = *(blue_src++);
  }
 }
@@ -493,83 +477,6 @@ compose_rgba (unsigned char **src,
    *(rgb_dst++) = *(green_src++);
    *(rgb_dst++) = *(blue_src++);
    *(rgb_dst++) = *(alpha_src++);
- }
-}
-
-
-static void
-compose_hsv (unsigned char **src,
-             int numpix,
-             unsigned char *dst)
-
-{register unsigned char *hue_src = src[0];
- register unsigned char *sat_src = src[1];
- register unsigned char *val_src = src[2];
- register unsigned char *rgb_dst = dst;
- register int count = numpix;
-
- while (count-- > 0)
- {
-   hsv_to_rgb (hue_src++, sat_src++, val_src++, rgb_dst);
-   rgb_dst += 3;
- }
-}
-
-
-static void
-compose_cmy (unsigned char **src,
-             int numpix,
-             unsigned char *dst)
-
-{register unsigned char *cyan_src = src[0];
- register unsigned char *magenta_src = src[1];
- register unsigned char *yellow_src = src[2];
- register unsigned char *rgb_dst = dst;
- register int count = numpix;
-
- while (count-- > 0)
- {
-   *(rgb_dst++) = 255 - *(cyan_src++);
-   *(rgb_dst++) = 255 - *(magenta_src++);
-   *(rgb_dst++) = 255 - *(yellow_src++);
- }
-}
-
-
-static void
-compose_cmyk (unsigned char **src,
-              int numpix,
-              unsigned char *dst)
-
-{register unsigned char *cyan_src = src[0];
- register unsigned char *magenta_src = src[1];
- register unsigned char *yellow_src = src[2];
- register unsigned char *black_src = src[3];
- register unsigned char *rgb_dst = dst;
- register int count = numpix;
- int cyan, magenta, yellow, black;
-
- while (count-- > 0)
- {
-   black = (int)*(black_src++);
-   if (black)
-   {
-     cyan = (int)*(cyan_src++);
-     magenta = (int)*(magenta_src++);
-     yellow = (int)*(yellow_src++);
-     cyan += black; if (cyan > 255) cyan = 255;
-     magenta += black; if (magenta > 255) magenta = 255;
-     yellow += black; if (yellow > 255) yellow = 255;
-     *(rgb_dst++) = 255 - cyan;
-     *(rgb_dst++) = 255 - magenta;
-     *(rgb_dst++) = 255 - yellow;
-   }
-   else
-   {
-     *(rgb_dst++) = 255 - *(cyan_src++);
-     *(rgb_dst++) = 255 - *(magenta_src++);
-     *(rgb_dst++) = 255 - *(yellow_src++);
-   }
  }
 }
 
@@ -725,81 +632,6 @@ compose_dialog (char *compose_type,
 }
 
 
-/* hsv_to_rgb has been taken from the compose-plug-in of GIMP V 0.54
- * and hass been modified a little bit
- */
-static void
-hsv_to_rgb (unsigned char *h,
-            unsigned char *s,
-            unsigned char *v,
-            unsigned char *rgb)
-
-{double hue, sat, val;
- double f, p, q, t;
- int red, green, blue;
-
-  if (*s == 0)
-  {
-    rgb[0] = rgb[1] = rgb[2] = *v;
-  }
-  else
-  {
-    hue = *h * 6.0 / 255.0;
-    sat = *s / 255.0;
-    val = *v / 255.0;
-
-    f = hue - (int) hue;
-    p = val * (1.0 - sat);
-    q = val * (1.0 - (sat * f));
-    t = val * (1.0 - (sat * (1.0 - f)));
-
-    switch ((int) hue)
-      {
-      case 0:
-        red = (int)(val * 255.0);
-        green = (int)(t * 255.0);
-        blue = (int)(p * 255.0);
-        break;
-      case 1:
-        red = (int)(q * 255.0);
-        green = (int)(val * 255.0);
-        blue = (int)(p * 255.0);
-        break;
-      case 2:
-        red = (int)(p * 255.0);
-        green = (int)(val * 255.0);
-        blue = (int)(t * 255.0);
-        break;
-      case 3:
-        red = (int)(p * 255.0);
-        green = (int)(q * 255.0);
-        blue = (int)(val * 255.0);
-        break;
-      case 4:
-        red = (int)(t * 255.0);
-        green = (int)(p * 255.0);
-        blue = (int)(val * 255.0);
-        break;
-      case 5:
-        red = (int)(val * 255.0);
-        green = (int)(p * 255.0);
-        blue = (int)(q * 255.0);
-        break;
-      default:
-	red = 0;
-	green = 0;
-	blue = 0;
-	break;
-      }
-    if (red < 0) red = 0; else if (red > 255) red = 255;
-    if (green < 0) green = 0; else if (green > 255) green = 255;
-    if (blue < 0) blue = 0; else if (blue > 255) blue = 255;
-    rgb[0] = (unsigned char)red;
-    rgb[1] = (unsigned char)green;
-    rgb[2] = (unsigned char)blue;
-  }
-}
-
 /*  Compose interface functions  */
 
 static gint
@@ -808,7 +640,7 @@ check_gray (gint32 image_id,
             gpointer data)
 
 {
-  return (gimp_image_base_type (image_id) == GRAY);
+  return 1/*(gimp_image_base_type (image_id) == FLOAT16_GRAY)*/;
 }
 
 

@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 
@@ -138,7 +138,7 @@ query ()
 			  "Thorsten Schnier",
 			  "1997",
 			  "<Image>/Filters/Edge-Detect/Sobel",
-			  "RGB*, GRAY*",
+			  "RGB*, GRAY*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
 			  PROC_PLUG_IN,
 			  nargs, nreturn_vals,
 			  args, return_vals);
@@ -330,20 +330,62 @@ sobel_prepare_row (GPixelRgn *pixel_rgn,
 		  int        w)
 {
   int b;
+  GPrecisionType precision = gimp_drawable_precision (pixel_rgn->drawable->id);
+  gint num_channels= pixel_rgn->drawable->num_channels;
 
-  if (y == 0)
-    gimp_pixel_rgn_get_row (pixel_rgn, data, x, (y + 1), w);
+  if (y == -1)
+    gimp_pixel_rgn_get_row (pixel_rgn, data, x, 0, w);
   else if (y == pixel_rgn->h)
     gimp_pixel_rgn_get_row (pixel_rgn, data, x, (y - 1), w);
   else
     gimp_pixel_rgn_get_row (pixel_rgn, data, x, y, w);
 
   /*  Fill in edge pixels  */
-  for (b = 0; b < pixel_rgn->bpp; b++)
-    {
-      data[-pixel_rgn->bpp + b] = data[b];
-      data[w * pixel_rgn->bpp + b] = data[(w - 1) * pixel_rgn->bpp + b];
-    }
+
+  switch(precision)
+  {
+      case PRECISION_U8:
+	{
+	  guint8* d = (guint8*)data;
+	  for (b = 0; b < num_channels; b++)
+	    {
+	      d[-(int)num_channels + b] = d[b];
+	      d[w * num_channels + b] = d[(w - 1) * num_channels + b];
+	    }
+	}
+	break;
+      case PRECISION_U16:
+	{
+	  guint16* d = (guint16*)data;
+	  for (b = 0; b < num_channels; b++)
+	    {
+	      d[-(int)num_channels + b] = d[b];
+	      d[w * num_channels + b] = d[(w - 1) * num_channels + b];
+	    }
+	}
+	break;
+      case PRECISION_FLOAT:
+	{
+	  gfloat* d = (gfloat*)data;
+	  for (b = 0; b < num_channels; b++)
+	    {
+	      d[-(int)num_channels + b] = d[b];
+	      d[w * num_channels + b] = d[(w - 1) * num_channels + b];
+	    }
+	}
+	break;
+      case PRECISION_FLOAT16: 
+	{
+	  guint16* d = (guint16*)data;
+	  for (b = 0; b < num_channels; b++)
+	    {
+	      d[-(int)num_channels + b] = d[b];
+	      d[w * num_channels + b] = d[(w - 1) * num_channels + b];
+	    }
+	}
+	break;
+  }
+  
 }
 
 #define SIGN(a) (((a) > 0) ? 1 : -1)
@@ -361,17 +403,22 @@ sobel (GDrawable *drawable,
 {
   GPixelRgn srcPR, destPR;
   gint width, height;
-  gint bytes;
-  gint gradient, hor_gradient, ver_gradient;
-  guchar *dest, *d;
-  guchar *prev_row, *pr;
-  guchar *cur_row, *cr;
-  guchar *next_row, *nr;
+  gint num_channels;
+
+  guchar *dest;
+  guchar *prev_row;
+  guchar *cur_row;
+  guchar *next_row;
+  guchar *pr;
+  guchar *cr;
+  guchar *nr;
   guchar *tmp;
+
   gint row, col;
   gint x1, y1, x2, y2;
   gint alpha;
   gint counter;
+  GPrecisionType precision = gimp_drawable_precision (drawable->id);
 
   /* Get the input area. This is the bounding box of the selection in
    *  the image (or the entire image if there is no selection). Only
@@ -388,55 +435,231 @@ sobel (GDrawable *drawable,
    */
   width = drawable->width;
   height = drawable->height;
-  bytes = drawable->bpp;
+  num_channels = drawable->num_channels;
   alpha = gimp_drawable_has_alpha (drawable -> id);
 
-  /*  allocate row buffers  */
-  prev_row = (guchar *) malloc ((x2 - x1 + 2) * bytes);
-  cur_row = (guchar *) malloc ((x2 - x1 + 2) * bytes);
-  next_row = (guchar *) malloc ((x2 - x1 + 2) * bytes);
-  dest = (guchar *) malloc ((x2 - x1) * bytes);
+  /*  allocate generic data row buffers  */
+  prev_row = (guchar *) malloc ((x2 - x1 + 2) * drawable->bpp);
+  cur_row = (guchar *) malloc ((x2 - x1 + 2) * drawable->bpp);
+  next_row = (guchar *) malloc ((x2 - x1 + 2) * drawable->bpp);
+  dest = (guchar *) malloc ((x2 - x1) * drawable->bpp);
 
   /*  initialize the pixel regions  */
   gimp_pixel_rgn_init (&srcPR, drawable, 0, 0, width, height, FALSE, FALSE);
   gimp_pixel_rgn_init (&destPR, drawable, 0, 0, width, height, TRUE, TRUE);
 
-  pr = prev_row + bytes;
-  cr = cur_row + bytes;
-  nr = next_row + bytes;
+  /* generic data pointers to the three rows */ 
+  pr = prev_row + drawable->bpp;
+  cr = cur_row + drawable->bpp;
+  nr = next_row + drawable->bpp;
 
   sobel_prepare_row (&srcPR, pr, x1, y1 - 1, (x2 - x1));
   sobel_prepare_row (&srcPR, cr, x1, y1, (x2 - x1));
-  counter =0;
+  counter = 0;
+
   /*  loop through the rows, applying the sobel convolution  */
   for (row = y1; row < y2; row++)
     {
       /*  prepare the next row  */
       sobel_prepare_row (&srcPR, nr, x1, row + 1, (x2 - x1));
 
-      d = dest;
-      for (col = 0; col < (x2 - x1) * bytes; col++) {
-	hor_gradient = (do_horizontal ?
-			((pr[col - bytes] +  2 * pr[col] + pr[col + bytes]) -
-			 (nr[col - bytes] + 2 * nr[col] + nr[col + bytes]))
-			: 0);
-	ver_gradient = (do_vertical ?
-			((pr[col - bytes] + 2 * cr[col - bytes] + nr[col - bytes]) -
-			 (pr[col + bytes] + 2 * cr[col + bytes] + nr[col + bytes]))
-			: 0);
-	gradient = (do_vertical && do_horizontal) ?
-	  (ROUND_TO_INT (RMS (hor_gradient, ver_gradient)) / 5.66) /* always >0 */
-	  : (keep_sign ? (127 + (ROUND_TO_INT ((hor_gradient + ver_gradient) / 8.0)))
-	     : (ROUND_TO_INT (abs (hor_gradient + ver_gradient) / 4.0)));
+      switch(precision)
+      {
+	  case PRECISION_U8:
+	    {
+	      guint8* d = (guint8*)dest;
+	      guint8* p = (guint8*)pr; 
+	      guint8* c = (guint8*)cr;
+	      guint8* n = (guint8*)nr;
+  	      gint gradient, hor_gradient, ver_gradient;
 
-	if (alpha && (((col + 1) % bytes) == 0)) { /* the alpha channel */
-	  *d++ = (counter == 0) ? 0 : 255;
-	  counter = 0; }
-	else {
-	  *d++ = gradient;
-	  if (gradient > 10) counter ++;
-	}
+	      for (col = 0; col < (x2 - x1) * num_channels; col++) {
+		  if (do_horizontal)
+		    hor_gradient = (p[col - num_channels] + 2 * p[col] + p[col + num_channels]) -
+				   (n[col - num_channels] + 2 * n[col] + n[col + num_channels]);
+		  else
+		    hor_gradient = 0;
+
+		  if (do_vertical)
+		    ver_gradient = (p[col - num_channels] + 2 * c[col - num_channels] + n[col - num_channels]) -
+				   (p[col + num_channels] + 2 * c[col + num_channels] + n[col + num_channels]);
+		  else
+		    ver_gradient = 0;
+
+		  if (do_vertical && do_horizontal)
+		      gradient = ROUND_TO_INT (RMS (hor_gradient, ver_gradient)) / 5.66;
+		  else
+		    {
+		       if (keep_sign)
+			 gradient = 127 + (ROUND_TO_INT ((hor_gradient + ver_gradient) / 8.0));
+		       else
+			 gradient =  ROUND_TO_INT (abs (hor_gradient + ver_gradient) / 4.0);
+		    }
+
+		  if (alpha && (((col + 1) % num_channels) == 0))  
+		  { 
+		    *d++ = (counter == 0) ? 0 : 255;
+		    counter = 0; 
+		  }
+		  else 
+		  {
+		    *d++ = gradient;
+		    if (gradient > 10) counter ++;
+		  }
+	       }
+	     }
+	    break;
+	  case PRECISION_U16:
+	    {
+	      guint16* d = (guint16*)dest;
+	      guint16* p = (guint16*)pr; 
+	      guint16* c = (guint16*)cr;
+	      guint16* n = (guint16*)nr;
+  	      gint gradient, hor_gradient, ver_gradient;
+
+	      for (col = 0; col < (x2 - x1) * num_channels; col++) {
+		  if (do_horizontal)
+		    hor_gradient = (p[col - num_channels] + 2 * p[col] + p[col + num_channels]) -
+				   (n[col - num_channels] + 2 * n[col] + n[col + num_channels]);
+		  else
+		    hor_gradient = 0;
+
+		  if (do_vertical)
+		    ver_gradient = (p[col - num_channels] + 2 * c[col - num_channels] + n[col - num_channels]) -
+				   (p[col + num_channels] + 2 * c[col + num_channels] + n[col + num_channels]);
+		  else
+		    ver_gradient = 0;
+
+		  if (do_vertical && do_horizontal)
+		      gradient = ROUND_TO_INT (RMS (hor_gradient, ver_gradient)) / 5.66;
+		  else
+		    {
+		       if (keep_sign)
+			 gradient = 32767 + (ROUND_TO_INT ((hor_gradient + ver_gradient) / 8.0));
+		       else
+			 gradient =  ROUND_TO_INT (abs (hor_gradient + ver_gradient) / 4.0);
+		    }
+
+		  if (alpha && (((col + 1) % num_channels) == 0))  
+		  { 
+		    *d++ = (counter == 0) ? 0 : 65535;
+		    counter = 0; 
+		  }
+		  else 
+		  {
+		    *d++ = gradient;
+		    if (gradient > (10/255.0) * 65535) counter ++;
+		  }
+	       }
+	     }
+	    break;
+	  case PRECISION_FLOAT:
+	    {
+	      gfloat* d = (gfloat*)dest;
+	      gfloat* p = (gfloat*)pr; 
+	      gfloat* c = (gfloat*)cr;
+	      gfloat* n = (gfloat*)nr;
+  	      gfloat gradient, hor_gradient, ver_gradient;
+
+	      for (col = 0; col < (x2 - x1) * num_channels; col++) {
+		  if (do_horizontal)
+		    hor_gradient = (p[col - num_channels] + 2 * p[col] + p[col + num_channels]) -
+				   (n[col - num_channels] + 2 * n[col] + n[col + num_channels]);
+		  else
+		    hor_gradient = 0;
+
+		  if (do_vertical)
+		    ver_gradient = (p[col - num_channels] + 2 * c[col - num_channels] + n[col - num_channels]) -
+				   (p[col + num_channels] + 2 * c[col + num_channels] + n[col + num_channels]);
+		  else
+		    ver_gradient = 0;
+
+		  if (do_vertical && do_horizontal)
+		      gradient = (RMS (hor_gradient, ver_gradient)) / 5.66;
+		  else
+		    {
+		       if (keep_sign)
+			 gradient = .5 + (hor_gradient + ver_gradient) / 8.0;
+		       else
+			 gradient =  abs (hor_gradient + ver_gradient) / 4.0;
+		    }
+
+		  if (alpha && (((col + 1) % num_channels) == 0))  
+		  { 
+		    *d++ = (counter == 0) ? 0.0 : 1.0;
+		    counter = 0; 
+		  }
+		  else 
+		  {
+		    *d++ = gradient;
+		    if (gradient > (10/255.0)) counter ++;
+		  }
+	       }
+	     }
+	    break;
+	  case PRECISION_FLOAT16: 
+	    {
+	      guint16* d = (guint16*)dest;
+	      guint16* p = (guint16*)pr; 
+	      guint16* c = (guint16*)cr;
+	      guint16* n = (guint16*)nr;
+  	      gfloat gradient, hor_gradient, ver_gradient;
+	      ShortsFloat u,v,s, u1, v1, s1;
+
+	      for (col = 0; col < (x2 - x1) * num_channels; col++) {
+		  if (do_horizontal)
+		    hor_gradient = (
+				      FLT(p[col - num_channels],u) +     
+				      2 * FLT(p[col], v) +             
+				      FLT(p[col + num_channels], s)          
+								) -
+				    (
+				      FLT(n[col - num_channels],u1) + 
+				      2 * FLT(n[col], v1) 
+				      + FLT(n[col + num_channels], s1)
+								   );
+		  else
+		    hor_gradient = 0;
+
+		  if (do_vertical)
+		    ver_gradient = (
+				     FLT(p[col - num_channels], u) + 
+				     2 * FLT (c[col - num_channels],v) + 
+				     FLT(n[col - num_channels],s)
+								) -
+				   (
+				     FLT(p[col + num_channels], u1) + 
+				     2 * FLT (c[col + num_channels],v1) + 
+				     FLT(n[col + num_channels], s1)
+								);
+		  else
+		    ver_gradient = 0;
+
+		  if (do_vertical && do_horizontal)
+		      gradient = (RMS (hor_gradient, ver_gradient)) / 5.66;
+		  else
+		    {
+		       if (keep_sign)
+			 gradient = .5 + (hor_gradient + ver_gradient) / 8.0;
+		       else
+			 gradient =  abs (hor_gradient + ver_gradient) / 4.0;
+		    }
+
+		  if (alpha && (((col + 1) % num_channels) == 0))  
+		  { 
+		    *d++ = (counter == 0) ? 0.0 : 1.0;
+		    counter = 0; 
+		  }
+		  else 
+		  {
+		    *d++ = FLT16(gradient, u);
+		    if (gradient > (10/255.0)) counter ++;
+		  }
+	       }
+	     }
+	    break;
       }
+
       /*  store the dest  */
       gimp_pixel_rgn_set_row (&destPR, dest, x1, row, (x2 - x1));
 
@@ -449,8 +672,6 @@ sobel (GDrawable *drawable,
       if ((row % 5) == 0)
 	gimp_progress_update ((double) row / (double) (y2 - y1));
     }
-
-
 
   /*  update the sobeled region  */
   gimp_drawable_flush (drawable);

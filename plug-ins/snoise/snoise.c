@@ -1,8 +1,8 @@
-/* The GIMP -- an image manipulation program
- * Copyright (C) 1995 Spencer Kimball and Peter Mattis
+/* Solid Noise plug-in -- creates solid noise textures
+ * Copyright (C) 1997, 1998 Marcelo de Gomensoro Malheiros
  *
- * Solid Noise plug-in -- creates solid noise textures
- * Copyright (C) 1997 Marcelo de Gomensoro Malheiros
+ * The GIMP -- an image manipulation program
+ * Copyright (C) 1995 Spencer Kimball and Peter Mattis
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* Solid Noise plug-in version 1.02, Aug 1997
+/* Solid Noise plug-in version 1.03, Apr 1998
  *
  * This plug-in generates solid noise textures based on the
  * `Noise' and `Turbulence' functions described in the paper
@@ -31,13 +31,19 @@
  * creation of seamless tiles.
  *
  * You can contact me at <malheiro@dca.fee.unicamp.br>.
- * Comments for this code are appreciated.
+ * Comments and improvements for this code are welcome.
  *
  * The overall plug-in structure is based on the Whirl plug-in,
  * which is Copyright (C) 1997 Federico Mena Quintero
  */
 
-/* Version 1.02:
+/* Version 1.03:
+ *
+ *  Added patch from Kevin Turner <kevint@poboxes.com> to use the
+ *  current time as the random seed. Thank you!
+ *  Incorporated some portability changes from the GIMP distribution.
+ *
+ * Version 1.02:
  *
  *  Fixed a stupid bug with the alpha channel.
  *  Fixed a rounding bug for small tilable textures.
@@ -54,6 +60,7 @@
  */
 
 
+#include <time.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -62,6 +69,10 @@
 
 
 /*---- Defines ----*/
+
+#ifndef RAND_MAX
+#define RAND_MAX 2147483647
+#endif /* RAND_MAX */
 
 #define TABLE_SIZE 64
 #define WEIGHT(T) ((2.0*fabs(T)-3.0)*(T)*(T)+1.0)
@@ -80,6 +91,8 @@ typedef struct {
   gint    detail;
   gdouble xsize;
   gdouble ysize;
+  /*  Interface only  */
+  gint    timeseed;
 } SolidNoiseValues;
 
 typedef struct {
@@ -126,7 +139,8 @@ static SolidNoiseValues snvals = {
   1,   /* seed */
   1,   /* detail */
   4.0, /* xsize */
-  4.0  /* ysize */
+  4.0, /* ysize */
+  0    /* use time seed */ 
 };
 
 static SolidNoiseInterface snint = {
@@ -169,9 +183,9 @@ query (void)
 			  "Generates 2D textures using Perlin's classic solid noise function.",
 			  "Marcelo de Gomensoro Malheiros",
 			  "Marcelo de Gomensoro Malheiros",
-			  "Aug 1997, 1.02",
+			  "Apr 1998, v1.03",
 			  "<Image>/Filters/Render/Solid Noise",
-			  "RGB*, GRAY*",
+			  "RGB*, GRAY*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
 			  PROC_PLUG_IN,
 			  nargs,
                           nreturn_vals,
@@ -215,10 +229,8 @@ run (char *name, int nparams, GParam *param, int *nreturn_vals,
     break;
 
   case RUN_NONINTERACTIVE:
-    /*  Make sure all the arguments are present  */
-    if (nparams != 9)
-      status = STATUS_CALLING_ERROR;
-    if (status == STATUS_SUCCESS) {
+    /*  Test number of arguments  */
+    if (nparams == 9) {
       snvals.tilable = param[3].data.d_int32;
       snvals.turbulent = param[4].data.d_int32;
       snvals.seed = param[5].data.d_int32;
@@ -226,6 +238,8 @@ run (char *name, int nparams, GParam *param, int *nreturn_vals,
       snvals.xsize = param[7].data.d_float;
       snvals.ysize = param[8].data.d_float;
     }
+    else
+      status = STATUS_CALLING_ERROR;
     break;
 
   case RUN_WITH_LAST_VALS:
@@ -252,7 +266,7 @@ run (char *name, int nparams, GParam *param, int *nreturn_vals,
         gimp_displays_flush();
 
       /*  Store data  */
-      if (run_mode == RUN_INTERACTIVE)
+      if (run_mode==RUN_INTERACTIVE || run_mode==RUN_WITH_LAST_VALS)
         gimp_set_data("plug_in_solid_noise", &snvals,
                       sizeof(SolidNoiseValues));
     }
@@ -277,8 +291,11 @@ solid_noise (GDrawable *drawable)
   gint sel_width, sel_height;
   gint progress, max_progress;
   gpointer pr;
-  guchar *dest, *dest_row;
-  guchar val;
+  guchar *dest_row;
+  gfloat noise_val;
+  GPrecisionType precision;
+
+  precision = gimp_drawable_precision (drawable->id);
 
   /*  Get selection area  */
   gimp_drawable_mask_bounds (drawable->id, &sel_x1, &sel_y1, &sel_x2, &sel_y2);
@@ -290,7 +307,7 @@ solid_noise (GDrawable *drawable)
   gimp_progress_init ("Solid Noise...");
   progress = 0;
   max_progress = sel_width * sel_height;
-  chns = gimp_drawable_bpp (drawable->id);
+  chns = gimp_drawable_num_channels (drawable->id);
   has_alpha = 0;
   if (gimp_drawable_has_alpha (drawable->id)) {
     chns--;
@@ -307,16 +324,66 @@ solid_noise (GDrawable *drawable)
 
       for (row = dest_rgn.y; row < (dest_rgn.y + dest_rgn.h); row++)
         {
-          dest = dest_row;
-          
-          for (col = dest_rgn.x; col < (dest_rgn.x + dest_rgn.w); col++)
-            {
-              val = (guchar) floor (255.0 * noise ((double) (col - sel_x1) / sel_width, (double) (row - sel_y1) / sel_height));
-              for (i = 0; i < chns; i++)
-                *dest++ = val;
-              if (has_alpha)
-                *dest++ = 255;
-            }
+	  switch(precision)
+	  {
+	      case PRECISION_U8:
+		{
+		  guint8* dest = (guint8*)dest_row;
+		  guint8  val;
+		  for (col = dest_rgn.x; col < (dest_rgn.x + dest_rgn.w); col++)
+		    {
+			noise_val = noise ((double) (col - sel_x1) / sel_width, (double) (row - sel_y1) / sel_height);
+			val = (guchar) floor (255.0 * noise_val);
+			for (i = 0; i < chns; i++)
+			  *dest++ = val;
+			if (has_alpha)
+			  *dest++ = 255;
+		    }
+		}
+		break;
+	      case PRECISION_U16:
+		{
+		  guint16* dest = (guint16*)dest_row;
+		  guint16  val;
+		  for (col = dest_rgn.x; col < (dest_rgn.x + dest_rgn.w); col++)
+		    {
+			noise_val = noise ((double) (col - sel_x1) / sel_width, (double) (row - sel_y1) / sel_height);
+			val = (guint16) floor (65535.0 * noise_val);
+			for (i = 0; i < chns; i++)
+			  *dest++ = val;
+			if (has_alpha)
+			  *dest++ = 65535;
+		    }
+		}
+		break;
+	      case PRECISION_FLOAT:
+		{
+		  gfloat* dest = (gfloat*)dest_row;
+		  for (col = dest_rgn.x; col < (dest_rgn.x + dest_rgn.w); col++)
+		    {
+			noise_val = noise ((double) (col - sel_x1) / sel_width, (double) (row - sel_y1) / sel_height);
+			for (i = 0; i < chns; i++)
+			  *dest++ = noise_val;
+			if (has_alpha)
+			  *dest++ = 1.0;
+		    }
+		}
+		break;
+	      case PRECISION_FLOAT16: 
+		{
+		  guint16* dest = (guint16*)dest_row;
+		  ShortsFloat u;
+		  for (col = dest_rgn.x; col < (dest_rgn.x + dest_rgn.w); col++)
+		    {
+			noise_val = noise ((double) (col - sel_x1) / sel_width, (double) (row - sel_y1) / sel_height);
+			for (i = 0; i < chns; i++)
+			  *dest++ = FLT16(noise_val,u);
+			if (has_alpha)
+			  *dest++ = ONE_FLOAT16;
+		    }
+		}
+		break;
+	  }
 
           dest_row += dest_rgn.rowstride;;
         }
@@ -348,6 +415,8 @@ solid_noise_init (void)
     snvals.seed = 0;
   
   /*  Define the pseudo-random number generator seed  */
+  if (snvals.timeseed)
+    snvals.seed = time(NULL);
   srand (snvals.seed);
 
   /*  Set scaling factors  */
@@ -458,11 +527,13 @@ solid_noise_dialog (void)
   GtkWidget *button;
   GtkWidget *label;
   GtkWidget *entry;
+  GtkWidget *seed_hbox;
+  GtkWidget *time_button;
   GtkWidget *scale;
   GtkObject *scale_data;
   gchar **argv;
   gint  argc;
-  guchar buffer[32];
+  gchar buffer[32];
 
   /*  Set args  */
   argc = 1;
@@ -491,15 +562,27 @@ solid_noise_dialog (void)
                     GTK_FILL, GTK_FILL, 1, 0);
   gtk_widget_show (label);
   
+  seed_hbox = gtk_hbox_new (FALSE, 2);
+  gtk_table_attach (GTK_TABLE (table), seed_hbox, 1, 2, 0, 1,
+		    GTK_FILL, GTK_FILL, 0, 0);
+
   entry = gtk_entry_new ();
-  gtk_table_attach (GTK_TABLE (table), entry, 1, 2, 0, 1,
-                    GTK_FILL, GTK_FILL, 0, 0);
+  gtk_box_pack_start (GTK_BOX (seed_hbox), entry, TRUE, TRUE, 0);
   gtk_widget_set_usize (entry, ENTRY_WIDTH, 0);
   sprintf(buffer, "%d", snvals.seed);
   gtk_entry_set_text (GTK_ENTRY (entry), buffer);
   gtk_signal_connect (GTK_OBJECT (entry), "changed",
                       (GtkSignalFunc) dialog_entry_callback, &snvals.seed);
   gtk_widget_show (entry);
+
+  time_button = gtk_toggle_button_new_with_label ("Time");
+  gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON(time_button), snvals.timeseed);
+  gtk_signal_connect (GTK_OBJECT (time_button), "toggled",
+		      (GtkSignalFunc) dialog_toggle_update,
+		      &snvals.timeseed);
+  gtk_box_pack_end (GTK_BOX (seed_hbox), time_button, FALSE, FALSE, 0);
+  gtk_widget_show (time_button);
+  gtk_widget_show (seed_hbox);
 
   /*  Entry #2  */
   label = gtk_label_new ("Detail");

@@ -1,12 +1,24 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = 			\
-	@TIFF@			\
-	gbr			\
-	pat			\
-	dbbrowser		\
-	script-fu		\
-	sgi
+SUBDIRS = \
+	blur		\
+	bz2		\
+	compose		\
+	dbbrowser	\
+	decompose	\
+	edge		\
+	gbr		\
+	gz		\
+	mail		\
+	mblur		\
+	script-fu	\
+	sgi		\
+	sharpen		\
+	snoise		\
+	sobel		\
+	spread		\
+	@TIFF@		\
+	url
 
 scriptdata =
 

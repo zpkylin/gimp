@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  * $Id$
  */
@@ -57,7 +57,11 @@ static void      run    (char      *name,
 			 int       *nreturn_vals,
 			 GParam   **return_vals);
 
-static void      noisify        (GDrawable * drawable);
+static void      noisify_u8    (GDrawable * drawable);
+static void      noisify_u16   (GDrawable * drawable);
+static void      noisify_float  (GDrawable * drawable);
+static void      noisify_float16(GDrawable * drawable);
+
 static gint      noisify_dialog (gint        channels);
 static gdouble   gauss          (void);
 
@@ -124,8 +128,8 @@ query ()
 			  "Torsten Martinsen",
 			  "Torsten Martinsen",
 			  "1996",
-			  "<Image>/Filters/Distorts/Noisify",
-			  "RGB*, GRAY*",
+			  "<Image>/Filters/Noise/Noisify",
+			  "RGB*, GRAY*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
 			  PROC_PLUG_IN,
 			  nargs, nreturn_vals,
 			  args, return_vals);
@@ -140,6 +144,7 @@ run (char    *name,
 {
   static GParam values[1];
   GDrawable *drawable;
+  GPrecisionType precision;
   GRunModeType run_mode;
   GStatusType status = STATUS_SUCCESS;
 
@@ -161,7 +166,7 @@ run (char    *name,
       gimp_get_data ("plug_in_noisify", &nvals);
 
       /*  First acquire information with a dialog  */
-      if (! noisify_dialog (drawable->bpp))
+      if (! noisify_dialog (drawable->num_channels))
 	{
 	  gimp_drawable_detach (drawable);
 	  return;
@@ -201,7 +206,22 @@ run (char    *name,
       srand (time (NULL));
 
       /*  compute the luminosity which exceeds the luminosity threshold  */
-      noisify (drawable);
+      precision = gimp_drawable_precision (drawable->id);
+      switch(precision)
+      {
+	  case PRECISION_U8:
+	    noisify_u8(drawable);
+	    break;
+	  case PRECISION_U16:
+	    noisify_u16(drawable);
+	    break;
+	  case PRECISION_FLOAT:
+	    noisify_float(drawable);
+	    break;
+	  case PRECISION_FLOAT16: 
+	    noisify_float16(drawable);
+	    break;
+      }
 
       if (run_mode != RUN_NONINTERACTIVE)
 	gimp_displays_flush ();
@@ -222,7 +242,7 @@ run (char    *name,
 }
 
 static void
-noisify (GDrawable *drawable)
+noisify_u8 (GDrawable *drawable)
 {
   GPixelRgn src_rgn, dest_rgn;
   guchar *src_row, *dest_row;
@@ -245,7 +265,9 @@ noisify (GDrawable *drawable)
   progress = 0;
   max_progress = (x2 - x1) * (y2 - y1);
 
-  for (pr = gimp_pixel_rgns_register (2, &src_rgn, &dest_rgn); pr != NULL; pr = gimp_pixel_rgns_process (pr))
+  for (pr = gimp_pixel_rgns_register (2, &src_rgn, &dest_rgn); 
+       pr != NULL; 
+       pr = gimp_pixel_rgns_process (pr))
     {
       src_row = src_rgn.data;
       dest_row = dest_rgn.data;
@@ -277,6 +299,231 @@ noisify (GDrawable *drawable)
 		}
 	      src += src_rgn.bpp;
 	      dest += dest_rgn.bpp;
+	    }
+
+	  src_row += src_rgn.rowstride;
+	  dest_row += dest_rgn.rowstride;
+	}
+
+      /* Update progress */
+      progress += src_rgn.w * src_rgn.h;
+      gimp_progress_update ((double) progress / (double) max_progress);
+    }
+
+  /*  update the blurred region  */
+  gimp_drawable_flush (drawable);
+  gimp_drawable_merge_shadow (drawable->id, TRUE);
+  gimp_drawable_update (drawable->id, x1, y1, (x2 - x1), (y2 - y1));
+}
+
+static void
+noisify_u16 (GDrawable *drawable)
+{
+  GPixelRgn src_rgn, dest_rgn;
+  guchar *src_row, *dest_row;
+  guint16 *src, *dest;
+  gint row, col, b;
+  gint x1, y1, x2, y2, p;
+  gint noise;
+  gint progress, max_progress;
+  gpointer pr;
+  gint num_channels =  drawable->num_channels;
+
+  /* initialize */
+
+  noise = 0;
+
+  gimp_drawable_mask_bounds (drawable->id, &x1, &y1, &x2, &y2);
+  gimp_pixel_rgn_init (&src_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), FALSE, FALSE);
+  gimp_pixel_rgn_init (&dest_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), TRUE, TRUE);
+
+  /* Initialize progress */
+  progress = 0;
+  max_progress = (x2 - x1) * (y2 - y1);
+
+  for (pr = gimp_pixel_rgns_register (2, &src_rgn, &dest_rgn); 
+       pr != NULL; 
+       pr = gimp_pixel_rgns_process (pr))
+    {
+      src_row = src_rgn.data;
+      dest_row = dest_rgn.data;
+
+      for (row = 0; row < src_rgn.h; row++)
+	{
+	  src = (guint16*)src_row;
+	  dest = (guint16*)dest_row;
+
+	  for (col = 0; col < src_rgn.w; col++)
+	    {
+	      if (nvals.independent == FALSE)
+		noise = (gint) (nvals.noise[0] * gauss() * 32767);
+
+	      for (b = 0; b < num_channels; b++)
+		{
+		  if (nvals.independent == TRUE)
+		    noise = (gint) (nvals.noise[b] * gauss() * 32767);
+
+		  
+		  p = src[b] + noise;
+		  if (p < 0)
+		    p = 0;
+		  else if (p > 65535)
+		    p = 65535;
+		  if (nvals.noise[b] != 0)
+		    dest[b] = p;
+		  
+		}
+	      src += num_channels;
+	      dest += num_channels;
+	    }
+
+	  src_row += src_rgn.rowstride;
+	  dest_row += dest_rgn.rowstride;
+	}
+
+      /* Update progress */
+      progress += src_rgn.w * src_rgn.h;
+      gimp_progress_update ((double) progress / (double) max_progress);
+    }
+
+  /*  update the blurred region  */
+  gimp_drawable_flush (drawable);
+  gimp_drawable_merge_shadow (drawable->id, TRUE);
+  gimp_drawable_update (drawable->id, x1, y1, (x2 - x1), (y2 - y1));
+}
+
+static void
+noisify_float (GDrawable *drawable)
+{
+  GPixelRgn src_rgn, dest_rgn;
+  guchar *src_row, *dest_row;
+  gfloat *src, *dest;
+  gint row, col, b;
+  gint x1, y1, x2, y2;
+  gfloat p;
+  gfloat noise;
+  gint progress, max_progress;
+  gpointer pr;
+  gint num_channels =  drawable->num_channels;
+
+  /* initialize */
+
+  noise = 0;
+
+  gimp_drawable_mask_bounds (drawable->id, &x1, &y1, &x2, &y2);
+  gimp_pixel_rgn_init (&src_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), FALSE, FALSE);
+  gimp_pixel_rgn_init (&dest_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), TRUE, TRUE);
+
+  /* Initialize progress */
+  progress = 0;
+  max_progress = (x2 - x1) * (y2 - y1);
+
+
+  for (pr = gimp_pixel_rgns_register (2, &src_rgn, &dest_rgn); 
+       pr != NULL; 
+       pr = gimp_pixel_rgns_process (pr))
+    {
+      src_row = src_rgn.data;
+      dest_row = dest_rgn.data;
+
+      for (row = 0; row < src_rgn.h; row++)
+	{
+	  src = (gfloat*)src_row;
+	  dest = (gfloat*)dest_row;
+
+	  for (col = 0; col < src_rgn.w; col++)
+	    {
+	      if (nvals.independent == FALSE)
+		noise = (nvals.noise[0] * gauss() * .5);
+
+	      for (b = 0; b < num_channels; b++)
+		{
+		  if (nvals.independent == TRUE)
+		    noise = (nvals.noise[b] * gauss() * .5);
+
+		  
+		  p = src[b] + noise;
+		  if (nvals.noise[b] != 0)
+		    dest[b] = p;
+		  
+		}
+	      src += num_channels;
+	      dest += num_channels;
+	    }
+
+	  src_row += src_rgn.rowstride;
+	  dest_row += dest_rgn.rowstride;
+	}
+
+      /* Update progress */
+      progress += src_rgn.w * src_rgn.h;
+      gimp_progress_update ((double) progress / (double) max_progress);
+    }
+
+  /*  update the blurred region  */
+  gimp_drawable_flush (drawable);
+  gimp_drawable_merge_shadow (drawable->id, TRUE);
+  gimp_drawable_update (drawable->id, x1, y1, (x2 - x1), (y2 - y1));
+}
+
+static void
+noisify_float16 (GDrawable *drawable)
+{
+  GPixelRgn src_rgn, dest_rgn;
+  guchar *src_row, *dest_row;
+  guint16 *src, *dest;
+  gint row, col, b;
+  gint x1, y1, x2, y2;
+  gfloat p;
+  gfloat noise;
+  gint progress, max_progress;
+  gpointer pr;
+  gint num_channels =  drawable->num_channels;
+  ShortsFloat u;
+
+  /* initialize */
+
+  noise = 0;
+
+  gimp_drawable_mask_bounds (drawable->id, &x1, &y1, &x2, &y2);
+  gimp_pixel_rgn_init (&src_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), FALSE, FALSE);
+  gimp_pixel_rgn_init (&dest_rgn, drawable, x1, y1, (x2 - x1), (y2 - y1), TRUE, TRUE);
+
+  /* Initialize progress */
+  progress = 0;
+  max_progress = (x2 - x1) * (y2 - y1);
+
+
+  for (pr = gimp_pixel_rgns_register (2, &src_rgn, &dest_rgn); 
+       pr != NULL; 
+       pr = gimp_pixel_rgns_process (pr))
+    {
+      src_row = src_rgn.data;
+      dest_row = dest_rgn.data;
+
+      for (row = 0; row < src_rgn.h; row++)
+	{
+	  src = (guint16*)src_row;
+	  dest = (guint16*)dest_row;
+
+	  for (col = 0; col < src_rgn.w; col++)
+	    {
+	      if (nvals.independent == FALSE)
+		noise = (nvals.noise[0] * gauss() * .5);
+
+	      for (b = 0; b < num_channels; b++)
+		{
+		  if (nvals.independent == TRUE)
+		    noise = (nvals.noise[b] * gauss() * .5);
+
+		  
+		  p = FLT(src[b], u) + noise;
+		  if (nvals.noise[b] != 0)
+		    dest[b] = FLT16(p, u);
+		  
+		}
+	      src += num_channels;
+	      dest += num_channels;
 	    }
 
 	  src_row += src_rgn.rowstride;

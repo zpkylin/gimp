@@ -48,6 +48,7 @@ gimp_SOURCES = \
 	gimplist.c    \
 	gimplist.h	\
 	gimplistF.h    \
+	gimplistP.h    \
 	gimpsignal.h	\
 	gimpsignal.c	\
 	vector2d.h    \

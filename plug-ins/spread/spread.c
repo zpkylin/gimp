@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  * Please direct all comments, questions, bug reports  etc to Brian Degenhardt
  * bdegenha@ucsd.edu
@@ -29,8 +29,10 @@
 #include "gtk/gtk.h"
 #include "libgimp/gimp.h"
 
-
 /* Some useful macros */
+#ifndef M_PI
+#define M_PI    3.14159265358979323846
+#endif /* M_PI */
 
 #define SCALE_WIDTH 200
 #define TILE_CACHE_SIZE 16
@@ -54,10 +56,11 @@ static void      run    (gchar    *name,
 			 GParam   *param,
 			 gint     *nreturn_vals,
 			 GParam  **return_vals);
-static void      spread  (GDrawable * drawable);
+static void      spread (GDrawable * drawable);
 
 static gint      spread_dialog (void);
-static GTile *   spread_pixel  (GDrawable * drawable,
+static GTile *   spread_pixel (GDrawable * drawable,
+			       GPrecisionType prec,
 			       GTile *     tile,
 			       gint        x1,
 			       gint        y1,
@@ -124,8 +127,8 @@ query ()
 			  "Spencer Kimball and Peter Mattis, ported by Brian Degenhardt and Federico Mena Quintero",
 			  "Federico Mena Quintero and Brian Degenhardt",
 			  "1997",
-			  "<Image>/Filters/Distorts/Spread",
-			  "RGB*, GRAY*",
+			  "<Image>/Filters/Noise/Spread",
+			  "RGB*, GRAY*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
 			  PROC_PLUG_IN,
 			  nargs, nreturn_vals,
 			  args, return_vals);
@@ -233,10 +236,10 @@ spread (GDrawable *drawable)
   gpointer  pr;
 
   gint    width, height;
-  gint    bytes;
-  guchar *destrow;
+  gint    num_channels;
   guchar *dest;
-  guchar  pixel[4][4];
+  guchar *destrow;
+  guchar  *pixel = NULL;
   gint    x1, y1, x2, y2;
   gint    x, y;
   gint    progress, max_progress;
@@ -251,6 +254,27 @@ spread (GDrawable *drawable)
   gint x_mod_value, x_sub_value;
   gint y_mod_value, y_sub_value;
   gint angle_mod_value, angle_sub_value;
+  gint channel_bytes;
+  GPrecisionType precision;
+
+  precision = gimp_drawable_precision (drawable->id);
+  switch(precision)
+  {
+      case PRECISION_U8:
+	channel_bytes = sizeof(guint8);
+	break;
+      case PRECISION_U16:
+	channel_bytes = sizeof(guint16);
+	break;
+      case PRECISION_FLOAT:
+	channel_bytes = sizeof(gfloat);
+	break;
+      case PRECISION_FLOAT16: 
+	channel_bytes = sizeof(guint16);
+	break;
+  }
+
+  pixel = (guchar*) malloc ( 4 * channel_bytes );
 
   /* Get selection area */
 
@@ -258,7 +282,7 @@ spread (GDrawable *drawable)
 
   width  = drawable->width;
   height = drawable->height;
-  bytes  = drawable->bpp;
+  num_channels  = drawable->num_channels;
 
   progress     = 0;
   max_progress = (x2 - x1) * (y2 - y1);
@@ -291,7 +315,6 @@ spread (GDrawable *drawable)
   */
 
 
-
   /* Spread the image! */
 
 
@@ -303,31 +326,57 @@ spread (GDrawable *drawable)
       for (y = dest_rgn.y; y < (dest_rgn.y + dest_rgn.h); y++)
 	{
 	  dest = destrow;
-
 	  for (x = dest_rgn.x; x < (dest_rgn.x + dest_rgn.w); x++)
 	    {
-              /* get random angle, x distance, and y distance */
-              xdist = (rand () % x_mod_value) - x_sub_value;
-              ydist = (rand () % y_mod_value) - y_sub_value;
-              angle = (rand () % angle_mod_value) - angle_sub_value;
+	      /* get random angle, x distance, and y distance */
+	      xdist = (rand () % x_mod_value) - x_sub_value;
+	      ydist = (rand () % y_mod_value) - y_sub_value;
+	      angle = (rand () % angle_mod_value) - angle_sub_value;
 
-              xi = x + floor(sin(angle)*xdist);
-              yi = y + floor(cos(angle)*ydist);
+	      xi = (int)(x + sin(angle)*xdist + .5);
+	      yi = (int)(y + cos(angle)*ydist + .5);
 
-              /* Only displace the pixel if it's within the bounds of the image. */
-              if ((xi >= 0) && (xi < width) && (yi >= 0) && (yi < height))
-                  tile = spread_pixel (drawable, tile, x1, y1, x2, y2, xi, yi, &row, &col, pixel[0]);
-	      else
-              {
-              /* Else just copy it */
-                  tile = spread_pixel (drawable, tile, x1, y1, x2, y2, x, y, &row, &col, pixel[0]);
-              }
-
-              for (k = 0; k < bytes; k++)
-                  *dest++ = pixel[0][k];
-            } /* for */
-
-	  destrow += dest_rgn.rowstride;;
+	      /* Only displace the pixel if it's within the bounds of the image. */
+	      if ((xi >= x1) && (xi < x2) && (yi >= y1) && (yi < y2))
+		  tile = spread_pixel(drawable, precision, tile, x1, y1, x2, y2, xi, yi, &row, &col, pixel);
+	      else /* Else just copy it */
+		  tile = spread_pixel(drawable, precision, tile, x1, y1, x2, y2, x, y, &row, &col, pixel);
+	
+	      switch(precision)
+	      {
+		  case PRECISION_U8:
+		    {
+		      guint8 * d = (guint8*)dest;
+		      for (k = 0; k < num_channels; k++)
+			  *d++ = ((guint8*)pixel)[k];
+		    }
+		    break;
+		  case PRECISION_U16:
+		    {
+		      guint16 * d = (guint16*)dest;
+		      for (k = 0; k < num_channels; k++)
+			  *d++ = ((guint16*)pixel)[k];
+		    }
+		    break;
+		  case PRECISION_FLOAT:
+		    {
+		      gfloat * d = (gfloat*)dest;
+		      for (k = 0; k < num_channels; k++)
+			  *d++ = ((gfloat*)pixel)[k];
+		    }
+		    break;
+		  case PRECISION_FLOAT16: 
+		    {
+		      guint16 * d = (guint16*)dest;
+		      for (k = 0; k < num_channels; k++)
+			  *d++ = ((guint16*)pixel)[k];
+		    }
+		    break;
+	      }
+	      dest+=drawable->bpp;
+		     
+	     } /* for */
+	  destrow += dest_rgn.rowstride;
 	} /* for */
 
       progress += dest_rgn.w * dest_rgn.h;
@@ -341,6 +390,7 @@ spread (GDrawable *drawable)
   gimp_drawable_flush (drawable);
   gimp_drawable_merge_shadow (drawable->id, TRUE);
   gimp_drawable_update (drawable->id, x1, y1, (x2 - x1), (y2 - y1));
+  free (pixel);
 } /* spread */
 
 
@@ -493,6 +543,7 @@ spread_dialog ()
 
 static GTile *
 spread_pixel (GDrawable * drawable,
+	      GPrecisionType prec,
 	     GTile *     tile,
 	     gint        x1,
 	     gint        y1,
@@ -504,7 +555,6 @@ spread_pixel (GDrawable * drawable,
 	     gint *      col,
 	     guchar *    pixel)
 {
-  static guchar empty_pixel[4] = {0, 0, 0, 0};
   guchar *data;
   gint b;
 
@@ -523,15 +573,65 @@ spread_pixel (GDrawable * drawable,
       data = tile->data + tile->bpp * (tile->ewidth * (y % 64) + (x % 64));
     }
   else
-    data = empty_pixel;
+      data = tile->data + tile->bpp * (tile->ewidth * (y % 64) + (x % 64));
 
-  for (b = 0; b < drawable->bpp; b++)
-    pixel[b] = data[b];
-
+    switch(prec)
+    {
+	case PRECISION_U8:
+	  {
+  	    guint8* d;
+            guint8 empty_pixel[4] = {0, 0, 0, 0};
+            guint8* p = (guint8*)pixel;
+	    if (!data) 
+	      d = empty_pixel;
+	    else
+	      d = (guint8*)data;
+	    for (b = 0; b < drawable->num_channels; b++)
+	      pixel[b] = d[b];
+	  }
+	  break;
+	case PRECISION_U16:
+	  {
+  	    guint16* d;
+            guint16 empty_pixel[4] = {0, 0, 0, 0};
+            guint16* p = (guint16*)pixel;
+	    if (!data) 
+	      d = empty_pixel;
+	    else
+	      d = (guint16*)data;
+	    for (b = 0; b < drawable->num_channels; b++)
+	      p[b] = d[b];
+	  }
+	  break;
+	case PRECISION_FLOAT:
+	  {
+  	    gfloat* d;
+            gfloat empty_pixel[4] = {0, 0, 0, 0};
+            gfloat* p = (gfloat*)pixel;
+	    if (!data) 
+	      d = empty_pixel;
+	    else
+	      d = (float*)data;
+	    for (b = 0; b < drawable->num_channels; b++)
+	      p[b] = d[b];
+	  }
+	  break;
+	case PRECISION_FLOAT16: 
+	  {
+  	    guint16* d;
+            guint16 empty_pixel[4] = {ZERO_FLOAT16, ZERO_FLOAT16, ZERO_FLOAT16, ZERO_FLOAT16};
+            guint16* p = (guint16*)pixel;
+	    if (!data) 
+	      d = empty_pixel;
+	    else
+	      d = (guint16*)data;
+	    for (b = 0; b < drawable->num_channels; b++)
+	      p[b] = d[b];
+	  }
+	  break;
+    }
   return tile;
 }
-
-
 
 
 /*  Spread interface functions  */
