@@ -18,8 +18,8 @@
 #ifndef __GXIMAGE_H__
 #define __GXIMAGE_H__
 
-#define GXIMAGE_WIDTH       256
-#define GXIMAGE_HEIGHT      256
+#define GXIMAGE_WIDTH      1024 
+#define GXIMAGE_HEIGHT     1024 
 
 void     gximage_init           (void);
 void     gximage_free           (void);

@@ -340,6 +340,7 @@ gimp_directory ()
     }
 
   gimp_dir[MAX_GIMPDIR_LEN] = '\000';
+  printf("Gimp Directory: %s\n", gimp_dir);
   return gimp_dir;
 }
 

@@ -326,18 +326,18 @@ void zoom_highlight_current_bookmark()
    for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
       if (zoom_control->bookmark_button[i]) {
          if (zoom_bookmarks[i].is_set &&
-	     zoom_bookmarks[i].image_offset_x == zoom_control->gdisp->offset_x &&
+             zoom_bookmarks[i].image_offset_x == zoom_control->gdisp->offset_x &&
              zoom_bookmarks[i].image_offset_y == zoom_control->gdisp->offset_y &&
              zoom_bookmarks[i].zoom == 
-	        (SCALEDEST(zoom_control->gdisp) * 100 + SCALESRC(zoom_control->gdisp))) {
+               (SCALEDEST(zoom_control->gdisp) * 100 + SCALESRC(zoom_control->gdisp))) {
 
             g_snprintf(buff, 16, "<%d>", i+1);
          }
-	 else {
+         else {
             g_snprintf(buff, 16, "%d", i+1);
-	 }
+         }
          gtk_label_set_text(
-	        GTK_LABEL(GTK_BIN(zoom_control->bookmark_button[i])->child),buff);
+            GTK_LABEL(GTK_BIN(zoom_control->bookmark_button[i])->child),buff);
       }
    }
 }
