@@ -138,7 +138,9 @@ gimp_init (int    gimp_argc,
   /* Handle showing dialogs with gdk_quit_adds here  */
   if (!no_interface && show_tips)
     tips_dialog_create ();
-  
+
+  layout_restore(); 
+
   /*
   if (enable_brush_dialog)
         create_brush_dialog ();
@@ -553,8 +555,6 @@ app_init (void)
   get_active_pattern ();
   paint_funcs_area_setup ();
 
-
-  layout_restore();
 }
 
 int
