@@ -239,7 +239,7 @@ frame_manager_create (GDisplay *gdisplay)
       sprintf (tmp, "Frame Manager for %s\0", gdisplay->gimage->filename); 
       gtk_window_set_title (GTK_WINDOW (gdisplay->frame_manager->shell), tmp);
       gtk_widget_set_uposition(gdisplay->frame_manager->shell, frame_manager_x, frame_manager_y);
-      layout_connect_window_position(gdisplay->frame_manager->shell, &frame_manager_x, &frame_manager_y);
+      layout_connect_window_position(gdisplay->frame_manager->shell, &frame_manager_x, &frame_manager_y, TRUE);
       minimize_register(gdisplay->frame_manager->shell);
 
       /* vbox */
@@ -1851,7 +1851,7 @@ frame_manager_store_new_options (GDisplay *gdisplay)
       gtk_window_set_policy (GTK_WINDOW (fm->store_option), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->store_option), "New Store Option");
       gtk_widget_set_uposition(fm->store_option, generic_window_x, generic_window_y);
-      layout_connect_window_position(fm->store_option, &generic_window_x, &generic_window_y);
+      layout_connect_window_position(fm->store_option, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->store_option);
 
       vbox = gtk_vbox_new (FALSE, 1);
@@ -1928,7 +1928,7 @@ frame_manager_change_frame_num (GDisplay *gdisplay, store_t *item)
       gtk_window_set_policy (GTK_WINDOW (fm->change_frame_num), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->change_frame_num), "Change Frame Num");
       gtk_widget_set_uposition(fm->change_frame_num, generic_window_x, generic_window_y);
-      layout_connect_window_position(fm->change_frame_num, &generic_window_x, &generic_window_y);
+      layout_connect_window_position(fm->change_frame_num, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->change_frame_num);
 
       vbox = gtk_vbox_new (FALSE, 1);
@@ -3317,7 +3317,7 @@ create_warning (char* warning, GDisplay *gdisplay)
       gtk_window_set_policy (GTK_WINDOW (fm->warning), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->warning), "Warning");
       gtk_widget_set_uposition(fm->warning, generic_window_x, generic_window_y);
-      layout_connect_window_position(fm->warning, &generic_window_x, &generic_window_y);
+      layout_connect_window_position(fm->warning, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->warning);
 
       vbox = gtk_vbox_new (FALSE, 1);

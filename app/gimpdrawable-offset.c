@@ -111,7 +111,7 @@ channel_ops_offset (void *gimage_ptr)
   gtk_window_set_wmclass (GTK_WINDOW (off_d->dlg), "offset", "Gimp");
   gtk_window_set_title (GTK_WINDOW (off_d->dlg), "Offset");
   gtk_widget_set_uposition(off_d->dlg, generic_window_x, generic_window_y);
-  layout_connect_window_position(off_d->dlg, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(off_d->dlg, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(off_d->dlg);
 
   /* handle the wm close signal */

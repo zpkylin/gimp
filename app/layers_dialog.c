@@ -314,7 +314,7 @@ lc_dialog_create (int gimage_id)
       gtk_window_set_title (GTK_WINDOW (lc_shell), "Layers & Channels");
       gtk_window_set_wmclass (GTK_WINDOW (lc_shell), "layers_and_channels", "Gimp");
       gtk_widget_set_uposition(lc_shell, layer_channel_x, layer_channel_y);
-      layout_connect_window_position(lc_shell, &layer_channel_x, &layer_channel_y);
+      layout_connect_window_position(lc_shell, &layer_channel_x, &layer_channel_y, TRUE);
       layout_connect_window_visible(lc_shell, &layer_channel_visible);
       minimize_register(lc_shell);
 
@@ -3193,7 +3193,7 @@ layers_dialog_new_layer_query (int gimage_id)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "new_layer_options", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "New Layer Options");
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /* handle the wm close signal */
@@ -3373,7 +3373,7 @@ layers_dialog_edit_layer_query (LayerWidget *layer_widget)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "edit_layer_attrributes", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Edit Layer Attributes");
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /*  handle the wm close signal */
@@ -3544,7 +3544,7 @@ layers_dialog_add_mask_query (Layer *layer)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "add_mask_options", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Add Mask Options");
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /*  handle the wm close signal */
@@ -3674,7 +3674,7 @@ layers_dialog_apply_mask_query (Layer *layer)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "layer_mask_options", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Layer Mask Options");
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /*  handle the wm close signal */
@@ -3801,7 +3801,7 @@ layers_dialog_scale_layer_query (Layer *layer)
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Scale Layer");
   gtk_window_set_policy (GTK_WINDOW (options->query_box), FALSE, FALSE, TRUE);
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /*  handle the wm close singal */
@@ -3925,7 +3925,7 @@ layers_dialog_resize_layer_query (Layer *layer)
   gtk_window_set_policy (GTK_WINDOW (options->query_box), FALSE, TRUE, TRUE);
   gtk_window_set_policy (GTK_WINDOW (options->query_box), FALSE, FALSE, TRUE);
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /*  handle the wm close signal */
@@ -4074,7 +4074,7 @@ layers_dialog_layer_merge_query (GImage *gimage,
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "layer_merge_options", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Layer Merge Options");
   gtk_widget_set_uposition(options->query_box, generic_window_x, generic_window_y);
-  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(options->query_box, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(options->query_box);
 
   /* hadle the wm close signal */

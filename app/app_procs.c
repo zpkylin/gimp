@@ -672,7 +672,7 @@ really_quit_dialog ()
   gtk_window_set_policy (GTK_WINDOW (dialog), FALSE, FALSE, FALSE);
 
   gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
-  layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(dialog, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(dialog);
 
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dialog)->action_area), 2);

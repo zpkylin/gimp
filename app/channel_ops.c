@@ -113,7 +113,7 @@ channel_ops_offset (void *gimage_ptr)
 
   minimize_register(off_d->dlg);
   gtk_widget_set_uposition(off_d->dlg, generic_window_x, generic_window_y);
-  layout_connect_window_position(off_d->dlg, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(off_d->dlg, &generic_window_x, &generic_window_y, FALSE);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (off_d->dlg), "delete_event",

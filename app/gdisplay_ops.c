@@ -332,7 +332,7 @@ gdisplay_close_warning_dialog (char     *image_name,
   gtk_window_set_wmclass (GTK_WINDOW (mbox), "really_close", "Gimp");
   gtk_window_set_title (GTK_WINDOW (mbox), image_name);
   gtk_widget_set_uposition(mbox, generic_window_x, generic_window_y);
-  layout_connect_window_position(mbox, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(mbox, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(mbox);
   gtk_object_set_user_data (GTK_OBJECT (mbox), gdisp);
 

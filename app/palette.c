@@ -226,7 +226,7 @@ palette_create ()
       gtk_window_set_policy (GTK_WINDOW (palette->shell), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (palette->shell), "Color Palette");
       gtk_widget_set_uposition(palette->shell, palette_x, palette_y);
-      layout_connect_window_position(palette->shell, &palette_x, &palette_y);
+      layout_connect_window_position(palette->shell, &palette_x, &palette_y, TRUE);
       layout_connect_window_visible(palette->shell, &palette_visible);
       minimize_register(palette->shell);
 

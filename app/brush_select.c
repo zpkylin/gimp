@@ -219,7 +219,7 @@ brush_select_new (gchar * title,
   bsp->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (bsp->shell), "brushselection", "Gimp");
   gtk_widget_set_uposition(bsp->shell, brush_select_x, brush_select_y);
-  layout_connect_window_position(bsp->shell, &brush_select_x, &brush_select_y);
+  layout_connect_window_position(bsp->shell, &brush_select_x, &brush_select_y, TRUE);
   layout_connect_window_visible(bsp->shell, &brush_select_visible);
   minimize_register(bsp->shell);
 

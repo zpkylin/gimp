@@ -357,7 +357,7 @@ file_new_cmd_callback (GtkWidget *widget,
   gtk_window_set_wmclass (GTK_WINDOW (vals->dlg), "new_image", "Gimp");
   gtk_window_set_title (GTK_WINDOW (vals->dlg), "New Image");
   gtk_widget_set_uposition(vals->dlg, generic_window_x, generic_window_y);
-  layout_connect_window_position(vals->dlg, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(vals->dlg, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(vals->dlg);
 
   /* handle the wm close signal */
@@ -1230,7 +1230,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_window_set_wmclass (GTK_WINDOW (prefs_dlg), "preferences", "Gimp");
       gtk_window_set_title (GTK_WINDOW (prefs_dlg), "Preferences");
 /*      gtk_widget_set_uposition(prefs_dlg, generic_window_x, generic_window_y); */
-/*      layout_connect_window_position(prefs_dlg, &generic_window_x, &generic_window_y); */
+/*      layout_connect_window_position(prefs_dlg, &generic_window_x, &generic_window_y, FALSE); */
       minimize_register(prefs_dlg);
 
       /* handle the wm close signal */
@@ -2602,7 +2602,7 @@ image_resize_cmd_callback (GtkWidget *widget,
   gtk_window_set_title (GTK_WINDOW (image_resize->shell), "Image Resize");
   gtk_window_set_policy (GTK_WINDOW (image_resize->shell), FALSE, FALSE, TRUE);
   gtk_widget_set_uposition(image_resize->shell, generic_window_x, generic_window_y);
-  layout_connect_window_position(image_resize->shell, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(image_resize->shell, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(image_resize->shell);
 
   /* handle the wm close signal */
@@ -2651,7 +2651,7 @@ image_scale_cmd_callback (GtkWidget *widget,
   gtk_window_set_title (GTK_WINDOW (image_scale->shell), "Image Scale");
   gtk_window_set_policy (GTK_WINDOW (image_scale->shell), FALSE, FALSE, TRUE);
   gtk_widget_set_uposition(image_scale->shell, generic_window_x, generic_window_y);
-  layout_connect_window_position(image_scale->shell, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(image_scale->shell, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(image_scale->shell);
 
   /* handle the wm close signal */

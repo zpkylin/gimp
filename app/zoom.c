@@ -203,7 +203,7 @@ ZoomControl * zoom_control_new()
   gtk_window_set_policy (GTK_WINDOW (zoom->window), FALSE, FALSE, FALSE);
   gtk_window_set_title (GTK_WINDOW (zoom->window), "Zoom/Pan Control");
   gtk_widget_set_uposition(zoom->window, zoom_window_x, zoom_window_y);
-  layout_connect_window_position(zoom->window, &zoom_window_x, &zoom_window_y);
+  layout_connect_window_position(zoom->window, &zoom_window_x, &zoom_window_y, TRUE);
   layout_connect_window_visible(zoom->window, &zoom_window_visible);
   minimize_register(zoom->window);
 

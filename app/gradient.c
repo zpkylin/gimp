@@ -799,7 +799,7 @@ grad_create_gradient_editor(void)
 	gtk_container_border_width(GTK_CONTAINER(g_editor->shell), 0);
 	gtk_window_set_title(GTK_WINDOW(g_editor->shell), "Gradient Editor");
         gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
-        layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
+        layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y, TRUE);
         layout_connect_window_visible(g_editor->shell, &gradient_visible);
 	minimize_register(g_editor->shell);
 
@@ -1447,7 +1447,7 @@ ed_delete_gradient_callback(GtkWidget *widget, gpointer client_data)
 	dialog = gtk_dialog_new();
 	gtk_window_set_title(GTK_WINDOW(dialog), "Delete gradient");
         gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
-        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y, FALSE);
         minimize_register(dialog);
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
 
@@ -4477,7 +4477,7 @@ cpopup_split_uniform_callback(GtkWidget *widget, gpointer data)
 			     "Split segments uniformly");
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
         gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
-        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y, FALSE);
         minimize_register(dialog);
 
 	vbox = gtk_vbox_new(FALSE, 0);
@@ -4834,7 +4834,7 @@ cpopup_replicate_callback(GtkWidget *widget, gpointer data)
 			     "Replicate selection");
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
         gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
-        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y, FALSE);
         minimize_register(dialog);
 
 	vbox = gtk_vbox_new(FALSE, 0);

@@ -556,7 +556,7 @@ create_toolbox ()
   gtk_window_set_wmclass (GTK_WINDOW (window), "toolbox", "Gimp");
   gtk_window_set_title (GTK_WINDOW (window), "The GIMP");
   gtk_widget_set_uposition (window, toolbox_x, toolbox_y);
-  layout_connect_window_position(window, &toolbox_x, &toolbox_y);
+  layout_connect_window_position(window, &toolbox_x, &toolbox_y, TRUE);
   printf("connected\n");
   minimize_track_toolbox(window);
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
@@ -828,7 +828,7 @@ create_display_shell (int   gdisp_unique_id,
   gtk_widget_show (vbox);
 
   gtk_widget_set_uposition(gdisp->shell, image_x + 10, image_y + 10);
-  layout_connect_window_position(gdisp->shell, &image_x, &image_y);
+  layout_connect_window_position(gdisp->shell, &image_x, &image_y, FALSE);
   minimize_register(gdisp->shell);
 
   gtk_widget_show (gdisp->shell);
@@ -877,7 +877,7 @@ query_string_box (char        *title,
   gtk_window_set_wmclass (GTK_WINDOW (qbox), "query_box", "Gimp");
 
   gtk_widget_set_uposition(qbox, generic_window_x, generic_window_y);
-  layout_connect_window_position(qbox, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(qbox, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(qbox);
 
   gtk_signal_connect (GTK_OBJECT (qbox), "delete_event",
@@ -1015,7 +1015,7 @@ message_box (const char        *orig,
   gtk_window_set_wmclass (GTK_WINDOW (mbox), "gimp_message", "Gimp");
   gtk_window_set_title (GTK_WINDOW (mbox), "GIMP Message");
   gtk_widget_set_uposition(mbox, generic_window_x, generic_window_y);
-  layout_connect_window_position(mbox, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(mbox, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(mbox);
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (mbox)->action_area), 2);
   gtk_signal_connect (GTK_OBJECT (mbox), "delete_event",

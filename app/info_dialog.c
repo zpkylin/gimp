@@ -88,7 +88,7 @@ info_dialog_new (char *title)
   gtk_window_set_wmclass (GTK_WINDOW (shell), "info_dialog", "Gimp");
   gtk_window_set_title (GTK_WINDOW (shell), title);
   gtk_widget_set_uposition (shell, info_x, info_y);
-  layout_connect_window_position(shell, &info_x, &info_y);
+  layout_connect_window_position(shell, &info_x, &info_y, TRUE);
   minimize_register(shell);
 
   gtk_signal_connect (GTK_OBJECT (shell), "delete_event",

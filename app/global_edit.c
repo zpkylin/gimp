@@ -638,7 +638,7 @@ paste_named_buffer (GDisplay *gdisp)
   gtk_window_set_wmclass (GTK_WINDOW (pn_dlg->shell), "paste_named_buffer", "Gimp");
   gtk_window_set_title (GTK_WINDOW (pn_dlg->shell), "Paste Named Buffer");
   gtk_widget_set_uposition(pn_dlg->shell, generic_window_x, generic_window_y);
-  layout_connect_window_position(pn_dlg->shell, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(pn_dlg->shell, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(pn_dlg->shell);
 
   gtk_signal_connect (GTK_OBJECT (pn_dlg->shell), "delete_event",

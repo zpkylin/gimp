@@ -512,7 +512,7 @@ file_reload_callback (GDisplay *gdisplay)
   gtk_window_set_title (GTK_WINDOW (warning_dialog), "Warning");
   gtk_object_set_user_data (GTK_OBJECT (warning_dialog), cur_gdisplay);
   gtk_widget_set_uposition(warning_dialog, generic_window_x, generic_window_y);
-  layout_connect_window_position(warning_dialog, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(warning_dialog, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(warning_dialog);
 
 
@@ -1447,7 +1447,7 @@ file_overwrite (char *filename, char* raw_filename)
   gtk_window_set_wmclass (GTK_WINDOW (overwrite_box->obox), "file_exists", "Gimp");
   gtk_window_set_title (GTK_WINDOW (overwrite_box->obox), "File Exists!");
   gtk_widget_set_uposition(overwrite_box->obox, generic_window_x, generic_window_y);
-  layout_connect_window_position(overwrite_box->obox, &generic_window_x, &generic_window_y);
+  layout_connect_window_position(overwrite_box->obox, &generic_window_x, &generic_window_y, FALSE);
   minimize_register(overwrite_box->obox);
 
   gtk_signal_connect (GTK_OBJECT (overwrite_box->obox),
