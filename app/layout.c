@@ -14,10 +14,7 @@ typedef struct
 {
    int *x_var;
    int *y_var;
-   int x_offset;
-   int y_offset;
-   int offset_set;
-   int pos_set;
+   int pos_set; // currently set, but never used for anything
 } LayoutInfo;
 
 static GList *g_layout_info_list = NULL;
@@ -33,6 +30,8 @@ void layout_unfreeze_current_layout()
    g_ignore_further_updates = 0;
 }
 
+// This isn't really necessary.  Only used to keep from creating
+// lots of extra LayoutInfo structs
 static
 GList *layout_find_layout_node(int *x_var, int *y_var)
 {
@@ -58,27 +57,8 @@ layout_configure_event(
    if (g_ignore_further_updates || !widget->window)
       return;
 
-
    info = (LayoutInfo *)user_data;
-
-   // set the offset if it hasn't been set, and this is a 
-   // generated event (send_event is true)
-   // because this means it is the first generated event, and hence is generated
-   // by the window manager to place the window
-   if (!info->offset_set && ev->send_event) {
-      if (!info->pos_set) {
-         info->x_offset = info->y_offset = 0;
-      }
-      else {
-         info->x_offset = ev->x - *(info->x_var);
-         info->y_offset = ev->y - *(info->y_var);
-      }
-       
-      info->offset_set = TRUE;
-   }
-
-   *(info->x_var) = ev->x;
-   *(info->y_var) = ev->y;
+   gdk_window_get_root_origin (widget->window, info->x_var, info->y_var); 
    info->pos_set = TRUE;
 }
 
@@ -105,17 +85,8 @@ layout_hide_event(
 int  
 layout_save()
 {
-   GList *curr = g_layout_info_list;
-   LayoutInfo *info;
    GList *save = NULL;
    GList *dummy = NULL;
-
-   // take all the recorded offsets and un-apply them.
-   for (curr = g_layout_info_list; curr != NULL; curr = curr->next) {
-      info = (LayoutInfo *)curr->data;
-      *(info->x_var) -= info->x_offset;
-      *(info->y_var) -= info->y_offset;
-   }
 
    // this is kind of a hack.  Since the images are automatically placed 10 units
    // past the previous, we want to back up when we save so the image doesn't drift
@@ -177,15 +148,15 @@ layout_connect_window_position(GtkWidget *widget, int *x_var, int *y_var, int co
 
    node = layout_find_layout_node(x_var, y_var);
       
-   info = (LayoutInfo *)g_malloc0(sizeof(LayoutInfo));
-   info->x_var = x_var;
-   info->y_var = y_var;
-//   if (!compute_offset) {
-   if (node != NULL) {
-      info->offset_set = TRUE;
+   if (node == NULL) {
+      info = (LayoutInfo *)g_malloc0(sizeof(LayoutInfo));
+      info->x_var = x_var;
+      info->y_var = y_var;
+      g_layout_info_list = g_list_append(g_layout_info_list, (gpointer) info); 
    }
-
-   g_layout_info_list = g_list_append(g_layout_info_list, (gpointer) info); 
+   else {
+      info = (LayoutInfo *)node->data;
+   }
 
    gtk_signal_connect (GTK_OBJECT (widget), "configure-event",
 		      GTK_SIGNAL_FUNC (layout_configure_event),
