@@ -24,7 +24,7 @@
 #include "gdisplay.h"
 
 void
-create_win_cursor (GdkWindow *win, int radius)
+create_win_cursor (GdkWindow *win, double radius)
 {
   int i, j, k=0, char_num=0, num, c; 
   int cursor1_width = radius; 
@@ -112,6 +112,12 @@ flip = flip ? 0 : 1;
 
   mask = gdk_bitmap_create_from_data (NULL, cursor1mask_bits,
       /*cursor1_width*/num*8, cursor1_height);
+
+  if (!source || !mask)
+    {
+      printf ("ERROR: unable to change cursor size\n");
+      return; 
+    }
   cursor = gdk_cursor_new_from_pixmap (source, mask, &fg, &bg, 
       c, c);
 

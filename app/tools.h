@@ -91,7 +91,7 @@ typedef enum
   FREE_SELECT,
   FUZZY_SELECT,
   BEZIER_SELECT,
-  ISCISSORS,
+/*  ISCISSORS,*/
   MOVE,
   MAGNIFY,
   CROP,

@@ -30,8 +30,8 @@ echo "mkdir $2/patterns"
 mkdir $2/patterns
 echo "mkdir $2/plug-ins"
 mkdir $2/plug-ins 
-echo "mkdir $2/plug-ins/irix6.5-mips-n32"
-mkdir $2/plug-ins/irix6.5-mips-n32 
+echo "mkdir $2/plug-ins/linux6-i386-std"
+mkdir $2/plug-ins/linux6-i386-std 
 echo "mkdir $2/gfig"
 mkdir $2/gfig
 echo "mkdir $2/tmp"

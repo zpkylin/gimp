@@ -129,9 +129,11 @@ create_selection_options (ToolType tool_type)
     case BEZIER_SELECT:
       label = gtk_label_new ("Bezier Selection Options");
       break;
+#if 0
     case ISCISSORS:
       label = gtk_label_new ("Intelligent Scissors Options");
       break;
+#endif
     case BY_COLOR_SELECT:
       label = gtk_label_new ("By-Color Select Options");
       break;
@@ -151,7 +153,9 @@ create_selection_options (ToolType tool_type)
     case BEZIER_SELECT:
       break;
     case FUZZY_SELECT:
+#if 0
     case ISCISSORS:
+#endif
     case BY_COLOR_SELECT:
       sample_merged_toggle = gtk_check_button_new_with_label ("Sample Merged");
       gtk_box_pack_start (GTK_BOX (vbox), sample_merged_toggle, FALSE, FALSE, 0);

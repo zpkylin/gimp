@@ -20,6 +20,7 @@
  * thanks to Professor D. Forsyth for prompting us to implement this tool
  */
 
+#if 0
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -2874,3 +2875,4 @@ CR_insert_in_list (GSList *list,
 
   return orig;
 }
+#endif 

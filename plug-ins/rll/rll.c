@@ -32,12 +32,13 @@
 #define HALF_FLOAT16 16128
 #define ZERO_FLOAT16 0
 
-guint16 f16_shorts_in[2] = {0,0};
+short f16_shorts_in[2] = {0,0};
 const gfloat *f16_float_in = (gfloat *)&f16_shorts_in;
 gfloat f16_float_out;
 const guint16 *f16_shorts_out = (guint16 *)&f16_float_out;
-
-#define FLT(x) (*f16_shorts_in = (x), *f16_float_in)
+				  
+/*#define FLT(x) (*f16_shorts_in = (x), *f16_float_in)*/
+#define FLTT(x) ((float)(*f16_shorts_in = *f16_float_in, (x)))
 #define FLT16(x) (f16_float_out = (x), *f16_shorts_out) 
 
 /* local functions */
@@ -52,7 +53,7 @@ static gint   save_image (char   *filename,
     gint32  image_ID,
     gint32  drawable_ID);
 /* rll float data to gimp data routines*/
-static unsigned short floatToShort( 
+static int floatToShort( 
     float in 
 				  );
 static unsigned short floatToChar( 
@@ -295,7 +296,7 @@ static gint32 load_image (char *filename)
   guchar          **aux_bptr=NULL;
   guint16         *sptr;
   guint16         *aux_sptr;
-  gfloat          floatVal;
+  float          floatVal;
   gint            y;
   gint            i;
   gint            j;
@@ -591,6 +592,10 @@ static gint32 load_image (char *filename)
   for(i=0; i<auxChans+matteChans; i++)
     aux_buffer[i] = &aux_buffer1[i*strip_height * aux_rowbytes];
 
+#if 0
+  printf ("%d %d %d\n", strip_height, height, imageChans);
+#endif
+
   /* Read strips of the image in order bottom to top and give them to gimp */	
   for(y=0; y<height; y=yend){
 	yend = y + strip_height;
@@ -617,24 +622,24 @@ static gint32 load_image (char *filename)
 		    /* convert to unsigned shorts */
 		    for(j=0; j<width; j++){
 			  for (k=0; k<1/*nlayers*/; k++){
-			  for(i=0; i<imageChans; i++){ 
-				floatVal = filehandle->rBufPtr[i+(k*imageChans)][j];
-				sptr = (guint16 *)&floatVal;
-				*((guint16 *)(bptr[k])) = sptr[0];
-				bptr[k] += sizeof(guint16);
-			  }
-			  if (alpha)
-			    {
-				floatVal = 1;
-				sptr = (guint16 *)&floatVal;
-				*((guint16 *)(bptr[0])) = sptr[0];
-				bptr[0] += sizeof(guint16);
-			    }
-			  }
+				for(i=0; i<imageChans; i++){ 
+				      floatVal = (float)filehandle->rBufPtr[i+(k*imageChans)][j];
+				      sptr = &(((short *)&floatVal)[1]);
+				      *((short *)(bptr[k])) = sptr[0];
+				      bptr[k] += sizeof(guint16);
 
+				}
+				if (alpha)
+				  {
+				    floatVal = 1;
+				    sptr = &(((short *)&floatVal)[1]);
+				    *((guint16 *)(bptr[0])) = sptr[0];
+				    bptr[0] += sizeof(guint16);
+				  }
+			  } 
 			  for(i=0; i<matteChans; i++){
 				floatVal = filehandle->rBufPtr[imageChans+i][j];
-				aux_sptr = (guint16 *)&floatVal;
+				aux_sptr = &(((short *)&floatVal)[1]);
 				*((guint16 *)(aux_bptr[i])) = aux_sptr[0];
 				aux_bptr[i] += sizeof(guint16);
 			  }
@@ -645,7 +650,7 @@ static gint32 load_image (char *filename)
 				*/
 				   {	  
 				floatVal = filehandle->rBufPtr[i+(k*imageChans)+matteChans][j];
-				sptr = (guint16 *)&floatVal;
+				sptr = &(((short *)&floatVal)[1]);
 				*((guint16 *)(bptr[k])) = sptr[0];
 				bptr[k] += sizeof(guint16);
 			  }
@@ -654,11 +659,10 @@ static gint32 load_image (char *filename)
 
 			  for(i=0; i<auxChans; i++){
 				floatVal = filehandle->rBufPtr[(imageChans*nlayers+matteChans)+i][j];
-				aux_sptr = (guint16 *)&floatVal;
+				aux_sptr = &(((short *)&floatVal)[1]);
 				*((guint16 *)(aux_bptr[i+matteChans])) = aux_sptr[0];
 				aux_bptr[i+matteChans] += sizeof(guint16);
 			  }
-
 		    }
 	      } 
 	      else{
@@ -678,9 +682,9 @@ static gint32 load_image (char *filename)
 
 	/*  Gimp images are ordered top to bottom, so this strips rectangle (x,y,w,h) is 
 	    given by (0, height - yend, width, yend -y). 
-	 */   
-        for(i=0; i<nlayers; i++)	
-	  gimp_pixel_rgn_set_rect (&(pixel_rgn[i]), buffer[i], 
+	 */
+	for(i=0; i<nlayers; i++)	
+	  gimp_pixel_rgn_set_rect (&(pixel_rgn[i]), (unsigned char *)(buffer[i]), 
 	      0, height-yend , width, yend - y);
 	for(i=0; i<auxChans+matteChans; i++)
 	  gimp_pixel_rgn_set_rect (&(chan_pixel_rgn[i]), aux_buffer[i], 
@@ -1012,7 +1016,7 @@ static gint save_image (
       return -1;
     } 
 
-#if 0	
+#if 1	
   printf("type is %d %d %d %d\n", gimp_drawable_type(drawable_ID), fg_cpp, bg_cpp, bytes_per_channel);
   printf("imagechans is %d\n", header.imageChans);
   printf("mattechans is %d\n", header.matteChans);
@@ -1514,7 +1518,8 @@ static gint save_image (
 				  filehandle->rBufPtr[i+(k*header.imageChans)][j] = pow (*(bg_fptr[k])++, 2.2);
 				  break;
 				case 2:
-				  filehandle->rBufPtr[i+(k*header.imageChans)][j] = FLT (*(bg_sptr[k])++);
+				  ((short*)&(filehandle->rBufPtr[i+(k*header.imageChans)][j]))[0] = 0; 
+				  ((short*)&(filehandle->rBufPtr[i+(k*header.imageChans)][j]))[1] = *(bg_sptr[k])++; 
 				  break;
 				case 1:
 				  filehandle->rBufPtr[i+(k*header.imageChans)][j] = charToFloat( *(bg_bptr[k])++ );
@@ -1543,8 +1548,10 @@ static gint save_image (
 				  pow(*(aux_fptr[i])++, 2.2);
 				break;
 			      case 2:
-				filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j] = 
-				  FLT(*(aux_sptr[i])++);
+				/*filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j] = 
+				  FLTT(*(aux_sptr[i])++);*/
+				  ((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[0] = 0; 
+				  ((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[1] = *(aux_sptr[i])++; 
 				break;
 			      case 1:
 				filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j] = 
@@ -1567,8 +1574,10 @@ static gint save_image (
 				      pow (*(fg_fptr[k])++, 2.2);
 				    break;
 				  case 2:
-				    filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
-				      FLT (*(fg_sptr[k])++);
+				    /*filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
+				      FLTT (*(fg_sptr[k])++);*/
+				  ((short*)&(filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[0] = 0; 
+				  ((short*)&(filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[1] = *(fg_sptr[k])++; 
 				    break;
 				  case 1:
 				    filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
@@ -1594,8 +1603,10 @@ static gint save_image (
 				  pow(*(aux_fptr[i])++, 2.2);
 				break;
 			      case 2:
-				filehandle->rBufPtr[i+header.imageChans*nlayers][j] = 
-				  FLT(*(aux_sptr[i])++);
+				/*filehandle->rBufPtr[i+header.imageChans*nlayers][j] = 
+				  FLTT(*(aux_sptr[i])++);*/
+				  ((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[0] = 0; 
+				  ((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[1] = *(aux_sptr[i])++; 
 				break;
 			      case 1:
 				filehandle->rBufPtr[i+header.imageChans*nlayers][j] = 
@@ -1715,7 +1726,7 @@ static gint save_image (
      |
      |  Notes:
      */
-    static unsigned short floatToShort( 
+    static int floatToShort( 
 	float in 
 				      )
       {
@@ -1730,8 +1741,14 @@ static gint save_image (
 	  fVal = 0.0;
 
 	/* use lookup table for speed */
-	sp0 = ((short *)&fVal)[0];
-	sp1 = ((short *)&fVal)[1];
+	sp0 = ((short *)&fVal)[1];
+	sp1 = ((short *)&fVal)[0];
+	printf ("==> %d %d %d %d %d %d\n", sp0, sp1, 
+	    ((short *)&fVal)[1], ((short *)&fVal)[0], IM_SGAMMA22LOOKUP_START, IM_SGAMMA22LOOKUP_END);
+
+	return sp0;
+
+
 	if ( sp1 & 32768 )
 	  ++sp0;
 	if ( sp0 < IM_SGAMMA22LOOKUP_START )
@@ -1741,6 +1758,7 @@ static gint save_image (
 	else
 	  ans = 
 	    IM_SGamma22Lookup[(sp0-IM_SGAMMA22LOOKUP_START)];
+
 
 	return ans;
 

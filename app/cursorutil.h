@@ -20,7 +20,7 @@
 
 #include "gdk/gdk.h"
 
-void create_win_cursor(GdkWindow *, int);
+void create_win_cursor(GdkWindow *, double);
 void change_win_cursor(GdkWindow *, GdkCursorType);
 void unset_win_cursor(GdkWindow *);
 
