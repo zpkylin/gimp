@@ -1,3 +1,12 @@
+Thu Apr  2 21:53:03 EEST 1998 Lauri Alanko <la@iki.fi>
+        
+	* Started the GTKOB_PROJECT branch. This is intended for modifying
+	gimp's internal data structures to use the gtk object system.
+	While this is underway, the core executable won't run, hence a
+	separate branch. When the conversion is "done", or at least in a
+	state where the gimp will once again run, this branch will be merged
+	to the main development branch.
+	
 Thu Apr  2 15:34:22 MEST 1998 Sven Neumann <sven@gimp.org>
 
 	* updated iwarp to the version on the registry and reapplied
