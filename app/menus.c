@@ -110,9 +110,7 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Select/Grow", NULL, select_grow_cmd_callback, 0 },
   { "/Select/Shrink", NULL, select_shrink_cmd_callback, 0 },
   { "/Select/Save To Channel", NULL, select_save_cmd_callback, 0 },
-#if 0
   { "/Select/By Color...", NULL, select_by_color_cmd_callback, 0 },
-#endif
   { "/View/Pan Zoom Window", NULL, view_pan_zoom_window_cb, 0 },
   { "/View/Zoom Bookmarks/1", "<control>1", view_zoom_bookmark0_cb, 0},
   { "/View/Zoom Bookmarks/2", "<control>2", view_zoom_bookmark1_cb, 0},

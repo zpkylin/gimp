@@ -680,7 +680,7 @@ by_color_select_render (ByColorDialog *bcd,
     buf = (unsigned char *) g_malloc (w);
 
     pixelrow_init (&dstrow,
-                   tag_new (PRECISION_U8,
+                   tag_new (PRECISION_FLOAT,
                             FORMAT_GRAY,
                             ALPHA_NO),
                    buf,
@@ -988,7 +988,7 @@ by_color_select_invoker (Argument *args)
       
       color_array = (unsigned char *) args[2].value.pdb_pointer;
 
-      pixelrow_init (&temp, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO),
+      pixelrow_init (&temp, tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO),
                      color_array, 1);
       pixelrow_init (&color, drawable_tag (drawable),
                      _color, 1);

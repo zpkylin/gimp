@@ -5106,6 +5106,7 @@ apply_layer_mode  (
       break;
 
     default :
+        printf ("ERROR: Mode not implemented\n");
       break;
     }
 

@@ -203,8 +203,8 @@ crop_button_release (Tool           *tool,
 
   /*  Finish the tool  */
   draw_core_stop (crop->core, tool);
-  info_dialog_popdown (crop_info);
   tool->state = INACTIVE;
+  info_dialog_popdown (crop_info);
 }
 
 static void
@@ -721,7 +721,10 @@ crop_info_update (Tool *tool)
   sprintf (height_buf, "%d", (crop->ty2 - crop->ty1));
 
   info_dialog_update (crop_info);
-  info_dialog_popup (crop_info);
+  if (tool->state == ACTIVE)
+  {
+    info_dialog_popup (crop_info);
+  }
 }
 
 static void
@@ -739,8 +742,8 @@ crop_ok_callback (GtkWidget *w,
 
   /*  Finish the tool  */
   draw_core_stop (crop->core, tool);
-  info_dialog_popdown (crop_info);
   tool->state = INACTIVE;
+  info_dialog_popdown (crop_info);
 }
 
 static void
@@ -776,8 +779,8 @@ crop_close_callback (GtkWidget *w,
   tool = active_tool;
 
   draw_core_stop (((Crop *) tool->private)->core, tool);
-  info_dialog_popdown (crop_info);
   tool->state = INACTIVE;
+  info_dialog_popdown (crop_info);
 }
 
 

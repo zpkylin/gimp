@@ -2087,8 +2087,6 @@ levels_free_transfers (LevelsDialog *ld)
  
   data = pixelrow_data (&ld->high_input_pr);
   if (data) g_free (data);
-  data = pixelrow_data (&ld->high_input_pr);
-  if (data) g_free (data);
   data = pixelrow_data (&ld->low_input_pr);
   if (data) g_free (data);
   data = pixelrow_data (&ld->high_output_pr);

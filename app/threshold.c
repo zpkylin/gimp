@@ -1242,7 +1242,13 @@ threshold_preview_update (GtkWidget *w,
       threshold_preview (td);
     }
   else
+{
     td->preview = FALSE;
+active_tool->preserve = TRUE;
+    image_map_remove(td->image_map);
+    active_tool->preserve = FALSE;
+    gdisplays_flush ();
+}
 }
 
 static void

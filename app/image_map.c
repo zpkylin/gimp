@@ -281,3 +281,48 @@ image_map_abort (ImageMap image_map)
 
   g_free (_image_map);
 }
+
+void
+image_map_remove (ImageMap image_map)
+{
+  _ImageMap *_image_map;
+  PixelArea src_area, dest_area;
+
+  _image_map = (_ImageMap *) image_map;
+
+  if (_image_map->state == WORKING)
+    {
+      gtk_idle_remove (_image_map->idle);
+      pixelarea_process_stop (_image_map->pr);
+      _image_map->pr = NULL;
+    }
+
+  /*  Make sure the drawable is still valid  */
+  if (! drawable_gimage ( (_image_map->drawable)))
+    return;
+
+  /*  restore the original image  */
+  if (_image_map->undo_tiles)
+    {
+      gint x1, y1, x2, y2;
+      /*  Copy from the undo to the drawable canvas  */
+      drawable_mask_bounds ( (_image_map->drawable), &x1, &y1, &x2, &y2);
+      pixelarea_init (&src_area, 
+			_image_map->undo_tiles, 
+			0, 0, 
+			canvas_width (_image_map->undo_tiles),
+			canvas_height (_image_map->undo_tiles), 
+			FALSE);
+      pixelarea_init (&dest_area, 
+			drawable_data (_image_map->drawable), 
+			x1, y1, x2 - x1, y2 - y1, 
+			TRUE);
+      copy_area (&src_area, &dest_area);
+
+      /*  Update the area  */
+      drawable_update ( (_image_map->drawable), x1, y1, x2 - x1, y2 - y1); 
+
+    }
+
+}
+
