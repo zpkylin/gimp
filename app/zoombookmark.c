@@ -7,6 +7,9 @@ ZoomBookmark zoom_bookmarks[ZOOM_BOOKMARK_NUM];
 static int zoom_bookmark_is_init = FALSE;
 
 static void zoom_bookmark_check_init();
+static void zoom_bookmark_save_doit(GtkWidget *button, gpointer data);
+static void zoom_bookmark_load_doit(GtkWidget *button, gpointer data);
+
 
 void zoom_bookmark_check_init()
 {
@@ -88,4 +91,63 @@ int zoom_bookmark_load(const char *filename)
    fclose(file);
    return 1;
 }
+
+void zoom_bookmark_save_requestor()
+{
+   GtkWidget *file_selector;
+   file_selector = gtk_file_selection_new("Save the current bookmarks");
+
+   gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
+			"clicked", GTK_SIGNAL_FUNC (zoom_bookmark_save_doit), 
+			(gpointer) file_selector);
+
+   /* Ensure that the dialog box is destroyed when the user clicks a button. */
+   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
+                        "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+                        (gpointer) file_selector);
+
+   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->cancel_button),
+                        "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+                        (gpointer) file_selector);
+
+   /* Display that dialog */
+   gtk_widget_show (file_selector);
+}
+
+void zoom_bookmark_load_requestor()
+{
+   GtkWidget *file_selector;
+   file_selector = gtk_file_selection_new("Select a bookmark file to load");
+
+   gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
+			"clicked", GTK_SIGNAL_FUNC (zoom_bookmark_load_doit), 
+			(gpointer) file_selector);
+
+   /* Ensure that the dialog box is destroyed when the user clicks a button. */
+   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
+                        "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+                        (gpointer) file_selector);
+
+   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->cancel_button),
+                        "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+                        (gpointer) file_selector);
+
+   /* Display that dialog */
+   gtk_widget_show (file_selector);
+}
+
+void zoom_bookmark_load_doit(GtkWidget *button, gpointer data)
+{
+   GtkFileSelection *sel;
+   sel = (GtkFileSelection *)data;
+   zoom_bookmark_load(gtk_file_selection_get_filename (GTK_FILE_SELECTION(sel)));
+}
+
+void zoom_bookmark_save_doit(GtkWidget *button, gpointer data)
+{
+   GtkFileSelection *sel;
+   sel = (GtkFileSelection *)data;
+   zoom_bookmark_save(gtk_file_selection_get_filename (GTK_FILE_SELECTION(sel)));
+}
+
 

@@ -2095,6 +2095,16 @@ select_save_cmd_callback (GtkWidget *widget,
   gdisplays_flush ();
 }
 
+void view_zoom_bookmark_save_cb(GtkWidget *widget, gpointer ptr)
+{
+   zoom_bookmark_save_requestor();
+}
+
+void view_zoom_bookmark_load_cb(GtkWidget *widget, gpointer ptr)
+{
+   zoom_bookmark_load_requestor();
+}
+
 void view_zoom_bookmark0_cb(
    GtkWidget *widget, 
    gpointer ptr)
@@ -2103,6 +2113,16 @@ void view_zoom_bookmark0_cb(
 
   gdisp = gdisplay_active ();
   zoom_bookmark_jump_to(&zoom_bookmarks[0], gdisp);
+}
+
+void view_zoom_bookmark4_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+  GDisplay *gdisp;
+
+  gdisp = gdisplay_active ();
+  zoom_bookmark_jump_to(&zoom_bookmarks[4], gdisp);
 }
 
 void view_zoom_bookmark1_cb(

@@ -232,15 +232,15 @@ ZoomControl * zoom_control_new()
   for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
      button = gtk_button_new_with_label("Set");
      gtk_table_attach(GTK_TABLE(table), button, i, i+1, 0, 1, 
-		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 2, 2);
+		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 1, 1);
      gtk_signal_connect (GTK_OBJECT (button), "clicked",
 		      (GtkSignalFunc) zoom_control_set_event, (gpointer)i);
      gtk_widget_show(button);
 
-     g_snprintf(buff, 16, " %d ", i); 
+     g_snprintf(buff, 16, "%d", i + 1); 
      button = gtk_button_new_with_label(buff);
      gtk_table_attach(GTK_TABLE(table), button, i, i+1, 1, 2, 
-		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 2, 2);
+		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 1, 1);
      gtk_signal_connect (GTK_OBJECT (button), "clicked",
 		      (GtkSignalFunc) zoom_control_jump_event, (gpointer)i);
      gtk_widget_show(button);
