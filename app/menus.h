@@ -40,5 +40,42 @@ void menus_set_state           (char                 *path,
 void menus_destroy             (char                 *path);
 void menus_quit                (void);
 
+void        
+pop_up_menu_add_accel_cb(
+  GtkWidget *widget,
+  guint accel_signal_id,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  GtkAccelFlags accel_flags,
+  gpointer user_data);
+
+void        
+pull_down_menu_add_accel_cb(
+  GtkWidget *widget,
+  guint accel_signal_id,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  GtkAccelFlags accel_flags,
+  gpointer user_data);
+
+void        
+pull_down_menu_rem_accel_cb(
+  GtkWidget *widget,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  gpointer user_data);
+
+
+void        
+pop_up_menu_rem_accel_cb(
+  GtkWidget *widget,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  gpointer user_data);
+
 
 #endif /* MENUS_H */

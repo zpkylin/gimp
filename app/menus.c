@@ -260,15 +260,314 @@ static GtkItemFactory *save_factory = NULL;
 
 static int initialize = TRUE;
 
+static void
+menu_remove_default_accel(const gchar *name)
+{
+   int i=0;
+   for (i=0; i < n_image_entries; i++) {
+      if (strcmp(image_entries[i].path, name) == 0) {
+          image_entries[i].accelerator = NULL;
+          return;
+      }
+   } 
+}
+
+static void
+menu_set_default_accel(const gchar *name, guint accel_key, GdkModifierType accel_mods)
+{
+   gchar buff[1024];
+   gchar *alt;
+   gchar *ctrl;
+   gchar *shift;
+   int i=0;
+
+   shift = (accel_mods & GDK_SHIFT_MASK) ? "<shift>" : "";
+   alt   = (accel_mods & GDK_MOD1_MASK) ? "<alt>" : "";
+   ctrl  = (accel_mods & GDK_CONTROL_MASK) ? "<control>" : "";
+   g_snprintf(buff, 1024, "%s%s%s%c", ctrl, shift, alt, toupper(accel_key));
+
+   for (i=0; i < n_image_entries; i++) {
+      if (strcmp(image_entries[i].path, name) == 0) {
+          // I know this is a memory leak, but it's really minor, and there's no
+          // easy tway to avoid id.  So just ignore it.  -- jcohen
+          image_entries[i].accelerator = strdup(buff);
+          return;
+      }
+   } 
+
+}
+
+/* Essentially, we're using this variable as a mutex.  This isn't the best
+ * way of doing it perhaps, but it will work. 
+ * When an accelerator is added or deleted, we will get a callback (below)
+ * and we will then propagate the changes to the other menus by hand. This
+ * in turn triggers the callback again and so.  This variable is to keep
+ * this from happening.  It makes the UI not MT safe, but I don't think that
+ * matters.  -- jcohen */ 
+static gint accel_inside_update = 0;
+
+void        
+pop_up_menu_add_accel_cb(
+  GtkWidget *widget,
+  guint accel_signal_id,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  GtkAccelFlags accel_flags,
+  gpointer user_data)
+{
+  gchar buff[1024];
+  gchar *wid_path = 0;
+  GtkMenuItem * item;
+  GSList * disp_list;
+  GDisplay *cur_gdisp;
+  GtkWidget * related_widget;
+
+  if (accel_inside_update)
+     return;
+  else 
+     accel_inside_update = 1;
+
+  item = (GtkMenuItem *)widget;
+  wid_path = strstr(gtk_widget_get_name(widget), ">/");
+
+  // go to all other pulldown menus and the popup menu
+  // propoate changes to them as well.
+  disp_list = display_list;  // traverse global list of Gdisplays
+  while (disp_list != 0) {
+     cur_gdisp = (GDisplay *)disp_list->data;
+     
+     // since corresponding menu entries in different menus have the same name,
+     // we can take advantage of that to look up the related menu item from other menus.
+     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+     related_widget =  gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
+                      
+     if (related_widget) {
+        gtk_widget_add_accelerator(
+                related_widget, gtk_signal_name(item->accelerator_signal),
+                cur_gdisp->menubar_fac->accel_group, accel_key, accel_mods, accel_flags);
+     }
+
+     disp_list = disp_list->next;
+  }
+
+  // remove from future window pulldown menus
+  menu_set_default_accel(wid_path + 1, accel_key, accel_mods);
+  accel_inside_update = 0;
+}
+
+void        
+pull_down_menu_add_accel_cb(
+  GtkWidget *widget,
+  guint accel_signal_id,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  GtkAccelFlags accel_flags,
+  gpointer user_data)
+{
+  gchar buff[1024];
+  gchar *wid_path;
+  GtkMenuItem * item;
+  GSList * disp_list;
+  GDisplay *this_gdisp;
+  GDisplay *cur_gdisp;
+  GtkWidget * related_widget;
+
+  if (accel_inside_update)
+     return;
+  else 
+     accel_inside_update = 1;
+
+  // go to all other pulldown menus and the popup menu
+  // propoate changes to them as well.
+  this_gdisp = (GDisplay *)user_data;
+  item = (GtkMenuItem *)widget;
+  wid_path = strstr(gtk_widget_get_name(widget), ">/");
+
+  // go to all other pulldown menus and the popup menu
+  // propoate changes to them as well.
+  
+  disp_list = display_list;  // traverse global list of Gdisplays
+  while (disp_list != 0) {
+     if (this_gdisp != disp_list->data) {
+
+        cur_gdisp = (GDisplay *)disp_list->data;
+        // since corresponding menu entries in different menus have the same name,
+        // we can take advantage of that to look up the related menu item from other menus.
+        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+        related_widget = 
+                gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
+        if (related_widget) {
+           gtk_widget_add_accelerator(
+                related_widget, gtk_signal_name(item->accelerator_signal),
+                cur_gdisp->menubar_fac->accel_group, accel_key, accel_mods, accel_flags);
+        }
+     }
+
+     disp_list = disp_list->next;
+  }
+
+  // do it for the popup
+  g_snprintf(buff, 1024, "<Image%s", wid_path);
+  related_widget = 
+         gtk_item_factory_get_widget (image_factory, buff);
+  if (related_widget) {
+     gtk_widget_add_accelerator(
+            related_widget, gtk_signal_name(item->accelerator_signal),
+            image_factory->accel_group, accel_key, accel_mods, accel_flags);
+  }
+ 
+ 
+  accel_inside_update = 0;
+}
+
+
+void        
+pull_down_menu_rem_accel_cb(
+  GtkWidget *widget,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  gpointer user_data)
+{
+  gchar buff[1024];
+  gchar *wid_path = 0;
+  GtkMenuItem * item;
+  GSList * disp_list;
+  GDisplay *this_gdisp;
+  GDisplay *cur_gdisp;
+  GtkWidget * related_widget;
+
+  if (accel_inside_update)
+     return;
+  else 
+     accel_inside_update = 1;
+  printf("Entering pull_down_menu_rem_accel_cb\n");
+
+  this_gdisp = (GDisplay *)user_data;
+  item = (GtkMenuItem *)widget;
+  wid_path = strstr(gtk_widget_get_name(widget), ">/");
+
+  // go to all other pulldown menus and the popup menu
+  // propoate changes to them as well.
+  
+  disp_list = display_list;  // traverse global list of Gdisplays
+  while (disp_list != 0) {
+     if (this_gdisp != disp_list->data) {
+        cur_gdisp = (GDisplay *)disp_list->data;
+        // since corresponding menu entries in different menus have the same name,
+        // we can take advantage of that to look up the related menu item from other menus.
+        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+        related_widget = 
+                gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
+        if (related_widget) {
+           gtk_widget_remove_accelerators(
+                related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
+        }
+     }
+
+     disp_list = disp_list->next;
+  }
+
+  // do it for the popup
+  g_snprintf(buff, 1024, "<Image%s", wid_path);
+  related_widget = 
+         gtk_item_factory_get_widget (image_factory, buff);
+  if (related_widget) {
+     gtk_widget_remove_accelerators(
+            related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
+  }
+ 
+  printf("Leaving pull_down_menu_rem_accel_cb\n");
+  accel_inside_update = 0;
+}
+
+
+void        
+pop_up_menu_rem_accel_cb(
+  GtkWidget *widget,
+  GtkAccelGroup *accel_group,
+  guint accel_key,
+  GdkModifierType accel_mods,
+  gpointer user_data)
+{ 
+  gchar buff[1024];
+  gchar *wid_path = 0;
+  GtkMenuItem * item;
+  GSList * disp_list;
+  GDisplay *cur_gdisp;
+  GtkWidget * related_widget;
+
+  if (accel_inside_update)
+     return;
+  else 
+     accel_inside_update = 1;
+
+  printf("Entering pop_up_menu_rem_accel_cb\n");
+  item = (GtkMenuItem *)widget;
+  wid_path = strstr(gtk_widget_get_name(widget), ">/");
+
+  // go to all other pulldown menus and the popup menu
+  // propoate changes to them as well.
+  disp_list = display_list;  // traverse global list of Gdisplays
+  while (disp_list != 0) {
+     cur_gdisp = (GDisplay *)disp_list->data;
+     
+     // since corresponding menu entries in different menus have the same name,
+     // we can take advantage of that to look up the related menu item from other menus.
+     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+     related_widget =  gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
+                      
+     if (related_widget) {
+        gtk_widget_remove_accelerators(
+                related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
+     }
+
+     disp_list = disp_list->next;
+  }
+
+  // remove from future window pulldown menus
+  menu_remove_default_accel(wid_path + 1);
+  printf("Leaving pop_up_menu_rem_accel_cb\n");
+
+  accel_inside_update = 0;
+}
+
+
+
 void
 menus_get_image_menubar(GDisplay *gdisp)
 {
-   gchar buff[256];
-   g_snprintf(buff, 256, "<Image%d>", gdisp->ID);
-   gdisp->menubar_fac = gtk_item_factory_new (GTK_TYPE_MENU_BAR, buff, NULL);
-   gtk_item_factory_create_items_ac (gdisp->menubar_fac , n_image_entries,image_entries, NULL, 2);
-				
-   gdisp->menubar = gdisp->menubar_fac->widget;
+  gchar buff[256];
+  GtkItemFactoryItem * fac_item;
+  GSList *cur_slist;
+  GSList *cur_wid_list;
+
+  g_snprintf(buff, 256, "<Image%d>", gdisp->ID);
+  gdisp->menubar_fac = gtk_item_factory_new (GTK_TYPE_MENU_BAR, buff, NULL);
+  gtk_item_factory_create_items_ac (gdisp->menubar_fac , n_image_entries,image_entries, NULL, 2);
+  gdisp->menubar = gdisp->menubar_fac->widget;
+
+  // iterate through all GtkMenuItmes that were created
+  cur_slist = gdisp->menubar_fac->items;
+  while (cur_slist != NULL) {
+    fac_item = (GtkItemFactoryItem *) cur_slist->data; 
+    cur_wid_list = fac_item->widgets;
+
+    while (cur_wid_list != NULL) { 
+      /* The idea is that we'd like to keep the pop-up and pulldown menus
+       * synchronized. To do this, we need to be notified when a menu
+       * accelerator is added or removed from one of the menus.  We will then
+       * propagate these changes to the other menus by hand */
+      gtk_signal_connect(GTK_OBJECT(cur_wid_list->data), "add-accelerator", 
+                  GTK_SIGNAL_FUNC(pull_down_menu_add_accel_cb), gdisp);
+      gtk_signal_connect(GTK_OBJECT(cur_wid_list->data), "remove-accelerator", 
+                  GTK_SIGNAL_FUNC(pull_down_menu_rem_accel_cb), gdisp);
+      cur_wid_list = cur_wid_list->next;
+    }
+    cur_slist = cur_slist->next;
+  }
 }
 
 void
@@ -399,9 +698,9 @@ menus_quit ()
   gchar *filename;
 
   filename = g_strconcat (gimp_directory (), "/menurc", NULL);
-  gtk_item_factory_dump_rc (filename, NULL, TRUE);
+  gtk_item_factory_dump_rc (filename, NULL, TRUE); 
   g_free (filename);
-  
+
   if (!initialize)
     {
       gtk_object_unref (GTK_OBJECT (toolbox_factory));
@@ -409,6 +708,36 @@ menus_quit ()
       gtk_object_unref (GTK_OBJECT (load_factory));
       gtk_object_unref (GTK_OBJECT (save_factory));
     }
+  
+}
+
+static void
+menus_setup_popup_callbacks(GtkItemFactory *fac)
+{
+  GtkItemFactoryItem * fac_item;
+  GSList *cur_slist;
+  GSList *cur_wid_list;
+
+  // iterate through all created GtkMenuItems in the factory
+  cur_slist = fac->items;
+  while (cur_slist != NULL) {
+    fac_item = (GtkItemFactoryItem *) cur_slist->data; 
+    cur_wid_list = fac_item->widgets;
+
+    while (cur_wid_list != NULL) { 
+
+      /* The idea is that we'd like to keep the pop-up and pulldown menus
+       * synchronized. To do this, we need to be notified when a menu
+       * accelerator is added or removed from one of the menus.  We will then
+       * propagate these changes to the other menus by hand */
+      gtk_signal_connect(GTK_OBJECT(cur_wid_list->data), "add-accelerator", 
+                  GTK_SIGNAL_FUNC(pop_up_menu_add_accel_cb), 0);
+      gtk_signal_connect(GTK_OBJECT(cur_wid_list->data), "remove-accelerator", 
+                  GTK_SIGNAL_FUNC(pop_up_menu_rem_accel_cb), 0);
+      cur_wid_list = cur_wid_list->next;
+    }
+    cur_slist = cur_slist->next;
+  }
 }
 
 
@@ -431,6 +760,9 @@ menus_init ()
 					n_image_entries,
 					image_entries,
 					NULL, 2);
+
+      menus_setup_popup_callbacks(image_factory);
+
       load_factory = gtk_item_factory_new (GTK_TYPE_MENU, "<Load>", NULL);
       gtk_item_factory_create_items_ac (load_factory,
 					n_load_entries,

@@ -73,7 +73,6 @@ static guint      gdisplay_hash             (GDisplay *);
 
 static GHashTable *display_ht = NULL;
 
-
 GDisplay*
 gdisplay_new (GImage       *gimage,
 	      unsigned int  scale)
@@ -81,7 +80,7 @@ gdisplay_new (GImage       *gimage,
   GDisplay *gdisp;
   GtkItemFactoryItem * fac_item;
   GSList *cur_slist;
-  GSList *cur_wid_list = fac_item->widgets;
+  GSList *cur_wid_list;
   char title [MAX_TITLE_BUF];
   int instance;
 
@@ -150,7 +149,8 @@ gdisplay_new (GImage       *gimage,
 
     while (cur_wid_list != NULL) { 
 
-      /* printf("Adding factory component: %s\n", gtk_type_query(GTK_OBJECT_TYPE(cur_wid_list->data))->type_name); */
+      /* printf("Adding factory component: %s\n", 
+       * gtk_type_query(GTK_OBJECT_TYPE(cur_wid_list->data))->type_name); */
       g_hash_table_insert(display_ht, cur_wid_list->data, gdisp); 
       cur_wid_list = cur_wid_list->next;
     }
