@@ -418,6 +418,7 @@ pull_down_menu_add_accel_cb(
             image_factory->accel_group, accel_key, accel_mods, accel_flags);
   }
  
+  menu_set_default_accel(wid_path + 1, accel_key, accel_mods);
  
   accel_inside_update = 0;
 }
@@ -479,6 +480,8 @@ pull_down_menu_rem_accel_cb(
             related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
   }
  
+  menu_remove_default_accel(wid_path + 1);
+
   //printf("Leaving pull_down_menu_rem_accel_cb\n");
   accel_inside_update = 0;
 }
