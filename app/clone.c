@@ -568,7 +568,6 @@ clone_paint_func (PaintCore *paint_core,
       if (clone_point_set) 
 	{
 	  draw = 0;
-      printf ("MMMMM\n"); 
 	  draw_core_pause (paint_core->core, active_tool);
 	}
       break;
@@ -663,7 +662,6 @@ clone_paint_func (PaintCore *paint_core,
 
   if (state == INIT_PAINT && clone_point_set)
     {
-      printf ("HHHHHH %d %d\n", src_x, src_y); 
       /*  Initialize the tool drawing core  */
       draw = 1;
       draw_core_start (paint_core->core,
@@ -673,7 +671,6 @@ clone_paint_func (PaintCore *paint_core,
   else if (state == MOTION_PAINT && clone_point_set)
     {
       draw = 1;
-      printf ("YYYYYY\n"); 
       draw_core_resume (paint_core->core, active_tool);
     }
   return NULL;
@@ -715,7 +712,7 @@ clone_draw (Tool *tool)
   paint_core = (PaintCore *) tool->private;
 
   
-  if (tool && paint_core && clone_point_set && !expose)
+  if (tool && paint_core && clone_point_set && !expose && drawable_gimage (source_drawable))
     {
       static int radius;
       gdisplay = gdisplay_get_ID (drawable_gimage (source_drawable)->ID); 
@@ -725,7 +722,6 @@ clone_draw (Tool *tool)
 	      canvas_width (get_active_brush ()->mask) : canvas_height (get_active_brush ()->mask))* 
 	    ((double)SCALEDEST (gdisplay) / 
 	     (double)SCALESRC (gdisplay));
-	  printf ("OOOOO %d \n"); 
 	}
       else if (draw)
 	{
@@ -737,9 +733,7 @@ clone_draw (Tool *tool)
 	      !((GDisplay *) tool->gdisp_ptr)->gimage->onionskin &&
 	      !(active_tool->state == INACTIVE && clone_options->aligned == AlignNo))
 	    {
-	  printf ("LLLL\n"); 
 
-	  printf ("%d %d\n", trans_tx, trans_ty);
 	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
 		  trans_tx - (TARGET_WIDTH >> 1), trans_ty,
 		  trans_tx + (TARGET_WIDTH >> 1), trans_ty);

@@ -1894,20 +1894,16 @@ transform_core_do  (
   palette_get_transparent (&color);
   
   /* do the transformation */
-    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   
   pixelarea_init (&outputPR, tiles,
                   0, 0,
                   0, 0,
                   TRUE);
-    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   pixelarea_init (&inputPR, float_tiles,
                   0, 0,
                   0, 0,
                   FALSE);
-    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   texture_map_area (&outputPR, &inputPR, m, i, &color);
-    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   
   /* return transformed image */
   return tiles;

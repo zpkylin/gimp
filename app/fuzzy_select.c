@@ -968,7 +968,7 @@ fuzzy_select_draw (Tool *tool)
 
   fuzzy_opts = (FuzzyOptions *) tool->private;
 
-  if (segs)
+  if (segs && fuzzy_opts && fuzzy_opts->core && fuzzy_opts->core->win && fuzzy_opts->core->gc)
     gdk_draw_segments (fuzzy_opts->core->win, fuzzy_opts->core->gc, segs, num_segs);
 }
 

@@ -61,6 +61,7 @@
 #include "xcf.h"
 #include "errors.h"
 #include "actionarea.h"
+#include "gimpbrush.h"
 
 #include "config.h"
 
@@ -133,6 +134,11 @@ gimp_init (int    gimp_argc,
   /* Handle showing dialogs with gdk_quit_adds here  */
   if (!no_interface && show_tips)
     tips_dialog_create ();
+  
+if (enable_brush_dialog)
+        create_brush_dialog ();
+  if (enable_layer_dialog)
+       lc_dialog_create (-1);
 }
 
 
@@ -538,6 +544,8 @@ app_init (void)
   get_active_brush ();
   get_active_pattern ();
   paint_funcs_area_setup ();
+
+
 
 }
 

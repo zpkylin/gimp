@@ -592,8 +592,11 @@ undo_pop_image (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (image_undo->drawable);
+      */
+      gimage_dirty (gimage);
+      drawable_dirty (image_undo->drawable);
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1112,8 +1115,11 @@ undo_pop_layer (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(lu->layer));
+      */
+      gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(lu->layer));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1258,8 +1264,10 @@ undo_pop_layer_mod (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(layer));
+      */gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(layer));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1371,8 +1379,11 @@ undo_pop_layer_mask (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(lmu->layer));
+      */
+      gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(lmu->layer));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1493,8 +1504,10 @@ undo_pop_channel (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(cu->channel));
+      */gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(cu->channel));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1622,8 +1635,11 @@ undo_pop_channel_mod (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(channel));
+      */
+      gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(channel));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1714,8 +1730,10 @@ undo_pop_fs_to_layer (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
       drawable_clean (GIMP_DRAWABLE(fsu->layer));
+      */gimage_dirty (gimage);
+      drawable_dirty (GIMP_DRAWABLE(fsu->layer));
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -1990,7 +2008,8 @@ undo_pop_gimage_mod (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
+      */gimage_dirty (gimage);
       break;
     case REDO:
       gimage_dirty (gimage);
@@ -2102,7 +2121,8 @@ undo_pop_guide (GImage *gimage,
   switch (state)
     {
     case UNDO:
-      gimage_clean (gimage);
+      /*gimage_clean (gimage);
+      */gimage_dirty (gimage);
       break;
     case REDO:
       gimage_dirty (gimage);

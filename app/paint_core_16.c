@@ -802,7 +802,6 @@ paint_core_16_area_setup  (
   paint_core->canvas_buf_height = (y2 - y1);
  
  
-  printf ("%d %d\n", x2 - x1, y2 - y1);
   
 }
 

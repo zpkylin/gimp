@@ -72,6 +72,8 @@ extern float     monitor_xres;
 extern float     monitor_yres;
 extern int       using_xserver_resolution;
 extern int       enable_rgbm_painting;
+extern int       enable_brush_dialog;
+extern int       enable_layer_dialog;
 extern int       enable_paste_c_disp;
 extern int       enable_tmp_saving;
 extern int       enable_channel_revert;

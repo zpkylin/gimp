@@ -76,7 +76,7 @@ histogram_draw (Histogram *histogram,
   if (update & HISTOGRAM)
     {
       /*  find the maximum value  */
-      max = 1.0;
+      max = FLT_MAX; /* max for float */
       for (i = 0; i < histogram_p->bins; i++)
 	{
 	  if (histogram_p->values[histogram_p->channel][i])

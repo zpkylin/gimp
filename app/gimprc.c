@@ -123,6 +123,10 @@ float     monitor_xres = 72.0;
 float     monitor_yres = 72.0;
 int       using_xserver_resolution = FALSE;
 int	  enable_rgbm_painting = FALSE;
+int	  enable_brush_dialog = FALSE;
+int	  enable_layer_dialog = FALSE;
+int	  enable_brush_display = FALSE;
+int	  enable_layer_display = FALSE;
 int	  enable_paste_c_disp = FALSE;
 int	  enable_tmp_saving = TRUE;
 int	  enable_channel_revert = FALSE;
@@ -226,6 +230,10 @@ static ParseFunc funcs[] =
   { "dont-show-tips",        TT_BOOLEAN,    NULL, &show_tips },
   { "enable-rgbm-painting",             TT_BOOLEAN,    &enable_rgbm_painting, NULL },
   { "dont-enable-rgbm-painting",        TT_BOOLEAN,    NULL, &enable_rgbm_painting },
+  { "enable-brush-dialog",             TT_BOOLEAN,    &enable_brush_dialog, NULL },
+  { "dont-enable-brush-dialog",        TT_BOOLEAN,    NULL, &enable_brush_dialog },
+  { "enable-layer-dialog",             TT_BOOLEAN,    &enable_layer_dialog, NULL },
+  { "dont-enable-layer-dialog",        TT_BOOLEAN,    NULL, &enable_layer_dialog },
   { "enable-paste-c-disp",             TT_BOOLEAN,    &enable_paste_c_disp, NULL },
   { "dont-enable-paste-c-disp",        TT_BOOLEAN,    NULL, &enable_paste_c_disp },
   { "enable-tmp-saving",             TT_BOOLEAN,    &enable_tmp_saving, NULL },

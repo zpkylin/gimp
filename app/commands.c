@@ -128,6 +128,8 @@ static   int          old_preview_size;
 static   int          old_no_cursor_updating;
 static   int          old_show_tool_tips;
 static   int          old_enable_rgbm_painting;
+static   int          old_enable_brush_dialog;
+static   int          old_enable_layer_dialog;
 static   int          old_enable_tmp_saving;
 static   int          old_enable_channel_revert; 
 static   int          old_enable_paste_c_disp; 
@@ -778,6 +780,16 @@ file_prefs_save_callback (GtkWidget *widget,
       update = g_list_append (update, "enable-rgbm-painting");
       remove = g_list_append (remove, "dont-enable-rgbm-painting");
     }
+  if (enable_brush_dialog != old_enable_brush_dialog)
+    {
+      update = g_list_append (update, "enable-brush-dialog");
+      remove = g_list_append (remove, "dont-enable-brush-dialog");
+    }
+  if (enable_layer_dialog != old_enable_layer_dialog)
+    {
+      update = g_list_append (update, "enable-layer-dialog");
+      remove = g_list_append (remove, "dont-enable-layer-dialog");
+    }
   if (enable_paste_c_disp!= old_enable_paste_c_disp)
     {
       update = g_list_append (update, "enable-paste-c-disp");
@@ -938,6 +950,8 @@ file_prefs_cancel_callback (GtkWidget *widget,
   no_cursor_updating = old_no_cursor_updating;
   show_tool_tips = old_show_tool_tips;
   enable_rgbm_painting = old_enable_rgbm_painting;
+  enable_brush_dialog = old_enable_brush_dialog;
+  enable_layer_dialog = old_enable_layer_dialog;
   enable_paste_c_disp = old_enable_paste_c_disp;
   enable_tmp_saving = old_enable_tmp_saving;
   enable_channel_revert = old_enable_channel_revert;
@@ -1000,6 +1014,10 @@ file_prefs_toggle_callback (GtkWidget *widget,
     enable_rgbm_painting = GTK_TOGGLE_BUTTON (widget)->active;
     channel_set_rgbm (enable_rgbm_painting); 
   } 
+  else if (data==&enable_brush_dialog)
+    enable_brush_dialog = GTK_TOGGLE_BUTTON (widget)->active;
+  else if (data==&enable_layer_dialog)
+    enable_layer_dialog = GTK_TOGGLE_BUTTON (widget)->active;
  else if (data==&enable_paste_c_disp)
     enable_paste_c_disp = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&enable_tmp_saving)
@@ -1174,6 +1192,8 @@ file_pref_cmd_callback (GtkWidget *widget,
       old_no_cursor_updating = no_cursor_updating;
       old_show_tool_tips = show_tool_tips;
       old_enable_rgbm_painting = enable_rgbm_painting; 
+      old_enable_brush_dialog = enable_brush_dialog; 
+      old_enable_layer_dialog = enable_layer_dialog; 
       old_enable_paste_c_disp = enable_paste_c_disp; 
       old_enable_tmp_saving = enable_tmp_saving; 
       old_enable_channel_revert = enable_channel_revert; 
@@ -1687,6 +1707,23 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_signal_connect (GTK_OBJECT (button), "toggled",
 			  (GtkSignalFunc) file_prefs_toggle_callback,
 			  &enable_rgbm_painting);
+      gtk_widget_show (button);
+      
+      button = gtk_check_button_new_with_label("Show brush dialog");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_brush_dialog);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_brush_dialog);
+      gtk_widget_show (button);
+      button = gtk_check_button_new_with_label("Show layer dialog");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_layer_dialog);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_layer_dialog);
       gtk_widget_show (button);
       
       button = gtk_check_button_new_with_label("Enable paste in center of display");
