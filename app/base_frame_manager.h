@@ -22,6 +22,8 @@ struct _base_frame_manager
   store_frame_manager *sfm;
   char *src_dir;
   char *dest_dir;  
+  char *src_name;
+  char *dest_name;  
 };
 
 void bfm_create_sfm (GDisplay *);
@@ -45,7 +47,7 @@ void bfm_next_filename (GImage *, char *, char *, char, GDisplay *);
 char* bfm_get_name (GImage *image);
 char* bfm_get_frame (GImage *image);
 char* bfm_get_ext (GImage *image);
-void bfm_this_filename (GImage *, char *, char *, char *);
+void bfm_this_filename (char *, char *, char *, char *, int);
 
 GDisplay* bfm_load_image_into_fm (GDisplay *, GImage *);
 extern ProcRecord bfm_set_dir_src_proc; 
@@ -66,6 +68,7 @@ typedef struct
   char bg;
   char selected;
   char active;
+  char special;
   /* GUI */
   GtkWidget *iadvance;
   GtkWidget *iflip;
@@ -84,10 +87,11 @@ struct _store_frame_manager
   gint readonly;
   gint s_x, s_y, e_x, e_y;
   gint sx, sy, ex, ey;
+  gint play;
   /* GUI */
-  GtkToggleButton *aofi;
-  GtkToggleButton *autosave;
-  GtkToggleButton *onionskin;
+  GtkWidget *aofi;
+  GtkWidget *autosave;
+  GtkWidget *onionskin;
   GtkWidget *shell;  
   GtkWidget *store_list;  
   GtkWidget *onionskin_val;  
@@ -95,6 +99,7 @@ struct _store_frame_manager
   GtkWidget *chg_frame_dialog;  
   GtkWidget *change_to;   
   GtkWidget *num_to_add;  
+  GtkWidget *num_to_adv;  
   GtkWidget *src_dir;  
   GtkWidget *dest_dir;  
 };

@@ -460,6 +460,7 @@ sfm_adv_backwards (GtkWidget *w, gpointer data)
   gint num_to_adv = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(fm->num_to_adv));
   char whole[256], raw[256]; 
   gint row=0, cur_frame, new_frame, flag=0, frame;
+  GImage *gimage=NULL;
 
   GSList *list=NULL, *new_list=NULL, *l=NULL;
   store *item, *i;
@@ -519,9 +520,12 @@ sfm_adv_backwards (GtkWidget *w, gpointer data)
 	    }
 	  else
 	    {
-	      if ((item->gimage = file_load_without_display (whole, raw, ((GDisplay*)data))))
-		gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 5, raw);
-	      gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 4, "");
+	      if ((gimage = file_load_without_display (whole, raw, ((GDisplay*)data))))
+		{
+		  item->gimage = gimage;
+		  gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 5, raw);
+		  gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 4, "");
+		}
 	    }
 	}
       new_list = g_slist_append (new_list, item);
@@ -545,6 +549,8 @@ sfm_adv_forward (GtkWidget *w, gpointer data)
   gint num_to_adv = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(fm->num_to_adv));
   char whole[256], raw[256]; 
   gint row=0, cur_frame, new_frame, flag=0, frame;
+
+  GImage *gimage=NULL;
 
   GSList *list=NULL, *new_list=NULL, *l=NULL;
   store *item, *i;
@@ -605,9 +611,12 @@ sfm_adv_forward (GtkWidget *w, gpointer data)
 	    }
 	  else
 	    {
-	      if ((item->gimage = file_load_without_display (whole, raw, ((GDisplay*)data))))
+	      if ((gimage = file_load_without_display (whole, raw, ((GDisplay*)data))))
+		{
+		  item->gimage = gimage;
 		gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 5, raw);
 	      gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 4, "");
+		}
 	    }
 	}
       new_list = g_slist_append (new_list, item);
@@ -616,9 +625,6 @@ sfm_adv_forward (GtkWidget *w, gpointer data)
     }
   g_slist_free (fm->stores);
   fm->stores = new_list;
-
-
-  /* */
 
   return 1;
 }

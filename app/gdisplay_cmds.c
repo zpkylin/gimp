@@ -154,10 +154,14 @@ gdisplay_fm_invoker (Argument *args)
 /*  The procedure definition  */
 ProcArg gdisplay_fm_args[] =
 {
-  { PDB_IMAGE,
-    "image",
-    "the image"
-  }
+    { PDB_IMAGE,
+      "image",
+      "the image"
+    },
+    { PDB_DISPLAY,
+      "display",
+      "the display"
+    }
 };
 
 ProcArg gdisplay_fm_out_args[] =
@@ -179,7 +183,7 @@ ProcRecord gdisplay_fm_proc =
   PDB_INTERNAL,
 
   /*  Input arguments  */
-  1,
+  2,
   gdisplay_fm_args,
 
   /*  Output arguments  */

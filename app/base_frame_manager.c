@@ -67,6 +67,7 @@ bfm_create_sfm (GDisplay *disp)
  disp->bfm->sfm->add_dialog = 0;
  disp->bfm->sfm->chg_frame_dialog = 0;
  disp->bfm->sfm->readonly = 0; 
+ disp->bfm->sfm->play = 0; 
  /* GUI */
  sfm_create_gui (disp);
 
@@ -152,7 +153,7 @@ bfm_onionskin_set_offset (GDisplay *disp, int x, int y)
 void 
 bfm_onionskin_rm (GDisplay *disp)
 {
-  if (!bfm_check (disp))
+  if (!bfm_check (disp) || !disp->bfm->onionskin)
     return;
 
   if(disp->bfm->cfm)
@@ -161,17 +162,18 @@ bfm_onionskin_rm (GDisplay *disp)
     }
   else
     if(disp->bfm->sfm)
-      sfm_onionskin_rm (disp);
+      {
+	sfm_onionskin_rm (disp);
 
-  disp->bfm->fg->active_layer->opacity = 1;
-  gimage_remove_layer (disp->bfm->fg, (disp->bfm->bg->active_layer));
+	disp->bfm->fg->active_layer->opacity = 1;
+	gimage_remove_layer (disp->bfm->fg, (disp->bfm->bg->active_layer));
 
-  GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_x = 0;
-  GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_y = 0;
-  GIMP_DRAWABLE(disp->bfm->bg->active_layer)->gimage_ID = disp->bfm->bg->ID;
+	GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_x = 0;
+	GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_y = 0;
+	GIMP_DRAWABLE(disp->bfm->bg->active_layer)->gimage_ID = disp->bfm->bg->ID;
 
-  disp->bfm->onionskin = 0;
-
+	disp->bfm->onionskin = 0;
+      }
 }
 
 void
@@ -230,30 +232,43 @@ bfm_onionskin_display (GDisplay *disp, double val, int sx, int sy, int ex, int e
  */
 
 void
-bfm_this_filename (GImage *gimage, char *whole, char *raw, char *num)
+bfm_this_filename (char *filepath, char *filename, char *whole, char *raw, int frame)
 {
+  char *name, *num, *ext;
+  char frame_num[10];
+  int old_l, cur_l;
 
-  char rawname[256], *name, *frame_num, *ext;
-  int len, org_len;
-
-  if (!gimage)
-    return;
-
-  strcpy (whole, gimage->filename);
-  strcpy (rawname, prune_filename (whole));
-
-  len = strlen (whole);
-  org_len = strlen (rawname);
-
-
-  name  = strtok (rawname, ".");
-  frame_num = strtok (NULL, ".");
+  name  = strtok (strdup(filename), ".");
+  num = strtok (NULL, ".");
   ext = strtok (NULL, ".");
 
+  sprintf (frame_num, "%d", frame);
 
-  sprintf (&raw[0], "%s.%s.%s", name, num, ext);
+  old_l = strlen (num);
+  cur_l = strlen (frame_num);
 
-  sprintf (&((&whole[0])[len-org_len]), "%s", raw);
+  switch (old_l-cur_l)
+    {
+    case 0:
+      break;
+    case 1:
+      sprintf (frame_num, "0%d", frame);
+      break;
+    case 2:
+      sprintf (frame_num, "00%d", frame);
+      break;
+    case 3:
+      sprintf (frame_num, "000%d", frame);
+      break;
+    case 4:
+      sprintf (frame_num, "0000%d", frame);
+      break;
+    default:
+      break; 
+    }
+  sprintf (raw, "%s.%s.%s", name, frame_num, ext);
+
+  sprintf (whole, "%s/%s", filepath, raw);
 
 }
 
@@ -329,13 +344,14 @@ bfm_load_image_into_fm (GDisplay *disp, GImage *img)
 void 
 bfm_set_dir_dest (GDisplay *disp, char *filename)
 {
-  printf ("== %s\n", filename);
   if (!bfm_check (disp))
     return;
 
-  disp->bfm->dest_dir = strdup (filename);
+  disp->bfm->dest_dir = strdup (prune_pathname(filename));
+  disp->bfm->dest_name = strdup (prune_filename(filename));
+
   if (disp->bfm->sfm)
-    sfm_set_dir_dest (disp, disp->bfm->dest_dir);
+    sfm_set_dir_dest (disp);
 }
 
 static Argument *
@@ -398,14 +414,14 @@ ProcRecord bfm_set_dir_dest_proc =
 void 
 bfm_set_dir_src (GDisplay *disp, char *filename)
 {
-  printf ("=== %s\n", filename);
   if (!bfm_check (disp))
     return;
 
-  disp->bfm->src_dir = strdup (filename);
+  disp->bfm->src_dir = strdup (prune_pathname(filename));
+  disp->bfm->src_name = strdup (prune_filename(filename));
 
   if (disp->bfm->sfm)
-    sfm_set_dir_src (disp, disp->bfm->src_dir);
+    sfm_set_dir_src (disp);
 }
 
 static Argument *

@@ -251,8 +251,8 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Dialogs/Frame Manager/lower step backwards", "E", dialogs_frame_manager_lower_step_backwards_cmd_callback, 0 },
   { "/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/Dialogs/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
-#if 0
   { "/Dialogs/Store Frame Manager/create", "<control>F", dialogs_store_frame_manager_cmd_callback, 0 },
+#if 0
   { "/Dialogs/Indexed Palette...", NULL, dialogs_indexed_palette_cmd_callback, 0 },
 #endif
   { "/Dialogs/Tool Options...", NULL, dialogs_tools_options_cmd_callback, 0 },

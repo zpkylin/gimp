@@ -76,7 +76,8 @@ query ()
   {                                                     
     { PARAM_INT32,      "run_mode",     "Interactive, non-interactive" },
     { PARAM_IMAGE,      "image",        "Input image" },
-    { PARAM_DRAWABLE,   "drawable",     "Input drawable" }
+    { PARAM_DRAWABLE,   "drawable",     "Input drawable" },
+      { PARAM_DISPLAY, "display", "Input display"}
   };                                                    
   static GParamDef      *save_return_vals = NULL;            
   static int             save_nargs        = sizeof(save_args) / sizeof(save_args[0]);
@@ -119,8 +120,8 @@ query ()
 		    "<sfm_menu>/Store/LoadImage",
 		    "FLOAT16_RGB*, FLOAT16_GRAY*",
 		    PROC_PLUG_IN,
-		    save_nargs, save_nreturn_vals, 
-		    save_args, save_return_vals);
+		    load_nargs, 0, 
+		    load_args, NULL);
   gimp_install_procedure ("rhythm_and_hues_image_fm_load_extension",
 		    "Provides a Rhythm & Hues fm save dialog",
 		    "Provides a Rhythm & Hues fm save dialog",
@@ -130,8 +131,8 @@ query ()
 		    "<sfm_menu>/Store/LoadImage",
 		    "FLOAT16_RGB*, FLOAT16_GRAY*",
 		    PROC_PLUG_IN,
-		    save_nargs, save_nreturn_vals, 
-		    save_args, save_return_vals);
+		    load_nargs, 0, 
+		    load_args, NULL);
 
 }
 
@@ -151,7 +152,6 @@ run (char    *name,
   *return_vals = values;
 
   dialog_in_use = FALSE;
-    printf ("lsdkfjds\n"); 
 
   if (strcmp (name, "rhythm_and_hues_toolbox_fm_load_extension") == 0 ||
 	strcmp (name, "rhythm_and_hues_image_fm_load_extension") == 0 )
@@ -162,6 +162,7 @@ run (char    *name,
 #endif
     disp_ID = param[0].data.d_int32;
     dialog_in_use = TRUE;
+    printf ("load %d\n", disp_ID); 
     vk_main(0);
   }
   else if (strcmp (name, "rhythm_and_hues_bfm_set_dir_src") == 0 )
@@ -217,6 +218,7 @@ int file_load (const char * filename)
       printf("process %d ", getpid());
    printf("in file_load\n");
 #endif
+    printf ("file load \n"); 
 
    return_vals = gimp_run_procedure ("gimp_file_load",
 			&nreturn_vals,
@@ -234,6 +236,7 @@ int file_load (const char * filename)
       image_ID = return_vals[1].data.d_image;
       gimp_image_enable_undo( image_ID);
       gimp_image_clean_all( image_ID);
+    printf ("  file load %d\n", disp_ID); 
       gimp_display_fm (image_ID, disp_ID);
       return 0; 
     }
@@ -257,8 +260,8 @@ int bfm_set_dir_src (const char * filename)
 int bfm_set_dir_dest (const char * filename)
 {
 
-  printf ("display id %d\n", disp_ID); 
-  gimp_bfm_set_dir_src (disp_ID, (char*) filename);
+  printf ("dest display id %d\n", disp_ID); 
+  gimp_bfm_set_dir_dest (disp_ID, (char*) filename);
   return 0; 
 }
 
