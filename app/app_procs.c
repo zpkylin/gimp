@@ -60,6 +60,7 @@
 #include "undo.h"
 #include "xcf.h"
 #include "errors.h"
+#include "actionarea.h"
 
 #include "config.h"
 
@@ -595,8 +596,9 @@ app_exit (int kill_it)
   else if (no_interface == FALSE)
     toolbox_free ();
 
-  app_exit_finish ();
-}
+/*  app_exit_finish ();
+*/
+    }
 
 /********************************************************
  *   Routines to query exiting the application          *
@@ -629,12 +631,19 @@ really_quit_delete_callback (GtkWidget *widget,
   return TRUE;
 }
 
+static GtkWidget *dialog;
+
+static ActionAreaItem quit_action_items[] =
+{
+    { "No", really_quit_cancel_callback, NULL, NULL },   
+        { "Yes", really_quit_callback, NULL, NULL }  
+};
+
 static void
 really_quit_dialog ()
 {
-  GtkWidget *dialog;
-  GtkWidget *button;
   GtkWidget *label;
+  GtkWidget *vbox;
 
   menus_set_sensitive ("<Toolbox>/File/Quit", FALSE);
   menus_set_sensitive ("<Image>/File/Quit", FALSE);
@@ -642,35 +651,30 @@ really_quit_dialog ()
   dialog = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (dialog), "really_quit", "Gimp");
   gtk_window_set_title (GTK_WINDOW (dialog), "Really Quit?");
+  gtk_window_set_policy (GTK_WINDOW (dialog), FALSE, FALSE, FALSE);
   gtk_window_position (GTK_WINDOW (dialog), GTK_WIN_POS_MOUSE);
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dialog)->action_area), 2);
+  /*
+     gtk_signal_connect (GTK_OBJECT (dialog), "delete_event",
+     (GtkSignalFunc) really_quit_delete_callback,
+     dialog);
+   */
+  vbox = gtk_vbox_new (FALSE, 1);
+  gtk_container_border_width (GTK_CONTAINER (vbox), 1);
+  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox),
+      vbox, TRUE, TRUE, 0);
 
-  gtk_signal_connect (GTK_OBJECT (dialog), "delete_event",
-		      (GtkSignalFunc) really_quit_delete_callback,
-		      dialog);
-
-  button = gtk_button_new_with_label ("Yes");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      (GtkSignalFunc) really_quit_callback,
-		      dialog);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->action_area), button, TRUE, TRUE, 0);
-  gtk_widget_grab_default (button);
-  gtk_widget_show (button);
-
-  button = gtk_button_new_with_label ("No");
-  GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-		      (GtkSignalFunc) really_quit_cancel_callback,
-		      dialog);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->action_area), button, TRUE, TRUE, 0);
-  gtk_widget_show (button);
-
-  label = gtk_label_new ("Some files unsaved.  Quit the GIMP?");
-  gtk_misc_set_padding (GTK_MISC (label), 10, 1);
-  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox), label, TRUE, TRUE, 0);
+  label = gtk_label_new ("Really quit? -- Not all is saved."); 
+  gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 4);
+  gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
   gtk_widget_show (label);
 
+  quit_action_items[0].user_data = dialog;
+  quit_action_items[1].user_data = dialog;
+  build_action_area (GTK_DIALOG (dialog), quit_action_items, 2, 0);
+
+
+  gtk_widget_show (vbox);
   gtk_widget_show (dialog);
 }
 
