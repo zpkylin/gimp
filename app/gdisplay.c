@@ -43,6 +43,7 @@
 #include "tools.h"
 #include "undo.h"
 #include "frame_manager.h"
+#include "base_frame_manager.h"
 
 #include "layer_pvt.h"			/* ick. */
 
@@ -171,8 +172,13 @@ gdisplay_fm (GImage *gimage,
 	      unsigned int  scale,
 	      GDisplay *display)
 {
- 
+
+ if (display->framemanager) 
   return frame_manager_load (display, gimage);
+ if (display->bfm)
+   return bfm_load_image_into_fm (display, gimage);
+
+ return display;
 }
 
 static void

@@ -31,6 +31,9 @@ void menus_get_load_menu       (GtkWidget           **menu,
 				GtkAccelGroup       **accel_group);
 void menus_get_save_menu       (GtkWidget           **menu,
 				GtkAccelGroup       **accel_group);
+void menus_get_sfm_store_menu 	(GtkWidget 	    **menu, 
+    				GtkAccelGroup 	    **accel_group, 
+				GDisplay 	    *disp);
 void menus_create              (GtkMenuEntry         *entries,
 				int                   nmenu_entries);
 void menus_set_sensitive       (char                 *path,

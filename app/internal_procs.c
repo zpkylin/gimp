@@ -68,6 +68,8 @@
 #include "scale_tool.h"
 #include "shear_tool.h"
 #include "shmbuf.h"
+#include "base_frame_manager.h"
+
 #if 0
 #include "text_tool.h"
 #endif
@@ -122,6 +124,8 @@ internal_procs_init ()
   /*  GDisplay procedures  */
   procedural_db_register (&gdisplay_new_proc); pcount++;
   procedural_db_register (&gdisplay_fm_proc); pcount++;
+  procedural_db_register (&bfm_set_dir_src_proc); pcount++;
+  procedural_db_register (&bfm_set_dir_dest_proc); pcount++;
   procedural_db_register (&gdisplay_active_proc); pcount++;
   procedural_db_register (&gdisplay_delete_proc); pcount++;
   procedural_db_register (&gdisplays_delete_image_proc); pcount++;

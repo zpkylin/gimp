@@ -9,14 +9,15 @@
 #include <string.h>
 #include "layer_pvt.h"
 
+static int success; 
+
+
 static char
 bfm_check (GDisplay *disp)
 {
   if (!disp)
     return 0;
-
-  return 1;
-  if (disp->frame_manager)
+  if (disp->bfm)
     return 1;
   return 0;
 }
@@ -64,6 +65,7 @@ bfm_create_sfm (GDisplay *disp)
  disp->bfm->sfm->bg = -1;
  disp->bfm->sfm->fg = -1;
  disp->bfm->sfm->add_dialog = 0;
+ disp->bfm->sfm->chg_frame_dialog = 0;
  disp->bfm->sfm->readonly = 0; 
  /* GUI */
  sfm_create_gui (disp);
@@ -228,30 +230,30 @@ bfm_onionskin_display (GDisplay *disp, double val, int sx, int sy, int ex, int e
  */
 
 void
-bfm_this_filename (GImage *gimage, char **whole, char **raw, char *num)
+bfm_this_filename (GImage *gimage, char *whole, char *raw, char *num)
 {
 
-  char rawname[256], *name, *frame, *ext;
+  char rawname[256], *name, *frame_num, *ext;
   int len, org_len;
 
   if (!gimage)
     return;
 
-  strcpy (*whole, gimage->filename);
-  strcpy (rawname, prune_filename (*whole));
+  strcpy (whole, gimage->filename);
+  strcpy (rawname, prune_filename (whole));
 
-  len = strlen (*whole);
+  len = strlen (whole);
   org_len = strlen (rawname);
 
 
   name  = strtok (rawname, ".");
-  frame = strtok (NULL, ".");
+  frame_num = strtok (NULL, ".");
   ext = strtok (NULL, ".");
 
 
-  sprintf (*raw, "%s.%s.%s\0", name, num, ext);
+  sprintf (&raw[0], "%s.%s.%s", name, num, ext);
 
-  sprintf (&((*whole)[len-org_len]), "%s\0", *raw);
+  sprintf (&((&whole[0])[len-org_len]), "%s", raw);
 
 }
 
@@ -309,4 +311,148 @@ bfm_get_ext (GImage *gimage)
   return strdup (strtok (NULL, "."));
 
 }
+
+GDisplay* 
+bfm_load_image_into_fm (GDisplay *disp, GImage *img)
+{
+  if (!bfm_check (disp))
+    return disp;
+  if (disp->bfm->sfm)
+    return sfm_load_image_into_fm (disp, img);
+  return disp; 
+}
+
+/*
+ * PLUG-IN STUFF
+ */
+
+void 
+bfm_set_dir_dest (GDisplay *disp, char *filename)
+{
+  printf ("== %s\n", filename);
+  if (!bfm_check (disp))
+    return;
+
+  disp->bfm->dest_dir = strdup (filename);
+  if (disp->bfm->sfm)
+    sfm_set_dir_dest (disp, disp->bfm->dest_dir);
+}
+
+static Argument *
+bfm_set_dir_dest_invoker (Argument *args)
+{
+  GDisplay *disp; 
+  gint int_value;
+
+  success = TRUE;
+
+  success = TRUE;
+  if (success)
+    {
+      int_value = args[0].value.pdb_int;
+      if (!(disp = gdisplay_get_ID (int_value)))
+	success = FALSE;
+    }
+
+  if (success)
+    bfm_set_dir_dest (disp, (char *) args[1].value.pdb_pointer);
+
+  /*  create the new image  */
+  return  procedural_db_return_args (&bfm_set_dir_dest_proc, success);
+
+}
+
+/*  The procedure definition  */
+ProcArg bfm_set_dir_args[] =
+{
+};
+
+ProcArg bfm_set_dir_out_args[] =
+{
+  { PDB_DISPLAY, "display", "The display"}, {PDB_STRING, "filename", "The name of the file to load." }
+};
+
+ProcRecord bfm_set_dir_dest_proc =
+{
+  "gimp_bfm_set_dir_dest",
+  "Get a fileset from the user",
+  "Get a fileset from the user",
+  "Caroline Dahllof",
+  "Caroline Dahllof",
+  "2002",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  2,
+  bfm_set_dir_args,
+
+  /*  Output arguments  */
+  0,
+  bfm_set_dir_out_args,
+
+  /*  Exec method  */
+    { { bfm_set_dir_dest_invoker } },
+};
+
+
+void 
+bfm_set_dir_src (GDisplay *disp, char *filename)
+{
+  printf ("=== %s\n", filename);
+  if (!bfm_check (disp))
+    return;
+
+  disp->bfm->src_dir = strdup (filename);
+
+  if (disp->bfm->sfm)
+    sfm_set_dir_src (disp, disp->bfm->src_dir);
+}
+
+static Argument *
+bfm_set_dir_src_invoker (Argument *args)
+{
+  GDisplay *disp; 
+  gint int_value;
+
+  success = TRUE;
+
+  success = TRUE;
+  if (success)
+    {
+      int_value = args[0].value.pdb_int;
+      if (!(disp = gdisplay_get_ID (int_value)))
+	success = FALSE;
+    }
+
+  if (success)
+    bfm_set_dir_src (disp, (char *) args[1].value.pdb_pointer);
+
+  /*  create the new image  */
+  return  procedural_db_return_args (&bfm_set_dir_src_proc, success);
+
+}
+
+/*  The procedure definition  */
+
+ProcRecord bfm_set_dir_src_proc =
+{
+  "gimp_bfm_set_dir_src",
+  "Get a fileset from the user",
+  "Get a fileset from the user",
+  "Caroline Dahllof",
+  "Caroline Dahllof",
+  "2002",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  2,
+  bfm_set_dir_args,
+
+  /*  Output arguments  */
+  0,
+  bfm_set_dir_out_args,
+
+  /*  Exec method  */
+    { { bfm_set_dir_src_invoker } },
+};
 

@@ -786,7 +786,6 @@ gimp_image_set_component_visible (gint32 image_ID,
 
   gimp_destroy_params (return_vals, nreturn_vals);
 }
-
 void
 gimp_image_set_filename (gint32  image_ID,
 			 char   *name)
@@ -802,3 +801,35 @@ gimp_image_set_filename (gint32  image_ID,
 
   gimp_destroy_params (return_vals, nreturn_vals);
 }
+
+void
+gimp_bfm_set_dir_src (gint32  disp_ID, char   *name)
+{
+  GParam *return_vals;
+  int nreturn_vals;
+
+  return_vals = gimp_run_procedure ("gimp_bfm_set_dir_src",
+				    &nreturn_vals,
+				    PARAM_DISPLAY, disp_ID,
+				    PARAM_STRING, name,
+				    PARAM_END);
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+}
+
+void
+gimp_bfm_set_dir_dest (gint32  disp_ID, char   *name)
+{
+  GParam *return_vals;
+  int nreturn_vals;
+
+  return_vals = gimp_run_procedure ("gimp_bfm_set_dir_dest",
+				    &nreturn_vals,
+				    PARAM_DISPLAY, disp_ID,
+				    PARAM_STRING, name,
+				    PARAM_END);
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+}
+
+

@@ -280,6 +280,10 @@ void RH_FileDialog::ok(Widget w, XtPointer callData)
       failed = file_save ((const char*)rawFilename, TRUE);
     else if (_mode == 0)
       failed = file_load ((const char*)rawFilename);
+    else if (_mode == 3)
+      failed = bfm_set_dir_src ((const char*)rawFilename); 
+    else if (_mode == 4)
+      failed = bfm_set_dir_dest ((const char*)rawFilename); 
 
     if (!failed)
       VkGenericDialog::ok(w, callData);

@@ -75,6 +75,8 @@ int vk_main ( int mode )
     char *load_str = {"Open"};                                                     
     char *save_str = {"Save"};     
     char *save_as_str = {"Save As"};     
+    char *set_dir_str = {"Set Dir"};     
+	
 
     switch (mode)
     {
@@ -86,6 +88,10 @@ int vk_main ( int mode )
 	break;
       case 2:
 	argv = &save_as_str;
+	break;
+      case 3:
+      case 4:
+	argv = &set_dir_str;
 	break;
       default:
 	return 1;
@@ -133,7 +139,11 @@ int vk_main ( int mode )
     if (mode == 0) 
        _rH_FileDialog->postAndWait(NULL, TRUE, TRUE, TRUE); 
      else if (mode == 1 || mode == 2) 
-       _rH_FileDialog->postAndWait(NULL, TRUE, TRUE, FALSE); 
+       _rH_FileDialog->postAndWait(NULL, TRUE, TRUE, FALSE);
+    else if (mode == 3 || mode == 4)
+      {
+     _rH_FileDialog->postAndWait(NULL, TRUE, TRUE, FALSE);
+      }
     // 
     // Set exposed resources.  
     // 

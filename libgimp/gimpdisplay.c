@@ -121,3 +121,5 @@ gimp_displays_flush ()
 
   gimp_destroy_params (return_vals, nreturn_vals);
 }
+
+

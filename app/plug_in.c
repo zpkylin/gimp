@@ -1730,12 +1730,27 @@ plug_in_handle_proc_install (GPProcInstall *proc_install)
 	      return;
 	    }
 	}
+      else if (strncmp (proc_install->menu_path, "<sfm_menu>", 10) == 0)
+	{
+	  if (((proc_install->nparams < 1) ||
+	      (proc_install->params[0].type != PDB_DISPLAY)) &&
+	      ((proc_install->nparams < 3) ||
+	      (proc_install->params[0].type != PDB_INT32) ||
+	      (proc_install->params[1].type != PDB_IMAGE) ||
+	      (proc_install->params[2].type != PDB_DRAWABLE)))
+	    {
+	      g_message ("plug-in \"%s\" attempted to install procedure \"%s\" which "
+			 "does not take the standard plug-in args",
+			 current_plug_in->args[0], proc_install->name);
+	      return;
+	    }
+	}
       else if (strncmp (proc_install->menu_path, "<Load>", 6) == 0)
 	{
 	  if ((proc_install->nparams < 3) ||
 	      (proc_install->params[0].type != PDB_INT32) ||
 	      (proc_install->params[1].type != PDB_STRING) ||
-	      (proc_install->params[2].type != PDB_STRING))
+	      (proc_install->params[2].type != PDB_STRING) )
 	    {
 	      g_message ("plug-in \"%s\" attempted to install procedure \"%s\" which "
 			 "does not take the standard plug-in args",
@@ -2352,7 +2367,11 @@ plug_in_callback (GtkWidget *widget,
       break;
 
     case PDB_PLUGIN:
-      if (gdisplay)
+      if (proc_rec->num_args && args[0].arg_type == PDB_DISPLAY)
+	{
+	  args[0].value.pdb_int = gdisplay->ID;
+	}
+      else if (gdisplay)
 	{
 	  /* initialize the first 3 plug-in arguments  */
 	  args[0].value.pdb_int = RUN_INTERACTIVE;

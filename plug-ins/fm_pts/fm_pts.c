@@ -32,6 +32,7 @@ gint32 drawable_to_save_ID;
 gint32 is_layered;
 gint32 is_dirty;     
 int dialog_in_use;
+gint32 disp_ID;
 
 /* local functions */
 static void   query      ( void);
@@ -41,6 +42,7 @@ static void   run        (char    *name,
                           int     *nreturn_vals,
                           GParam **return_vals);
 static gint32 load_image (char   *filename);
+static gint32 bfm_set_dir (char   *filename);
 static gint   save_image (char   *filename,
                           gint32  image_ID,
                           gint32  drawable_ID);
@@ -58,7 +60,6 @@ int main (int argc, char *argv[])
   return gimp_main (argc, argv); 
 }
 
-static gint32 disp_ID;
 
 static void
 query ()
@@ -66,10 +67,9 @@ query ()
 	/* load args */
  static GParamDef load_args[] =
   {
-    { PARAM_INT32 },
       { PARAM_DISPLAY, "display", "Input display"}
   };
-  static gint load_nargs = sizeof (load_args) / sizeof (load_args[0]);
+  static int load_nargs = sizeof (load_args) / sizeof (load_args[0]);
 
 	/* save args */
   static GParamDef      save_args[] =                        
@@ -86,16 +86,27 @@ query ()
       printf("process %d ", getpid());
   printf("pts query called\n");
 #endif
-#if 0
-  gimp_install_procedure ("rhythm_and_hues_toolbox_fm_load_extension",
+#if 1
+  gimp_install_procedure ("rhythm_and_hues_bfm_set_dir_src",
 		    "Provides a Rhythm & Hues fm open dialog",
 		    "Provides a Rhythm & Hues fm open dialog",
 		    "Calvin Williamson",
 		    "Calvin Williamson",
 		    "1999",
-		    "<Image>/Dialogs/Frame Manager/FMPTS",
+		    "<sfm_menu>/Dir/Setsrcdir",
 		    "",
-		    PROC_EXTENSION,
+		    PROC_PLUG_IN,
+		    load_nargs, 0, 
+		    load_args, NULL);
+  gimp_install_procedure ("rhythm_and_hues_bfm_set_dir_dest",
+		    "Provides a Rhythm & Hues fm open dialog",
+		    "Provides a Rhythm & Hues fm open dialog",
+		    "Calvin Williamson",
+		    "Calvin Williamson",
+		    "1999",
+		    "<sfm_menu>/Dir/Setdestdir",
+		    "",
+		    PROC_PLUG_IN,
 		    load_nargs, 0, 
 		    load_args, NULL);
 #endif
@@ -105,7 +116,18 @@ query ()
 		    "Calvin Williamson",
 		    "Calvin Williamson",
 		    "1999",
-		    "<Image>/Dialogs/Frame Manager/Load Image",
+		    "<sfm_menu>/Store/LoadImage",
+		    "FLOAT16_RGB*, FLOAT16_GRAY*",
+		    PROC_PLUG_IN,
+		    save_nargs, save_nreturn_vals, 
+		    save_args, save_return_vals);
+  gimp_install_procedure ("rhythm_and_hues_image_fm_load_extension",
+		    "Provides a Rhythm & Hues fm save dialog",
+		    "Provides a Rhythm & Hues fm save dialog",
+		    "Calvin Williamson",
+		    "Calvin Williamson",
+		    "1999",
+		    "<sfm_menu>/Store/LoadImage",
 		    "FLOAT16_RGB*, FLOAT16_GRAY*",
 		    PROC_PLUG_IN,
 		    save_nargs, save_nreturn_vals, 
@@ -129,6 +151,7 @@ run (char    *name,
   *return_vals = values;
 
   dialog_in_use = FALSE;
+    printf ("lsdkfjds\n"); 
 
   if (strcmp (name, "rhythm_and_hues_toolbox_fm_load_extension") == 0 ||
 	strcmp (name, "rhythm_and_hues_image_fm_load_extension") == 0 )
@@ -137,54 +160,25 @@ run (char    *name,
     printf("process %d ", getpid());
     printf("pts run rhythm_and_hues_load_extension\n");
 #endif
-    disp_ID = param[1].data.d_int32;
+    disp_ID = param[0].data.d_int32;
     dialog_in_use = TRUE;
     vk_main(0);
   }
-  else if (strcmp (name, "rhythm_and_hues_save_plugin") == 0 )
+  else if (strcmp (name, "rhythm_and_hues_bfm_set_dir_src") == 0 )
   {
 
-    image_ID = param[1].data.d_int32;
-    drawable_ID = param[2].data.d_int32;
-    char * filename = gimp_image_get_filename (image_ID);
-    drawable_to_save_ID = gimp_image_get_active_layer(image_ID);
-     
-#if 0 
-      printf("process %d ", getpid());
-    printf("pts run rhythm_and_hues_save_plugin: filename is %s\n", filename);
-      printf("process %d ", getpid());
-    printf("image_ID, drawable_ID %d %d\n", image_ID, drawable_ID);
-#endif
+    disp_ID = param[0].data.d_int32;
+  printf ("display id %d\n", disp_ID); 
+    dialog_in_use = TRUE;
+    vk_main(3); 
+  }
+  else if (strcmp (name, "rhythm_and_hues_bfm_set_dir_dest") == 0 )
+  {
 
-    is_layered = gimp_image_is_layered (image_ID);     
-    is_dirty = gimp_image_dirty_flag (image_ID); 
-
-
-#if 0 
-      printf("process %d ", getpid());
-    printf("plugin is_layered is %d\n", is_layered);
-      printf("process %d ", getpid());
-    printf("plugin is_dirty is %d\n", is_dirty);
-#endif
-
-    if (is_dirty) 
-    {
-	if (!strcmp(filename, "Untitled") )  /* never been saved */
-	{
-          dialog_in_use = TRUE;
-    	  vk_main(1); 
-	}
-	else 
-	{
-          dialog_in_use = FALSE;
-	  file_save (filename, FALSE); 
-	}
-    }
-#if 0 
-    else
-      g_warning("not saving... is_dirty FALSE\n");
-#endif
-	
+    disp_ID = param[0].data.d_int32;
+  printf ("display id %d\n", disp_ID); 
+    dialog_in_use = TRUE;
+    vk_main(4); 
   }
   else if (strcmp (name, "rhythm_and_hues_save_as_plugin") == 0)
   {
@@ -249,6 +243,23 @@ int file_load (const char * filename)
       doWarningDialog("File load unsuccessful");
       return 1; 
     }
+}
+
+
+int bfm_set_dir_src (const char * filename)
+{
+
+      printf ("src display id %d\n", disp_ID); 
+      gimp_bfm_set_dir_src (disp_ID, (char*) filename);
+      return 0; 
+}
+
+int bfm_set_dir_dest (const char * filename)
+{
+
+  printf ("display id %d\n", disp_ID); 
+  gimp_bfm_set_dir_src (disp_ID, (char*) filename);
+  return 0; 
 }
 
 

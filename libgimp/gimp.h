@@ -429,6 +429,8 @@ void       gimp_image_set_component_visible (gint32     image_ID,
 					     gint       visible);
 void       gimp_image_set_filename          (gint32     image_ID,
 					     char      *name);
+void gimp_bfm_set_dir_src    (gint32     disp_ID, char *filename);
+void gimp_bfm_set_dir_dest    (gint32     disp_ID, char *filename);
 
 
 /****************************************

@@ -95,7 +95,6 @@ gimp_display_delete (gint32 display_ID)
 
   gimp_destroy_params (return_vals, nreturn_vals);
 }
-
 void
 gimp_displays_flush ()
 {
@@ -108,3 +107,5 @@ gimp_displays_flush ()
 
   gimp_destroy_params (return_vals, nreturn_vals);
 }
+
+

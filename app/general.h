@@ -48,6 +48,7 @@ struct _ParseInfo
 
 
 char * prune_filename (char *);
+char * prune_pathname (char *);
 char * search_in_path (char *, char *);
 char * xstrsep (char **p, char *delim);
 int    get_token (ParseInfo *info);

@@ -39,6 +39,22 @@ prune_filename (char *filename)
   return last_slash;
 }
 
+char *
+prune_pathname (char *filename)
+{
+  char *name, *pathname;
+  int l, tl;
+  
+  name = prune_filename (filename);
+  l = strlen (name);
+  tl = strlen (filename);
+  pathname = strdup (filename);
+  pathname[tl-l] = '\0';
+
+  
+  return pathname;
+}
+
 
 char*
 search_in_path (char *search_path,

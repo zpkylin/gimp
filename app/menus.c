@@ -33,6 +33,7 @@
 #include "gdisplay.h"
 #include "gimpbrushgenerated.h"
 #include "clone.h"
+#include "store_frame_manager.h"
 
 #if 1 
 #define R_AND_H 1
@@ -274,6 +275,25 @@ static GtkItemFactoryEntry save_entries[] =
 };
 static guint n_save_entries = sizeof (save_entries) / sizeof (save_entries[0]);
 static GtkItemFactory *save_factory = NULL;
+
+static GtkItemFactoryEntry sfm_store_entries[] =
+{
+    {"/Store/Add", NULL, sfm_store_add, 0},
+    {"/Store/Delete", NULL, sfm_store_delete, 0},
+    {"/Store/Raise", NULL, sfm_store_raise, 0},
+    {"/Store/Lower", NULL, sfm_store_lower, 0},
+    {"/Store/Save", NULL, sfm_store_save, 0},
+    {"/Store/Save All", NULL, sfm_store_save_all, 0},
+    {"/Store/Revert", NULL, sfm_store_revert, 0},
+    {"/Store/Change Frame", NULL, sfm_store_change_frame, 0},
+    {"/Dir/Recent Src", NULL, sfm_store_recent_src, 0},
+    {"/Dir/Recent Dest", NULL, sfm_store_recent_dest, 0},
+    {"/Dir/Load Smart", NULL, sfm_store_load_smart, 0},
+};
+
+static guint n_sfm_store_entries = sizeof (sfm_store_entries) / sizeof (sfm_store_entries[0]);
+static GtkItemFactory *sfm_store_factory = NULL;
+static int sfm_store_factory_init = TRUE;
 
 static int initialize = TRUE;
 
@@ -673,6 +693,33 @@ menus_get_save_menu (GtkWidget           **menu,
 }
 
 void
+menus_get_sfm_store_menu (GtkWidget **menu, GtkAccelGroup **accel_group, GDisplay *disp)
+{
+  if (initialize)
+    menus_init ();
+  
+  if (sfm_store_factory_init)
+    {
+      gchar *filename; 
+      gtk_item_factory_create_items_ac (sfm_store_factory,
+	  n_sfm_store_entries,
+	  sfm_store_entries,
+	  disp, 2);
+
+
+      filename = g_strconcat (gimp_directory (), "/menurc", NULL);
+      gtk_item_factory_parse_rc (filename);
+      g_free (filename);
+      sfm_store_factory_init = FALSE; 
+    }
+
+  if (menu)
+    *menu = sfm_store_factory->widget;
+  if (accel_group)
+    *accel_group = sfm_store_factory->accel_group; 
+}
+
+void
 menus_create (GtkMenuEntry *entries,
 	      int           nmenu_entries)
 {
@@ -858,7 +905,9 @@ menus_init ()
 					n_save_entries,
 					save_entries,
 					NULL, 2);
-
+      
+      sfm_store_factory = gtk_item_factory_new (GTK_TYPE_MENU_BAR, "<sfm_menu>", NULL);
+      
       filename = g_strconcat (gimp_directory (), "/menurc", NULL);
       gtk_item_factory_parse_rc (filename);
       g_free (filename);
