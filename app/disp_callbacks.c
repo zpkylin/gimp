@@ -492,12 +492,12 @@ gdisplay_canvas_events (GtkWidget *canvas,
       break;
     case GDK_LEAVE_NOTIFY:
       if (active_tool->type == CLONE)
-	clone_clean_up ();
+	clone_leave_notify ();
       break;
 
     case GDK_ENTER_NOTIFY:
       if (active_tool->type == CLONE)
-	clone_undo_clean_up ();
+	clone_enter_notify ();
       break;
     default:
       break;

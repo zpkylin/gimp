@@ -70,8 +70,8 @@ draw_core_start (core, win, tool)
 			      core->cap_style, core->join_style);
 
   (* core->draw_func) (tool);
-
   core->draw_state = VISIBLE; 
+
 }
 
 
@@ -81,8 +81,9 @@ draw_core_stop (core, tool)
      Tool * tool;
 {
   if (core->draw_state == INVISIBLE)
-    return;
-
+    {
+      return;
+    }
   (* core->draw_func) (tool);
 
   core->draw_state = INVISIBLE;
@@ -114,7 +115,7 @@ draw_core_pause (core, tool)
       core->draw_state = INVISIBLE;
       (* core->draw_func) (tool);
     }
-  core->paused_count++;
+ core->paused_count++;
 }
 
 void

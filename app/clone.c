@@ -37,7 +37,7 @@
 #include "tools.h"
 #include "transform_core.h"
 #include "devices.h"
-#include "frame_manager.h"
+#include "base_frame_manager.h"
 
 #define TARGET_HEIGHT  15
 #define TARGET_WIDTH   15
@@ -54,17 +54,13 @@ typedef struct _CloneOptions CloneOptions;
 
 /*  forward function declarations  */
 static void         clone_draw            (Tool *);
-static void         clone_motion          (PaintCore *, GimpDrawable *, int, int);
+static void         clone_motion          (PaintCore *, GimpDrawable *, double, double);
 static int          clone_line_image      (PaintCore *, Canvas *, GimpDrawable *, 
-    						GimpDrawable *, int, int);
+    						GimpDrawable *, double, double);
 static Argument *   clone_invoker         (Argument *);
 static void         clone_painthit_setup  (PaintCore *, Canvas *);
 static gint	    clone_x_offset        (GtkWidget *, gpointer); 
-static gint	    clone_x_offset_down   (GtkWidget *, gpointer); 
-static gint	    clone_x_offset_up     (GtkWidget *, gpointer); 
 static gint	    clone_y_offset        (GtkWidget *, gpointer); 
-static gint	    clone_y_offset_down   (GtkWidget *, gpointer); 
-static gint	    clone_y_offset_up     (GtkWidget *, gpointer); 
 static gint	    clone_x_scale         (GtkWidget *, gpointer); 
 static gint	    clone_y_scale         (GtkWidget *, gpointer); 
 static gint	    clone_rotate          (GtkWidget *, gpointer); 
@@ -72,8 +68,8 @@ static void         clone_set_offset      (CloneOptions*, int, int);
 
 static GimpDrawable *source_drawable;
 static int  	    setup_successful;
-static char	    draw;
 static char	    clean_up = 0;
+static char	    inactive_clean_up = 0;
 
 #if 0
 static GimpDrawable *non_gui_source_drawable;
@@ -96,36 +92,35 @@ struct _CloneOptions
 };
 
 /*  local variables  */
-static int 	    clone_point_set = FALSE;
-static int          saved_x = 0;                /*                         */
-static int          saved_y = 0;                /*  position of clone src  */
-static int          src_x = 0;                  /*                         */
-static int          src_y = 0;                  /*  position of clone src  */
-static int          dest_x = 0;                 /*                         */
-static int          dest_y = 0;                 /*  position of clone dst  */
-static int          dest2_y = 0;                /*                         */
-static int          dest2_x = 0;                /*  position of clone dst  */
+static int 	    src_set = FALSE;
+static double       saved_x = 0;                /*                         */
+static double       saved_y = 0;                /*  position of clone src  */
+static double       src_x = 0;                  /*                         */
+static double       src_y = 0;                  /*  position of clone src  */
+static double       dest_x = 0;                 /*                         */
+static double       dest_y = 0;                 /*  position of clone dst  */
+static double       dest2_y = 0;                /*                         */
+static double       dest2_x = 0;                /*  position of clone dst  */
 static int          offset_x = 0;               /*                         */
 static int          offset_y = 0;               /*  offset for cloning     */
-static int	    error_x = 0;		/*			   */ 
-static int	    error_y = 0;		/*  error in x and y	   */
+static double       off_err_x = 0;              /*                         */
+static double       off_err_y = 0;              /*  offset for cloning     */
+static double	    error_x = 0;		/*			   */ 
+static double	    error_y = 0;		/*  error in x and y	   */
 static double       scale_x = 1;                /*                         */
 static double       scale_y = 1;                /*  offset for cloning     */
 static double       SCALE_X = 1;                /*                         */
 static double       SCALE_Y = 1;                /*  offset for cloning     */
 static double       rotate = 0;                 /*  offset for cloning     */
 static char         first_down = TRUE;
-static char         first_up = TRUE;
 static char         first_mv = TRUE;
 static char         second_mv = TRUE;
-static int          trans_tx, trans_ty;         /*  transformed target  */
-static int          dtrans_tx, dtrans_ty;         /*  transformed target  */
+static double       trans_tx, trans_ty;         /*  transformed target  */
+static double       dtrans_tx, dtrans_ty;         /*  transformed target  */
 static int          src_gdisp_ID = -1;          /*  ID of source gdisplay  */
 static CloneOptions *clone_options = NULL;
-static	char	    rm_cross=0; 
-static char 	    clone_now = TRUE; 
-static char 	    dont_dist = 1; 
-static	char	    expose = 0;
+static char	    rm_cross=0; 
+static char	    expose = 0;
 
 
 static void
@@ -133,7 +128,7 @@ align_type_callback (GtkWidget *w,
 		     gpointer  client_data)
 {
   clone_options->aligned = (AlignType) client_data;
-  clone_point_set = FALSE;
+  src_set = FALSE;
   switch (clone_options->aligned)
     {
     case AlignYes:
@@ -158,12 +153,12 @@ static CloneOptions *
 create_clone_options (void)
 {
   CloneOptions *options;
-  GtkWidget *vbox, *hbox, *lvbox, *rvbox, *rotbox, *scalebox, *rhbox, *bvbox;
+  GtkWidget *vbox, *hbox, *box;
   GtkWidget *label;
   GtkWidget *frame;
   GtkWidget *radio_box;
   GtkWidget *radio_button;
-  GtkWidget *entry, *button; 
+  GtkWidget *entry; 
   GSList *group = NULL;
   int i;
   char *align_names[3] =
@@ -185,18 +180,9 @@ create_clone_options (void)
   gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 0);
   gtk_widget_show (label);
 
-  /* hbox */
-  hbox = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
-  gtk_widget_show (hbox);
-
-  lvbox = gtk_vbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (hbox), lvbox, FALSE, FALSE, 0);
-  gtk_widget_show (lvbox);
-
   /*  the radio frame and box  */
   frame = gtk_frame_new ("Alignment");
-  gtk_box_pack_start (GTK_BOX (lvbox), frame, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
   
   /*  the radio buttons  */
   radio_box = gtk_vbox_new (FALSE, 1);
@@ -218,106 +204,77 @@ create_clone_options (void)
   
   /* add the offset entry */
   options->offset_frame = frame = gtk_frame_new ("Offset (x,y)");
-  gtk_box_pack_start (GTK_BOX (hbox), frame, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
   gtk_widget_show (frame);
   
-  rvbox = gtk_vbox_new (FALSE, 1);
-  gtk_container_add (GTK_CONTAINER (frame), rvbox);
-  gtk_widget_show (rvbox);
-
-  rhbox = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (rvbox), rhbox, FALSE, FALSE, 0);
-  gtk_widget_show (rhbox);
- 
- 
-  options->x_offset_entry = entry = gtk_entry_new ();
-  gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);
-  gtk_entry_set_text (GTK_ENTRY (entry), "0");
-  gtk_box_pack_start (GTK_BOX (rhbox), entry, FALSE, FALSE, 0);
+  box = gtk_vbox_new (FALSE, 1);
+  gtk_container_add (GTK_CONTAINER (frame), box);
+  gtk_widget_show (box);
+  
+  options->x_offset_entry = entry = gtk_spin_button_new (
+      GTK_ADJUSTMENT (gtk_adjustment_new (0, -G_MAXFLOAT, G_MAXFLOAT, 1, 1, 0)), 1.0, 0);
+  gtk_box_pack_start (GTK_BOX (box), entry, FALSE, FALSE, 0);
+  gtk_signal_connect (GTK_OBJECT (entry), "changed",
+      (GtkSignalFunc) clone_x_offset,
+      options);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_x_offset,
       options);
   gtk_widget_show (entry);
   
-  button = gtk_button_new_with_label ("UP");
-  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_x_offset_up,
+  options->y_offset_entry = entry = gtk_spin_button_new (
+      GTK_ADJUSTMENT (gtk_adjustment_new (0, -G_MAXFLOAT, G_MAXFLOAT, 1, 1, 0)), 1.0, 0);
+  gtk_box_pack_start (GTK_BOX (box), entry, FALSE, FALSE, 0);
+  gtk_signal_connect (GTK_OBJECT (entry), "changed",
+      (GtkSignalFunc) clone_y_offset,
       options);
-  gtk_widget_show (button);
-  
-  button = gtk_button_new_with_label ("DOWN");
-  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_x_offset_down,
-      options);
-  gtk_widget_show (button);
-  
-  options->y_offset_entry = entry = gtk_entry_new ();
-  gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);
-  gtk_entry_set_text (GTK_ENTRY (entry), "0");
-  gtk_box_pack_start (GTK_BOX (rhbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_y_offset,
       options);
   gtk_widget_show (entry);
   
-  button = gtk_button_new_with_label ("UP");
-  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_y_offset_up,
-      options);
-  gtk_widget_show (button);
-  
-  button = gtk_button_new_with_label ("DOWN");
-  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
-  gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_y_offset_down,
-      options);
-  gtk_widget_show (button);
- 
   /* transformation */
   options->trans_frame = frame = gtk_frame_new ("Transformation");
   gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
   gtk_widget_show (frame);
  
   
-  bvbox = gtk_vbox_new (FALSE, 1);
-  gtk_container_add (GTK_CONTAINER (frame), bvbox);
-  gtk_widget_show (bvbox);
+  box = gtk_vbox_new (FALSE, 1);
+  gtk_container_add (GTK_CONTAINER (frame), box);
+  gtk_widget_show (box);
   
   /* rotate */
-  rotbox = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (bvbox), rotbox, FALSE, FALSE, 0);
-  gtk_widget_show (rotbox);
+  hbox = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX (box), hbox, FALSE, FALSE, 0);
+  gtk_widget_show (hbox);
 
   label = gtk_label_new ("Rotate\t"); 
-  gtk_box_pack_start (GTK_BOX (rotbox), label, FALSE, FALSE, 4);
+  gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
   gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
   gtk_widget_show (label);
 
   options->rotate_entry = entry = gtk_entry_new ();
   gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);  
   gtk_entry_set_text (GTK_ENTRY (entry), "0"); 
-  gtk_box_pack_start (GTK_BOX (rotbox), entry, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_rotate, options);
   gtk_widget_show (entry);
  
   /* scale */
-  scalebox = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (bvbox), scalebox, FALSE, FALSE, 0);
-  gtk_widget_show (scalebox);
+  hbox = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX (box), hbox, FALSE, FALSE, 0);
+  gtk_widget_show (hbox);
 
   label = gtk_label_new ("Scale\t\t"); 
-  gtk_box_pack_start (GTK_BOX (scalebox), label, FALSE, FALSE, 4);
+  gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
   gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
   gtk_widget_show (label);
 
   options->x_scale_entry = entry = gtk_entry_new ();
   gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);  
   gtk_entry_set_text (GTK_ENTRY (entry), "1"); 
-  gtk_box_pack_start (GTK_BOX (scalebox), entry, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_x_scale,
       options);
@@ -326,7 +283,7 @@ create_clone_options (void)
   options->y_scale_entry = entry = gtk_entry_new ();
   gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);  
   gtk_entry_set_text (GTK_ENTRY (entry), "1"); 
-  gtk_box_pack_start (GTK_BOX (scalebox), entry, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (hbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_y_scale, options);
   gtk_widget_show (entry);
@@ -344,63 +301,60 @@ clone_cursor_func (PaintCore *paint_core,
   GDisplay * gdisp;
   GDisplay * src_gdisp;
   
-  int x1, y1, x2, y2; 
+  double x1, y1, x2, y2, dist_x, dist_y; 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
-  if (middle_mouse_button)
+  if (middle_mouse_button || active_tool->state == ACTIVE || active_tool->state == PAUSED)
     return NULL;
 
   if (!gdisp || !paint_core || !drawable)
     {
-      clone_point_set = 0; 
+      src_set = 0; 
       return NULL;
     }
   if (clean_up)
     return NULL; 
   x1 = paint_core->curx;
   y1 = paint_core->cury;
- 
-  if (active_tool->state == INACTIVE && clone_point_set && first_down && !first_up 
+
+  if (active_tool->state == INACTIVE && src_set && first_down 
       && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
     {
-      clone_now = FALSE; 
       src_gdisp = gdisplay_get_ID (src_gdisp_ID);
       if (!src_gdisp)
 	{
 	  src_gdisp_ID = gdisp->ID;
 	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
 	}
-      if (src_gdisp != gdisp)
-	dont_dist = 1;
-      else
-	dont_dist = 0;
 
       if (src_gdisp && !first_mv)
 	{
-	  draw = 0;
 	  draw_core_pause (paint_core->core, active_tool);
-	  gdisplay_transform_coords (src_gdisp, saved_x, saved_y, &trans_tx, &trans_ty, 1);
-	  gdisplay_transform_coords (src_gdisp, x1, y1, &dtrans_tx, &dtrans_ty, 1);
-	  draw = 1;
+	  gdisplay_transform_coords_f (src_gdisp, saved_x, saved_y, &trans_tx, &trans_ty, 1);
+	  gdisplay_transform_coords_f (src_gdisp, x1, y1, &dtrans_tx, &dtrans_ty, 1);
 	  draw_core_resume (paint_core->core, active_tool);
 	}
       if (first_mv && src_gdisp)
 	{
-	  gdisplay_transform_coords (src_gdisp, saved_x, saved_y, &trans_tx, &trans_ty, 1);
-	  gdisplay_transform_coords (gdisp, x1, y1, &dtrans_tx, &dtrans_ty, 1);
-	  draw = 1;
+	  gdisplay_transform_coords_f (src_gdisp, saved_x, saved_y, &trans_tx, &trans_ty, 1);
+	  gdisplay_transform_coords_f (gdisp, x1, y1, &dtrans_tx, &dtrans_ty, 1);
 	  draw_core_start (paint_core->core, src_gdisp->canvas->window, active_tool);
 	  first_mv = FALSE;
 	}
     }
   else 
-  if (active_tool->state == INACTIVE && clone_point_set && !first_down && 
-      (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo) && !first_up) 
+  if (active_tool->state == INACTIVE && src_set && !first_down && 
+      (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo)) 
     {
       if (clone_options->aligned == AlignYes)
 	{
-	  x2 = x1 + offset_x;
-	  y2 = y1 + offset_y;
+	  dist_x = ((x1 - dest2_x) * cos (rotate)) -
+	           ((y1 - dest2_y) * sin (rotate));
+	  dist_y = ((x1 - dest2_x) * sin (rotate)) + 
+	           ((y1 - dest2_y) * cos (rotate));
+	  
+	  x2 = dest2_x + ((dist_x) * SCALE_X) + offset_x - off_err_x + off_err_x*SCALE_X;
+	  y2 = dest2_y + ((dist_y) * SCALE_Y) + offset_y - off_err_y + off_err_y*SCALE_Y;
 	}
       else
 	{
@@ -414,24 +368,18 @@ clone_cursor_func (PaintCore *paint_core,
 	  src_gdisp_ID = gdisp->ID;
 	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
 	}
-	dont_dist = 1;
 
-      if (src_gdisp && clone_point_set && second_mv)
+      if (src_gdisp && second_mv)
 	{
-	  clone_now = FALSE; 
-	  draw = 0;
 	  draw_core_pause (paint_core->core, active_tool);
-	  gdisplay_transform_coords (src_gdisp, x2, y2, &trans_tx, &trans_ty, 1);
-	  gdisplay_transform_coords (gdisp, dest_x, dest_y, &dtrans_tx, &dtrans_ty, 1);
-	  draw = 1;
+	  gdisplay_transform_coords_f (src_gdisp, x2, y2, &trans_tx, &trans_ty, 1);
+	  gdisplay_transform_coords_f (gdisp, dest_x, dest_y, &dtrans_tx, &dtrans_ty, 1);
 	  draw_core_resume (paint_core->core, active_tool);
 	}
       else if (!second_mv && src_gdisp)
 	{
-	  clone_now = FALSE; 
-	  gdisplay_transform_coords (src_gdisp, x2, y2, &trans_tx, &trans_ty, 1);
-	  gdisplay_transform_coords (gdisp, dest_x, dest_y, &dtrans_tx, &dtrans_ty, 1);
-	  draw = 1;
+	  gdisplay_transform_coords_f (src_gdisp, x2, y2, &trans_tx, &trans_ty, 1);
+	  gdisplay_transform_coords_f (gdisp, dest_x, dest_y, &dtrans_tx, &dtrans_ty, 1);
 	  draw_core_start (paint_core->core, src_gdisp->canvas->window, active_tool);
 	  second_mv = TRUE;
 	}
@@ -442,13 +390,13 @@ clone_cursor_func (PaintCore *paint_core,
 
 static void *
 clone_paint_func (PaintCore *paint_core,
-		  GimpDrawable *drawable,
-		  int state)
+    GimpDrawable *drawable,
+    int state)
 {
   GDisplay * gdisp;
   GDisplay * src_gdisp;
-  int x1, y1, x2, y2; 
-  float dist_x, dist_y;
+  double x1, y1, x2, y2; 
+  double dist_x, dist_y;
   int dont_draw=0;
 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
@@ -457,20 +405,10 @@ clone_paint_func (PaintCore *paint_core,
     {
       clean_up = 0;
       first_down = TRUE;
-      first_up = TRUE;
       first_mv = TRUE;
       second_mv = TRUE;
       rm_cross=0;
-      clone_now = TRUE;
-      dont_dist = 1;
-      clone_point_set = 0;
-    }
-  if (!first_up)
-    {
-      clone_now = FALSE; 
-      first_up = TRUE; 
-      draw = 0;
-      draw_core_stop (paint_core->core, active_tool);
+      src_set = 0;
     }
   switch (state)
     {
@@ -487,10 +425,10 @@ clone_paint_func (PaintCore *paint_core,
 	  saved_x = src_x = x1;
 	  saved_y = src_y = y1;
 	  first_down = TRUE;
-	  clone_point_set = TRUE;
+	  src_set = TRUE;
 	}
       /*  otherwise, update the target  */
-      else if (clone_point_set)
+      else if (src_set)
 	{
 	  dest_x = x1;
 	  dest_y = y1;
@@ -499,59 +437,89 @@ clone_paint_func (PaintCore *paint_core,
 	    {
 	      offset_x = 0;
 	      offset_y = 0;
+	      off_err_x = 0;
+	      off_err_y = 0;
 	    }
 	  else if (first_down && clone_options->aligned == AlignNo)
 	    {
 	      offset_x = saved_x - dest_x;
 	      offset_y = saved_y - dest_y;
+	      off_err_x = dest_x - (int)dest_x;
+	      off_err_y = dest_y - (int)dest_y;
+	      dont_draw = 1; 
 	      first_down = FALSE;
 	    }
 	  else if (first_down && clone_options->aligned == AlignYes)
 	    {
 	      dest2_x = dest_x;
 	      dest2_y = dest_y;
-	      if (gdisp->gimage->onionskin)
+	      if (bfm_onionskin (gdisp))
 		{
-	      offset_x += src_x - dest_x;
-	      offset_y += src_y - dest_y;
+		  offset_x += saved_x - dest_x;
+		  offset_y += saved_y - dest_y;
+		  bfm_onionskin_set_offset (gdisp, offset_x, offset_y); 
 		}
 	      else
 		{
-		  offset_x = src_x - dest_x;
-		  offset_y = src_y - dest_y;
+		  offset_x = saved_x - dest_x;
+		  offset_y = saved_y - dest_y;
+		  off_err_x = dest_x - (int)dest_x;
+		  off_err_y = dest_y - (int)dest_y;
 
 		}
-	      if (gdisp->gimage->onionskin)
-		{
-		frame_manager_onionskin_offset (gdisp, offset_x, offset_y); 
-		}
-	      first_down = FALSE;
-	      dont_draw = 1; 
 	      clone_set_offset (clone_options, offset_x, offset_y); 
+	      dont_draw = 1; 
+	      first_down = FALSE;
 	    }
+
 	  dist_x = ((dest_x - dest2_x) * cos (rotate)) -
-	    ((dest_y - dest2_y) * sin (rotate));
+	           ((dest_y - dest2_y) * sin (rotate));
 	  dist_y = ((dest_x - dest2_x) * sin (rotate)) + 
-	    ((dest_y - dest2_y) * cos (rotate));
-	  src_x = (dest2_x + (dist_x) * SCALE_X) + offset_x;
-	  src_y = (dest2_y + (dist_y) * SCALE_Y) + offset_y;
+	           ((dest_y - dest2_y) * cos (rotate));
+	 
+	  src_x = ((dest2_x + (dist_x) * SCALE_X) + offset_x) - off_err_x + off_err_x*SCALE_X;
+	  src_y = ((dest2_y + (dist_y) * SCALE_Y) + offset_y) - off_err_y + off_err_y*SCALE_Y;
 
 
-	  error_x = scale_x >= 1 ? 
-	    (dest_x - dest2_x) - ((dest_x - dest2_x) / (int)scale_x) * scale_x :
-	    0; 
+	  if (scale_x >= 1)
+	    {
+	      double tmp;
+	      tmp = ((int)dest_x - (int)dest2_x);
+	      tmp *= SCALE_X;
+	      error_x = scale_x >= 1 ?  (tmp-(int)tmp) * scale_x: 0; 
+	    }
+	  if (scale_y >= 1)
+	    {
+	      double tmp;
+	      tmp = ((int)dest_y - (int)dest2_y);
+	      tmp *= SCALE_Y;
+	      error_y = scale_y >= 1 ?  (tmp-(int)tmp) * scale_y: 0;
+	    }
+	  if (scale_x < 1)
+	    {
+	      double tmp;
+	      tmp = (dest_x - (int)dest_x);
+	      tmp *= SCALE_X;
+	      error_x = scale_x < 1 ?  (int)tmp: 0; 
+	      error_x = error_x < 0 ? scale_x + error_x : error_x;
+	    }
+	  if (scale_y < 1)
+	    {
+	      double tmp;
+	      tmp = (dest_y - (int)dest_y);
+	      tmp *= SCALE_Y;
+	      error_y = scale_y < 1 ?  (int)tmp: 0;
+	      error_y = error_y < 0 ? scale_y + error_y : error_y;
+	    }
 
-	  error_y = scale_y >= 1 ?
-	    (dest_y - dest2_y) - ((dest_y - dest2_y) / (int)scale_y) * scale_y :
-	    0;
 
-	  
+
 	  if (scale_x < 1 && (int)SCALE_X != SCALE_X)
 	    {
 	      if ((dest_x - dest2_x) - 
 		  ((dest_x - dest2_x)/(int)(SCALE_X))*(int)(SCALE_X) != 0)
 		{
-		return NULL;
+		  return NULL;
 		}
 	    }
 	  if (scale_y < 1 && (int)SCALE_Y != SCALE_Y)
@@ -559,108 +527,94 @@ clone_paint_func (PaintCore *paint_core,
 	      if ((dest_y - dest2_y) - 
 		  ((dest_y - dest2_y)/(int)(SCALE_X))*(int)(SCALE_X) != 0)
 		{
-		 return NULL; 
+		  return NULL; 
 		}
 	    }
 
-
-	  error_x = error_x < 0 ? scale_x + error_x : error_x;
-	  error_y = error_y < 0 ? scale_y + error_y : error_y;
-
-
-      clone_now = TRUE; 
-
 	  if (!dont_draw)
-	  clone_motion (paint_core, drawable, src_x, src_y);
+	    clone_motion (paint_core, drawable, src_x, src_y);
 	}
 
       second_mv = FALSE;
-      if (clone_point_set) 
+      if (src_set) 
 	{
-	  draw = 0;
 	  draw_core_pause (paint_core->core, active_tool);
 	}
       break;
 
     case INIT_PAINT :
-      if (clone_point_set && gdisp->framemanager && 
-	  source_drawable != frame_manager_bg_drawable (gdisp))
-	{
-	  source_drawable = frame_manager_bg_drawable (gdisp); 
-	}
-      if (clone_point_set && gdisp->gimage->onionskin)
-	{
-	 source_drawable = frame_manager_onionskin_drawable (gdisp); 
-	}
-      if (!clone_point_set && gdisp->framemanager  
-	  && (src_gdisp_ID = frame_manager_bg_display (gdisp)))
-	{
-	  source_drawable = frame_manager_bg_drawable (gdisp);
-	  saved_x = src_x = paint_core->curx + offset_x;
-	  saved_y = src_y = paint_core->cury + offset_y;
-	  clone_point_set = TRUE;
-	  first_down = TRUE;
-	  first_mv = TRUE;	    
-	}
-      if (gdisp->gimage->onionskin && !clone_point_set)
-	{
-	  src_gdisp_ID = frame_manager_onionskin_display (gdisp);
-	  source_drawable = frame_manager_onionskin_drawable (gdisp);
-	  saved_x = src_x = paint_core->curx + offset_x;
-	  saved_y = src_y = paint_core->cury + offset_y;
-	  clone_point_set = TRUE;
-	  first_down = TRUE;
-	  first_mv = TRUE;
 
-	}
-      if (paint_core->state & ControlMask)
+      if (bfm (gdisp))
 	{
-	  if (gdisp->gimage->onionskin)
+	  if (paint_core->state & ControlMask)
 	    {
-	      src_gdisp_ID = frame_manager_onionskin_display (gdisp); 
-	      source_drawable = frame_manager_onionskin_drawable (gdisp);
+	      /* set location */
+	      src_gdisp_ID = bfm_get_bg_display (gdisp); 
+	      source_drawable = bfm_get_bg_drawable (gdisp);
+	      saved_x = src_x = paint_core->curx;
+	      saved_y = src_y = paint_core->cury;
+	      src_set = TRUE;
+	      first_down = TRUE;
+	      first_mv = TRUE;
+	      clean_up = 0;
+	    }
+	  else
+	    if (bfm_get_bg (gdisp))
+	      {
+		/* get src from bfm */
+		src_gdisp_ID = bfm_get_bg_display (gdisp);
+		source_drawable = bfm_get_bg_drawable (gdisp);
 	    }
 	  else
 	    {
-	      if (gdisp->framemanager)
-		frame_manager_set_bg (gdisp); 
-	      src_gdisp_ID = gdisp->ID;
-	      source_drawable = drawable;
+	      /* no dest is set */
+	      g_message ("Set clone point with CTRL + left mouse button.");
+	      break;
 	    }
+	}
+      else if (paint_core->state & ControlMask)
+	{
+	  if (!first_down)
+	    draw_core_pause (paint_core->core, active_tool); 
+	      
+	  src_gdisp_ID = gdisp->ID;
+	  source_drawable = drawable;
 	  saved_x = src_x = paint_core->curx;
 	  saved_y = src_y = paint_core->cury;
-	  clone_point_set = TRUE;
+	  src_set = TRUE;
 	  first_down = TRUE;
 	  first_mv = TRUE;
 	  clean_up = 0; 
 	}
-      else if (clone_options->aligned == AlignNo &&
-	  clone_point_set==1)
+      else if (!src_set)
 	{
-	  src_x = saved_x;
-	  src_y = saved_y; 
-	  first_down = TRUE;
-	  clean_up = 0; 
+	  g_message ("Set clone point with CTRL + left mouse button.");
+	  break;
 	}
-      else if (!clone_point_set)
+      else
 	{
-	g_message ("Set clone point with CTRL + left mouse button.");
-	break;
+	  if (clone_options->aligned == AlignYes)
+	 inactive_clean_up = 1;  
+	  if (!first_down && clone_options->aligned == AlignYes)
+	    {
+	      if (offset_x + paint_core->curx == src_x &&
+		  offset_y + paint_core->cury == src_y)
+		inactive_clean_up = 0;
+		inactive_clean_up = 0;
+	  src_x = offset_x + paint_core->curx; 
+	  src_y = offset_y + paint_core->cury; 
+	    }
+	  else 
+	    if (clone_options->aligned == AlignNo)
+	      {
+		src_x = saved_x;
+		src_y = saved_y;
+		first_down = TRUE;
+	      }
 	}
-      first_up = TRUE;
-      clone_now = TRUE;
-
       break;
 
     case FINISH_PAINT :
-      clone_now = TRUE; 
-      first_up = FALSE; 
-      draw = 0;
-      if (clone_options->aligned == AlignNo)
-	{
-	   src_x = saved_x;
-	   src_y = saved_y;
-	}
       draw_core_stop (paint_core->core, active_tool);
       return NULL;
     default :
@@ -676,19 +630,31 @@ clone_paint_func (PaintCore *paint_core,
     }
 
   /*  Find the target cursor's location onscreen  */
-  gdisplay_transform_coords (src_gdisp, src_x, src_y, &trans_tx, &trans_ty, 1);
+  gdisplay_transform_coords_f (src_gdisp, src_x, src_y, &trans_tx, &trans_ty, 1);
 
-  if (state == INIT_PAINT && clone_point_set)
+  if (state == INIT_PAINT && src_set)
     {
       /*  Initialize the tool drawing core  */
-      draw = 1;
+      if (inactive_clean_up)
+	{
+	  gdisplay_transform_coords_f (src_gdisp, paint_core->curx, paint_core->cury, 
+	      &dtrans_tx, &dtrans_ty, 1);
+	  
+	  draw_core_pause (paint_core->core, active_tool); 
+	  inactive_clean_up = 0; 
+     
+	 /* 
+	  draw_core_resume (paint_core->core, active_tool);
+	  draw_core_stop (paint_core->core, active_tool);
+	*/
+	  }
+
       draw_core_start (paint_core->core,
 	  src_gdisp->canvas->window,
 	  active_tool);
-    }
-  else if (state == MOTION_PAINT && clone_point_set)
+  }
+  else if (state == MOTION_PAINT && src_set)
     {
-      draw = 1;
       draw_core_resume (paint_core->core, active_tool);
     }
   return NULL;
@@ -711,15 +677,28 @@ tools_new_clone ()
   private->painthit_setup = clone_painthit_setup;
   private->core->draw_func = clone_draw;
 
- clone_point_set = FALSE;
+ src_set = FALSE;
  return tool;
 }
 
 void
 tools_free_clone (Tool *tool)
 {
-  clone_point_set = FALSE;
+  src_set = FALSE;
   paint_core_free (tool);
+}
+
+void 
+clone_leave_notify ()
+{
+  
+  draw_core_pause (((PaintCore *) active_tool->private)->core, active_tool); 
+}
+
+void 
+clone_enter_notify ()
+{
+  draw_core_resume (((PaintCore *) active_tool->private)->core, active_tool); 
 }
 
 static void
@@ -730,69 +709,87 @@ clone_draw (Tool *tool)
   PaintCore * paint_core = NULL;
   paint_core = (PaintCore *) tool->private;
 
+  if (expose)
+    {
+      expose = 0;
+      return;
+    }
+  if (!gdisplay_active ())
+    return; 
+
   if (middle_mouse_button)
     {
-      if (first)
+      if (!first)
 	return;
-      first = 1; 
+      if (first)
+	first = 0;
     }
   else
-    first = 1;
-
-  if (tool && paint_core && clone_point_set && !expose && drawable_gimage (source_drawable))
+    {
+      if (!first)
+	{
+	  first = 1;
+	  return;
+	}
+    }
+  if (tool && paint_core && src_set && drawable_gimage (source_drawable))
     {
       static int radius;
       gdisplay = gdisplay_get_ID (drawable_gimage (source_drawable)->ID); 
-      if (get_active_brush () && gdisplay && get_active_brush ()->mask && draw)
+      if (!first_down && bfm_onionskin (gdisplay))
+	return ;
+      if (get_active_brush () && gdisplay && get_active_brush ()->mask)
 	{
 	  radius = (canvas_width (get_active_brush ()->mask) > canvas_height (get_active_brush ()->mask) ?
 	      canvas_width (get_active_brush ()->mask) : canvas_height (get_active_brush ()->mask))* 
 	    ((double)SCALEDEST (gdisplay) / 
 	     (double)SCALESRC (gdisplay));
 	}
-      else if (draw)
+      else 
 	{
 	  radius = 0;
 	}
-      if (clone_now)
+      if (1)/*active_tool->state != INACTIVE && active_tool->state != INACT_PAUSED  && !inactive_clean_up)
+	*/
 	{
-	  if ((GDisplay *) tool->gdisp_ptr &&
-	      !((GDisplay *) tool->gdisp_ptr)->gimage->onionskin /*&&
-	      !(active_tool->state == INACTIVE && clone_options->aligned == AlignNo)*/)
+	  
+	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+	      trans_tx - (TARGET_WIDTH >> 1), trans_ty,
+	      trans_tx + (TARGET_WIDTH >> 1), trans_ty);
+	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+	      trans_tx, trans_ty - (TARGET_HEIGHT >> 1),
+	      trans_tx, trans_ty + (TARGET_HEIGHT >> 1));
+	  gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
+	      0,
+	      trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
+	      radius, radius,
+	      0, 23040);
+	  if (((active_tool->state == INACTIVE || active_tool->state == INACT_PAUSED )
+	    && first_down && clone_options->aligned == AlignYes) ||
+	    (inactive_clean_up && first_down && clone_options->aligned == AlignYes))
 	    {
-
-	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-		  trans_tx - (TARGET_WIDTH >> 1), trans_ty,
-		  trans_tx + (TARGET_WIDTH >> 1), trans_ty);
-	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-		  trans_tx, trans_ty - (TARGET_HEIGHT >> 1),
-		  trans_tx, trans_ty + (TARGET_HEIGHT >> 1));
-	      gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
-		  0,
-		  trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
-		  radius, radius,
-		  0, 23040); 
-	    }		    
+	    gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		trans_tx, trans_ty,
+		dtrans_tx, dtrans_ty); 
+	}
 	}
       else
 	{
-	  if (!(dont_dist && ((GDisplay *) tool->gdisp_ptr)->gimage->onionskin))
-	    {
+	  inactive_clean_up = 0;
+	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+	      trans_tx - (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
+	      trans_tx + (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
+	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+	      trans_tx + (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
+	      trans_tx - (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
 
-              gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-		  trans_tx - (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
-		  trans_tx + (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
-	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-		  trans_tx + (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
-		  trans_tx - (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
-
-	      gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
-		  0,
-		  trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
-		  radius, radius,
-		  0, 23040);
-	    }
-	  if (!dont_dist && clone_options->aligned == AlignYes)
+	  gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
+	      0,
+	      trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
+	      radius, radius,
+	      0, 23040);
+	  
+	  if (first_down && clone_options->aligned == AlignYes)
 	    gdk_draw_line (paint_core->core->win, paint_core->core->gc,
 		trans_tx, trans_ty,
 		dtrans_tx, dtrans_ty); 
@@ -800,41 +797,10 @@ clone_draw (Tool *tool)
     }
 }
 
-void
-clone_clean_up ()
-{
-  if (clone_point_set && !clean_up && active_tool->state == INACTIVE
-      && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
-    {
-      clone_draw (active_tool);
-
-      clean_up = 1; 
-    }
-}
-
-void 
-clone_undo_clean_up ()
-{
-  if (clean_up && clone_point_set && active_tool->state == INACTIVE 
-      && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
-    {
-      expose = 0;
-      clean_up = 0;
-      clone_draw (active_tool);
-    }
-  if (!clone_point_set && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
-    clean_up = 0;
-  if (expose && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
-    {
-    expose = 0; 
-    clean_up = 0;
-    }
-}
-
 void 
 clone_expose ()
 {
-  if (clean_up && (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo))
+  if (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo)
     expose = 1;
 
 }
@@ -846,13 +812,10 @@ clone_delete_image (GImage *gimage)
     {
       clean_up = 0;
       first_down = TRUE;
-      first_up = TRUE;
       first_mv = TRUE;
       second_mv = TRUE;
       rm_cross=0;
-      clone_now = TRUE;
-      dont_dist = 1;
-      clone_point_set = FALSE;
+      src_set = FALSE;
 
     }
 }
@@ -868,8 +831,8 @@ clone_flip_image ()
 static void 
 clone_motion  (PaintCore * paint_core,
                GimpDrawable * drawable,
-               int offset_x,
-               int offset_y)
+               double offset_x,
+               double offset_y)
 {
   paint_core_16_area_setup (paint_core, drawable);
 
@@ -924,8 +887,8 @@ clone_painthit_setup (PaintCore *paint_core, Canvas * painthit)
 	printf ("PROBLEM\n"); 
       setup_successful = clone_line_image (paint_core, painthit,
 	  drawable, src_drawable,
-	  paint_core->x + (src_x-dest_x),/*offset_x*/
-	  paint_core->y + (src_y-dest_y)/*fset_y*/); 
+	  paint_core->curx + ((int)src_x-dest_x),/*offset_x*/
+	  paint_core->cury + ((int)src_y-dest_y)/*fset_y*/); 
     }
 }
 
@@ -934,13 +897,13 @@ clone_line_image  (PaintCore * paint_core,
                    Canvas * painthit,
                    GimpDrawable * drawable,
                    GimpDrawable * src_drawable,
-                   int x,
-                   int y)
+                   double x,
+                   double y)
 {
   GImage * src_gimage = drawable_gimage (src_drawable);
   GImage * gimage = drawable_gimage (drawable);
   int rc = FALSE;
-  int w, h, width, height; 
+  int w, h, width, height, xx=0, yy=0; 
 
   if (gimage && src_gimage)
     {
@@ -948,80 +911,67 @@ clone_line_image  (PaintCore * paint_core,
       Canvas * rot=NULL; 
       Canvas * orig;
       PixelArea srcPR, destPR;
-      int x1, y1, x2, y2;
+      double x1, y1, x2, y2;
 
       if (src_drawable != drawable) /* different windows */
 	{
-#if 0
-	  x1 = BOUNDS (x,
-	      0, drawable_width (src_drawable));
-	  y1 = BOUNDS (y,
-	      0, drawable_height (src_drawable));
-	  x2 = BOUNDS (x + canvas_width (painthit),
-	      0, drawable_width (src_drawable));
-	  y2 = BOUNDS (y + canvas_height (painthit),
-	      0, drawable_height (src_drawable));
-#endif 
 	  if (rotate)
 	    {
-	     width = canvas_width (painthit) * 2; 
-	     height = canvas_height (painthit) * 2; 
-	     error_x += canvas_width (painthit) / 2;
-	     error_y += canvas_height (painthit) / 2;
+	     width = canvas_width (painthit) * 2.0; 
+	     height = canvas_height (painthit) * 2.0; 
 	    }
 	  else
 	    {
 	     width = canvas_width (painthit); 
 	     height = canvas_height (painthit); 
 	    }
-
-	  if (scale_x <= 1)
+          
+	  if (scale_x >= 1)
 	    {
-	      w = (width * (SCALE_X) - 
-		  canvas_width (painthit)) * 0.5;
-	      h = (height * (SCALE_Y) - 
-		  canvas_height (painthit)) * 0.5;
-	      w = scale_x == 1 ? w: w + 1;
-	      h = scale_y == 1 ? h: h + 1; 
-	      x1 = BOUNDS (x - w, 0, drawable_width (src_drawable));
-	      y1 = BOUNDS (y - h, 0, drawable_height (src_drawable));
-	      x2 = BOUNDS (x + w + canvas_width (painthit), 0, drawable_width (src_drawable));
-	      y2 = BOUNDS (y + h + canvas_height (painthit), 0, drawable_height (src_drawable));
+	      w = width;
+	      h = height;
+	      xx = x - w;
+	      yy = y - h;
+	      x1 = BOUNDS (xx, 0, drawable_width (src_drawable));
+	      y1 = BOUNDS (yy, 0, drawable_height (src_drawable));
+	      x2 = BOUNDS (x + w, 0, drawable_width (src_drawable));
+	      y2 = BOUNDS (y + h, 0, drawable_height (src_drawable));
+	      error_x = error_x < 0 ? (scale_x + error_x)  + w + (int)(w * SCALE_X + .5): 
+		error_x + w + (int)(w * SCALE_X + .5); 
+	      error_y = error_y < 0 ? (scale_y + error_y)  + h + (int)(h * SCALE_Y +.5): 
+		error_y + h + (int)(h * SCALE_Y + .5);
+	      error_x = scale_x == 1 ? w/2.0 + .5 : error_x; 
+	      error_y = scale_y == 1 ? h/2.0 + .5 : error_y;
+	      xx = x1 == 0 ? -xx : 0; 
+	      yy = y1 == 0 ? -yy : 0; 
 	    }
 	  else
 	    {
-	      w = (scale_x+1) / 2 + (width * (SCALE_X)) * 0.5;
-	      h = (scale_y+1) / 2 + (height * (SCALE_Y)) * 0.5;
-	      x1 = BOUNDS (x - w + canvas_width (painthit) / 2, 0, drawable_width (src_drawable));
-	      y1 = BOUNDS (y - h + canvas_height (painthit) / 2, 0, drawable_height (src_drawable));
-	      x2 = BOUNDS (x + w + canvas_width (painthit) / 2, 0, drawable_width (src_drawable));
-	      y2 = BOUNDS (y + h + canvas_height (painthit) / 2, 0, drawable_height (src_drawable));	   
+	      w = (width * SCALE_X) * 0.5;
+	      h = (height * SCALE_Y) * 0.5;
+	      xx = x - w - error_x;
+	      yy = y - h - error_y;
+	      x1 = BOUNDS (xx, 0, drawable_width (src_drawable));
+	      y1 = BOUNDS (yy, 0, drawable_height (src_drawable));
+	      x2 = BOUNDS (x + w - error_x, 0, drawable_width (src_drawable));
+	      y2 = BOUNDS (y + h - error_y, 0, drawable_height (src_drawable));	   
+	    
+	      error_x = error_y = 0; 
+	      xx = x1 == 0 ? -xx : 0; 
+	      yy = y1 == 0 ? -yy : 0; 
 	    }
 	  if (!(x2 - x1) || !(y2 - y1))
 	    return FALSE;
-#if 1
-	  if (drawable_width (drawable) != drawable_width (src_drawable) ||
-	      drawable_height (drawable) != drawable_height (src_drawable))
-	    {
-	      pixelarea_init (&srcPR, drawable_data (src_drawable),
-		  x1, y1, (x2 - x1), (y2 - y1), FALSE);
-	      pixelarea_init (&destPR, painthit,
-		  (x1 - x), (y1 - y), x2-x1, y2-y1, TRUE);
+	  
+	  orig = paint_core_16_area_original2 (paint_core, src_drawable, x1, y1, x2, y2);
 
-
-	      copy_area (&srcPR, &destPR);
-	      return TRUE; 
-	    }
-#endif	  
-	  orig = paint_core_16_area_original2 (paint_core, src_drawable, 
-	      x1, y1, x2, y2);
 	}
       else
 	{
 	  if (rotate)
 	    {
-	     width = canvas_width (painthit) * 2; 
-	     height = canvas_height (painthit) * 2; 
+	     width = canvas_width (painthit) * 2.0; 
+	     height = canvas_height (painthit) * 2.0; 
 	     /*error_x += canvas_width (painthit) / 2.0 + .5;
 	     error_y += canvas_height (painthit) / 2.0 + .5;
 	    */}
@@ -1030,35 +980,47 @@ clone_line_image  (PaintCore * paint_core,
 	     width = canvas_width (painthit); 
 	     height = canvas_height (painthit); 
 	    }
-
-	  if (scale_x <= 1)
+          
+	  if (scale_x >= 1)
 	    {
-	      w = (width * (SCALE_X) - 
-		  canvas_width (painthit)) * 0.5;
-	      h = (height * (SCALE_Y) - 
-		  canvas_height (painthit)) * 0.5;
-	      w = scale_x == 1 ? w : w + 1;
-	      h = scale_y == 1 ? h : h + 1; 
-	      x1 = BOUNDS (x - w, 0, drawable_width (src_drawable));
-	      y1 = BOUNDS (y - h, 0, drawable_height (src_drawable));
-	      x2 = BOUNDS (x + w + canvas_width (painthit), 0, drawable_width (src_drawable));
-	      y2 = BOUNDS (y + h + canvas_height (painthit), 0, drawable_height (src_drawable));
+	      w = width;
+	      h = height;
+	      xx = x - w;
+	      yy = y - h;
+	      x1 = BOUNDS (xx, 0, drawable_width (src_drawable));
+	      y1 = BOUNDS (yy, 0, drawable_height (src_drawable));
+	      x2 = BOUNDS (x + w, 0, drawable_width (src_drawable));
+	      y2 = BOUNDS (y + h, 0, drawable_height (src_drawable));
+	      error_x = error_x < 0 ? (scale_x + error_x)  + w + (int)(w * SCALE_X + .5): 
+		error_x + w + (int)(w * SCALE_X + .5); 
+	      error_y = error_y < 0 ? (scale_y + error_y)  + h + (int)(h * SCALE_Y +.5): 
+		error_y + h + (int)(h * SCALE_Y + .5);
+	      error_x = scale_x == 1 ? w/2.0 + .5 : error_x; 
+	      error_y = scale_y == 1 ? h/2.0 + .5 : error_y; 
+	      xx = x1 == 0 ? -xx : 0; 
+	      yy = y1 == 0 ? -yy : 0; 
 	    }
 	  else
 	    {
-	      w = (scale_x+1) / 2 + (width * (SCALE_X)) * 0.5;
-	      h = (scale_y+1) / 2 + (height * (SCALE_Y)) * 0.5;
-	      x1 = BOUNDS (x - w + canvas_width (painthit) / 2, 0, drawable_width (src_drawable));
-	      y1 = BOUNDS (y - h + canvas_height (painthit) / 2, 0, drawable_height (src_drawable));
-	      x2 = BOUNDS (x + w + canvas_width (painthit) / 2, 0, drawable_width (src_drawable));
-	      y2 = BOUNDS (y + h + canvas_height (painthit) / 2, 0, drawable_height (src_drawable));	   
+	      w = (width * SCALE_X) * 0.5;
+	      h = (height * SCALE_Y) * 0.5;
+	      xx = x - w - error_x;
+	      yy = y - h - error_y;
+	      x1 = BOUNDS (xx, 0, drawable_width (src_drawable));
+	      y1 = BOUNDS (yy, 0, drawable_height (src_drawable));
+	      x2 = BOUNDS (x + w - error_x, 0, drawable_width (src_drawable));
+	      y2 = BOUNDS (y + h - error_y, 0, drawable_height (src_drawable));	   
+	    
+	      error_x = error_y = 0; 
+	      xx = x1 == 0 ? -xx : 0; 
+	      yy = y1 == 0 ? -yy : 0; 
 	    }
 	  if (!(x2 - x1) || !(y2 - y1))
 	    return FALSE;
-	
-
+	  
 	  orig = paint_core_16_area_original2 (paint_core, src_drawable, x1, y1, x2, y2);
-        }
+
+	}
 
 
       if (scale_x == 1 && scale_y == 1 && rotate == 0)
@@ -1069,20 +1031,20 @@ clone_line_image  (PaintCore * paint_core,
       else
       {
         identity_matrix (matrix);
-        rotate_matrix (matrix, 2.0*M_PI-rotate);
+        rotate_matrix (matrix, -rotate);
         scale_matrix (matrix, scale_x, scale_y);
         rot = transform_core_do (src_gimage, src_drawable, 
             orig, 0, matrix);
-        error_x +=  (canvas_width (rot))/4;
-        error_y +=  (canvas_height (rot))/4;
-        
+        error_x = rotate ?  (canvas_width (rot) - canvas_width (painthit)) / 2.0 + 1: error_x;
+        error_y = rotate ?  (canvas_height (rot) - canvas_height (painthit)) / 2.0 : error_y;
+       
         pixelarea_init (&srcPR, rot, error_x, error_y,
-            x2-x1,  y2-y1, FALSE);
+            width,  height, FALSE);
       }     
+
       pixelarea_init (&destPR, painthit,
-          (x1 - x), (y1 - y), x2-x1, y2-y1, TRUE);
-
-
+          xx, yy, x2-x1, y2-y1, TRUE);
+      
       copy_area (&srcPR, &destPR);
       
       if (rot)
@@ -1100,57 +1062,15 @@ clone_x_offset (GtkWidget *w, gpointer client_data)
   GSList *list = display_list; 
   GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
-  offset_x = atoi (gtk_entry_get_text (GTK_ENTRY(co->x_offset_entry)));
+  offset_x = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(co->x_offset_entry));
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y);
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y);
       list = g_slist_next (list);
     }
 
   return TRUE;
-}
-
-static gint	    
-clone_x_offset_down (GtkWidget *w, gpointer client_data)
-{
-  extern GSList *display_list;
-  GSList *list = display_list;
-  GDisplay *d;
-  char tmp[30]; 
-  CloneOptions *co = (CloneOptions*) client_data;
-  offset_x --;
-  sprintf (tmp, "%d", offset_x);  
-  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
-  while (list)
-    {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
-      list = g_slist_next (list);
-    }
-
-  return TRUE; 
-}
-
-static gint	    
-clone_x_offset_up (GtkWidget *w, gpointer client_data)
-{
-  extern GSList *display_list;
-  GSList *list = display_list;
-  GDisplay *d;
-  char tmp[30]; 
-  CloneOptions *co = (CloneOptions*) client_data;
-  offset_x ++;
-  sprintf (tmp, "%d", offset_x);  
-  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
-  while (list)
-    {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
-      list = g_slist_next (list);
-    }
-
-  return TRUE; 
 }
 
 static gint
@@ -1160,58 +1080,15 @@ clone_y_offset (GtkWidget *w, gpointer client_data)
   GSList *list = display_list;
   GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
-  offset_y = atoi (gtk_entry_get_text (GTK_ENTRY(co->y_offset_entry)));
+  offset_y = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(co->y_offset_entry));
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y);
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y);
       list = g_slist_next (list);
     }
 
   return TRUE;
-}
-
-static gint 	    
-clone_y_offset_down (GtkWidget *w, gpointer client_data) 
-{
-  extern GSList *display_list;
-  GSList *list = display_list;
-  GDisplay *d;
-
-  char tmp[30]; 
-  CloneOptions *co = (CloneOptions*) client_data;
-  offset_y --;
-  sprintf (tmp, "%d", offset_y);  
-  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
-  while (list)
-    {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
-      list = g_slist_next (list);
-    }
-
-  return TRUE; 
-}
-
-static gint 	    
-clone_y_offset_up (GtkWidget *w, gpointer client_data) 
-{
-  extern GSList *display_list;
-  GSList *list = display_list;
-  GDisplay *d;
-  char tmp[30]; 
-  CloneOptions *co = (CloneOptions*) client_data;
-  offset_y ++;
-  sprintf (tmp, "%d", offset_y);  
-  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
-  while (list)
-    {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
-      list = g_slist_next (list);
-    }
-
-  return TRUE; 
 }
 
 static gint	    
@@ -1251,11 +1128,8 @@ clone_is_src (GDisplay *gdisplay)
 static void         
 clone_set_offset (CloneOptions *co, int x, int y)
 {
-  char tmp[20];
-  sprintf (tmp, "%d", x); 
-  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
-  sprintf (tmp, "%d", y); 
-  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(co->x_offset_entry), x);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(co->y_offset_entry), y);
 } 
 
 void
@@ -1264,15 +1138,13 @@ clone_x_offset_increase ()
   extern GSList *display_list;
   GSList *list = display_list; 
   GDisplay *d;
-  char tmp[20];
   offset_x ++; 
-  sprintf (tmp, "%d", offset_x);  
   if (clone_options)
-    gtk_entry_set_text (GTK_ENTRY(clone_options->x_offset_entry), tmp);
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON(clone_options->x_offset_entry), offset_x);
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1284,15 +1156,13 @@ clone_x_offset_decrease ()
   extern GSList *display_list;
   GSList *list = display_list; 
   GDisplay *d;
-  char tmp[20];
   offset_x --; 
-  sprintf (tmp, "%d", offset_x);  
   if (clone_options)
-    gtk_entry_set_text (GTK_ENTRY(clone_options->x_offset_entry), tmp);
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON(clone_options->x_offset_entry), offset_x);
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1305,15 +1175,13 @@ clone_y_offset_increase ()
   extern GSList *display_list;
   GSList *list = display_list; 
   GDisplay *d;
-  char tmp[20];
   offset_y ++;
-  sprintf (tmp, "%d", offset_y);
   if (clone_options)
-    gtk_entry_set_text (GTK_ENTRY(clone_options->y_offset_entry), tmp);
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON(clone_options->y_offset_entry), offset_y);
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 }
@@ -1324,15 +1192,13 @@ clone_y_offset_decrease ()
   extern GSList *display_list;
   GSList *list = display_list; 
   GDisplay *d;
-  char tmp[20];
   offset_y --;
-  sprintf (tmp, "%d", offset_y);
   if (clone_options)
-    gtk_entry_set_text (GTK_ENTRY(clone_options->y_offset_entry), tmp);
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON(clone_options->y_offset_entry), offset_y);
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, offset_y); 
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 }
@@ -1348,8 +1214,8 @@ clone_reset_offset ()
     clone_set_offset (clone_options, offset_x, offset_y); 
   while (list)
     {
-      if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, 0);  
+      if ((d=((GDisplay *) list->data))->bfm)
+	bfm_onionskin_set_offset (d, 0, 0);  
       list = g_slist_next (list);
     }
 

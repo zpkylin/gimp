@@ -1676,6 +1676,7 @@ texture_map_pixel  (
   s->ity = (int) ((s->ty < 0) ? (s->ty - 0.999999) : s->ty);
   s->dy = s->ty - s->ity;
 
+
   /* check if the pixel fell inside the input image */
   if ((s->itx >= s->c_x) && (s->itx < s->c_x1) &&
       (s->ity >= s->c_y) && (s->ity < s->c_y1))

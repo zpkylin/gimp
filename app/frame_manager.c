@@ -34,9 +34,9 @@
 #include "gimprc.h"
 #include "minimize.h"
 
-#include "tools/forward.xpm"
+#include "tools/play_forward.xpm"
 #include "tools/forward_is.xpm"
-#include "tools/backwards.xpm"
+#include "tools/play_backwards.xpm"
 #include "tools/backwards_is.xpm"
 #include "tools/raise.xpm"
 #include "tools/raise_is.xpm"

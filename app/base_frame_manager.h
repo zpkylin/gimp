@@ -31,6 +31,7 @@ void bfm_create_cfm (GDisplay *);
 void bfm_delete_sfm (GDisplay *);
 void bfm_delete_cfm (GDisplay *);
 
+int bfm (GDisplay *);
 
 GImage* bfm_get_fg (GDisplay *);
 GImage* bfm_get_bg (GDisplay *);
@@ -39,14 +40,18 @@ void bfm_dirty (GDisplay *);
 char bfm_onionskin (GDisplay *);
 void bfm_onionskin_set_offset (GDisplay *, int, int);
 void bfm_onionskin_rm (GDisplay *);
-void bfm_onionskin_set_fg (GDisplay *, GImage *);
-void bfm_onionskin_set_bg (GDisplay *, GImage *);
+void bfm_set_fg (GDisplay *, GImage *);
+void bfm_set_bg (GDisplay *, GImage *);
+GimpDrawable* bfm_get_fg_drawable (GDisplay *);
+GimpDrawable* bfm_get_bg_drawable (GDisplay *);
+int bfm_get_fg_display (GDisplay *);
+int bfm_get_bg_display (GDisplay *);
 void bfm_onionskin_display (GDisplay *, double, int, int, int, int); 
 
 void bfm_next_filename (GImage *, char *, char *, char, GDisplay *);
-char* bfm_get_name (GImage *image);
-char* bfm_get_frame (GImage *image);
-char* bfm_get_ext (GImage *image);
+char* bfm_get_name (char *);
+char* bfm_get_frame (char *);
+char* bfm_get_ext (char *);
 void bfm_this_filename (char *, char *, char *, char *, int);
 
 GDisplay* bfm_load_image_into_fm (GDisplay *, GImage *);
@@ -61,6 +66,7 @@ void bfm_set_dir_dest (GDisplay *, char*);
 typedef struct
 {
   GImage *gimage;
+  GImage *new_gimage;
   char readonly;
   char advance;
   char flip;
@@ -69,6 +75,7 @@ typedef struct
   char selected;
   char active;
   char special;
+  char remove; 
   /* GUI */
   GtkWidget *iadvance;
   GtkWidget *iflip;
@@ -88,6 +95,7 @@ struct _store_frame_manager
   gint s_x, s_y, e_x, e_y;
   gint sx, sy, ex, ey;
   gint play;
+  gint load_smart;
   /* GUI */
   GtkWidget *aofi;
   GtkWidget *autosave;

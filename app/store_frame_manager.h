@@ -22,7 +22,6 @@ void sfm_store_lower (GtkWidget *, gpointer);
 void sfm_store_save (GtkWidget *, gpointer);
 void sfm_store_save_all (GtkWidget *, gpointer);
 void sfm_store_revert (GtkWidget *, gpointer);
-void sfm_store_load (GtkWidget *, gpointer);
 void sfm_store_change_frame (GtkWidget *, gpointer);
 
 void sfm_set_dir_src (GDisplay *);
