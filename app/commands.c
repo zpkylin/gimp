@@ -73,6 +73,7 @@
 #include "undo.h"
 #include "gimpbrushgenerated.h"
 #include "zoom.h"
+#include "zoombookmark.h"
 
 /*  external functions  */
 extern void layers_dialog_layer_merge_query (GImage *, int);
@@ -2092,6 +2093,46 @@ select_save_cmd_callback (GtkWidget *widget,
   gdisp = gdisplay_active ();
   gimage_mask_save (gdisp->gimage);
   gdisplays_flush ();
+}
+
+void view_zoom_bookmark0_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+  GDisplay *gdisp;
+
+  gdisp = gdisplay_active ();
+  zoom_bookmark_jump_to(&zoom_bookmarks[0], gdisp);
+}
+
+void view_zoom_bookmark1_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+  GDisplay *gdisp;
+
+  gdisp = gdisplay_active ();
+  zoom_bookmark_jump_to(&zoom_bookmarks[1], gdisp);
+}
+
+void view_zoom_bookmark2_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+  GDisplay *gdisp;
+
+  gdisp = gdisplay_active ();
+  zoom_bookmark_jump_to(&zoom_bookmarks[2], gdisp);
+}
+
+void view_zoom_bookmark3_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+  GDisplay *gdisp;
+
+  gdisp = gdisplay_active ();
+  zoom_bookmark_jump_to(&zoom_bookmarks[3], gdisp);
 }
 
 void 

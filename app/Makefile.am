@@ -30,6 +30,8 @@ gimp_SOURCES = \
 	smudge.h               \
 	dodgeburn.c               \
 	dodgeburn.h               \
+	zoombookmark.c                \
+	zoombookmark.h                \
 	zoom.c                \
 	zoom.h                \
 	noise.c                \

@@ -1840,6 +1840,7 @@ frame_manager_store_new_options (GDisplay *gdisplay)
   if (!fm->store_option)
     { 
       fm->store_option = gtk_dialog_new ();
+      gtk_object_ref(GTK_OBJECT(fm->store_option));
       gtk_window_set_wmclass (GTK_WINDOW (fm->store_option), "Store Option", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (fm->store_option), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->store_option), "New Store Option");

@@ -109,6 +109,10 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Select/By Color...", NULL, select_by_color_cmd_callback, 0 },
 #endif
   { "/View/Pan Zoom Window", NULL, view_pan_zoom_window_cb, 0 },
+  { "/View/Zoom Bookmarks/0", "<control>0", view_zoom_bookmark0_cb, 0},
+  { "/View/Zoom Bookmarks/1", "<control>1", view_zoom_bookmark1_cb, 0},
+  { "/View/Zoom Bookmarks/2", "<control>2", view_zoom_bookmark2_cb, 0},
+  { "/View/Zoom Bookmarks/3", "<control>3", view_zoom_bookmark3_cb, 0},
   { "/View/Zoom In", "equal", view_zoomin_cmd_callback, 0 },
   { "/View/Zoom Out", "minus", view_zoomout_cmd_callback, 0 },
   { "/View/Zoom/16:1", NULL, view_zoom_16_1_callback, 0 },

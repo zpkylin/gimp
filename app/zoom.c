@@ -5,6 +5,7 @@
 #include "zoom.h"
 #include "stdio.h"
 #include "scroll.h"
+#include "zoombookmark.h"
 
 /************************************************************/
 /*     Internal Function Declarations                       */
@@ -53,6 +54,8 @@ static void zoom_preview_clear_pixmap();
 static void zoom_preview_render_image();
 static void zoom_preview_draw_extents();
 static void zoom_preview_jump_to(gfloat x, gfloat y);
+static void zoom_control_set_event(GtkButton *, gpointer user_data);
+static void zoom_control_jump_event(GtkButton *, gpointer user_data);
 
 /************************************************************/
 /*     Global variables (yikes!)                            */
@@ -118,6 +121,7 @@ void zoom_control_close(GtkObject *wid, gpointer data)
 ZoomControl * zoom_control_open()
 {
    if (zoom_control && GTK_WIDGET_VISIBLE(zoom_control->window)) {
+      gdk_window_raise(zoom_control->window->window);
       return zoom_control;
    }
 
@@ -128,9 +132,7 @@ ZoomControl * zoom_control_open()
    }
 
    // make a new one
-   if (!zoom_control) {
-      zoom_control = zoom_control_new();
-   }
+   zoom_control = zoom_control_new();
    zoom_control_activate();
    
    // display it
@@ -143,6 +145,10 @@ ZoomControl * zoom_control_new()
   GtkWidget * vbox;
   ZoomControl *zoom;
   GList *items = NULL;
+  GtkWidget *table;
+  GtkWidget *button;
+  gchar buff[16];
+  int i=0;
 
   zoom = (ZoomControl *)malloc(sizeof(ZoomControl));
   zoom->gdisp = NULL;
@@ -222,10 +228,29 @@ ZoomControl * zoom_control_new()
 		      (GtkSignalFunc) zoom_preview_button_release_event, NULL);
   gtk_widget_set_events(zoom->preview, GDK_BUTTON_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
 
+  table = gtk_table_new(2, ZOOM_BOOKMARK_NUM, TRUE);
+  for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
+     button = gtk_button_new_with_label("Set");
+     gtk_table_attach(GTK_TABLE(table), button, i, i+1, 0, 1, 
+		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 2, 2);
+     gtk_signal_connect (GTK_OBJECT (button), "clicked",
+		      (GtkSignalFunc) zoom_control_set_event, (gpointer)i);
+     gtk_widget_show(button);
+
+     g_snprintf(buff, 16, " %d ", i); 
+     button = gtk_button_new_with_label(buff);
+     gtk_table_attach(GTK_TABLE(table), button, i, i+1, 1, 2, 
+		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 2, 2);
+     gtk_signal_connect (GTK_OBJECT (button), "clicked",
+		      (GtkSignalFunc) zoom_control_jump_event, (gpointer)i);
+     gtk_widget_show(button);
+  }
+
   vbox = gtk_vbox_new(FALSE, 10); 
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), vbox, TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(vbox), zoom->pull_down, TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(vbox), zoom->slider   , TRUE, TRUE, 0); 
+  gtk_box_pack_start(GTK_BOX(vbox), table          , TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->vbox), zoom->preview, TRUE, TRUE, 0); 
 
   gtk_widget_show(zoom->pull_down);
@@ -655,6 +680,27 @@ static gboolean zoom_preview_button_press_event(
    return FALSE;
 }
 
+static void zoom_control_set_event(GtkButton *button, gpointer user_data)
+{
+   int i;
+   i = (int)user_data;
+
+   if (!zoom_control || !zoom_control->gdisp)
+      return;
+
+   zoom_bookmark_set(&zoom_bookmarks[i], zoom_control->gdisp);
+}
+
+static void zoom_control_jump_event(GtkButton *button, gpointer user_data)
+{
+   int i;
+   i = (int)user_data;
+
+   if (!zoom_control || !zoom_control->gdisp)
+      return;
+
+   zoom_bookmark_jump_to(&zoom_bookmarks[i], zoom_control->gdisp);
+}
 
 /**********************************************/
 /*  This handler is not used                  */
