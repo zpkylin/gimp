@@ -917,8 +917,8 @@ clone_line_image  (PaintCore * paint_core,
 		  canvas_width (painthit)) * 0.5;
 	      h = (height * (SCALE_Y) - 
 		  canvas_height (painthit)) * 0.5;
-	      w = scale_x == 1 ? w + 1: w + 1;
-	      h = scale_y == 1 ? h + 1: h + 1; 
+	      w = scale_x == 1 ? w: w + 1;
+	      h = scale_y == 1 ? h: h + 1; 
 	      x1 = BOUNDS (x - w, 0, drawable_width (src_drawable));
 	      y1 = BOUNDS (y - h, 0, drawable_height (src_drawable));
 	      x2 = BOUNDS (x + w + canvas_width (painthit), 0, drawable_width (src_drawable));

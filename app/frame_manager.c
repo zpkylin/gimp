@@ -869,6 +869,7 @@ frame_manager_jump_to (GtkWidget *w, gpointer client_data)
 {
   char *whole, *raw;
   int num=1, i;
+  store_t *item; 
   frame_manager_t *fm = (frame_manager_t*) client_data;
   GSList *item_list=NULL;
   if (!frame_manager_check (fm))
@@ -889,7 +890,12 @@ frame_manager_jump_to (GtkWidget *w, gpointer client_data)
       if (item_list)
 	{
 	  i = gtk_list_child_position (GTK_LIST (frame_manager->store_list), item_list->data);
+	  item = (store_t*) g_slist_nth (fm->stores, i)->data;
 	  dont_change_frame = 0; 
+	  if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save) &&
+	      item->gimage->dirty)
+	    file_save (item->gimage->ID, item->gimage->filename,
+		prune_filename (item->gimage->filename));
 	  frame_manager_store_add (fm->gdisplay->gimage, fm, i);  
 	  dont_change_frame = 1; 
 	}
@@ -1939,6 +1945,12 @@ frame_manager_change_frame_num (frame_manager_t *fm, store_t *item)
 	gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp);
 	gtk_widget_show (fm->change_frame_num);
       }
+    else
+      {
+	temp = strdup (frame_manager_get_frame (item->gimage));
+	gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp);
+	gdk_window_raise(GTK_WINDOW (fm->change_frame_num));	
+      }
 }
 
 static gint 
@@ -1949,8 +1961,13 @@ frame_manager_store_size (GtkWidget *w, gpointer client_data)
   fm = (frame_manager_t*)client_data; 
 
   if (!frame_manager_check (fm))
-    return; 
+    {
+      printf ("lfdlaskdjlaks\n"); 
+    return;
+    } 
+      printf ("lfdlaskdjlaks\n"); 
   frame_manager_rm_onionskin (fm); 
+      printf ("lfdlaskdjlaks\n"); 
 
   frame_manager_store_new_options (fm); 
   return TRUE; 
