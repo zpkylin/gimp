@@ -215,14 +215,17 @@ paint_funcs_area_setup  (
   color_hash_hits = 0;
 
   /*  generate a table of random seeds  */
-  srand (RANDOM_SEED);
+#if 0
+  srand48 (time (NULL) * RANDOM_SEED);
+#endif
   for (i = 0; i < RANDOM_TABLE_SIZE; i++)
-    random_table[i] = rand ();
+    random_table[i] = drand48 ();
 
   for (i = 0; i < RANDOM_TABLE_SIZE; i++)
     {
       int tmp;
-      int swap = i + rand () % (RANDOM_TABLE_SIZE - i);
+      int swap = i + ((int)(drand48()*RANDOM_SEED)) % (RANDOM_TABLE_SIZE - i);
+      printf ("paint_funcs_area_setup %d\n", swap);
       tmp = random_table[i];
       random_table[i] = random_table[swap];
       random_table[swap] = tmp;

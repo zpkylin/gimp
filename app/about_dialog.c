@@ -253,8 +253,8 @@ about_dialog_create (int timeout)
       for (i = 0; i < nscroll_texts; i++) 
 	{
 	  int j, k;
-	  j = rand() % nscroll_texts;
-	  k = rand() % nscroll_texts;
+	  j = ((int)drand48()) % nscroll_texts;
+	  k = ((int)drand48()) % nscroll_texts;
 	  if (j != k) 
 	    {
 	      int t;
@@ -346,11 +346,13 @@ about_dialog_load_logo (GtkWidget *window)
 
   dissolve_map = g_new (guchar, dissolve_width * dissolve_height);
 
-  srand (time (NULL));
+#if 0
+  srand48 (time (NULL));
+#endif
 
   for (i = 0, k = 0; i < dissolve_height; i++)
     for (j = 0; j < dissolve_width; j++, k++)
-      dissolve_map[k] = rand () % ANIMATION_STEPS;
+      dissolve_map[k] = ((int)drand48 ()) % ANIMATION_STEPS;
 
   return TRUE;
 }

@@ -457,6 +457,8 @@ app_init (void)
   char *gimp_dir;
   char *path;
 
+  srand48 (time(NULL));
+
   gimp_dir = gimp_directory ();
   if (gimp_dir[0] != '\000')
     {

@@ -322,14 +322,17 @@ paint_funcs_setup ()
   color_hash_hits = 0;
 
   /*  generate a table of random seeds  */
-  srand (RANDOM_SEED);
+#if 0
+  srand48 (time (NULL) * RANDOM_SEED);
+#endif
+
   for (i = 0; i < RANDOM_TABLE_SIZE; i++)
-    random_table[i] = rand ();
+    random_table[i] = drand48 ();
 
   for (i = 0; i < RANDOM_TABLE_SIZE; i++)
     {
       int tmp;
-      int swap = i + rand () % (RANDOM_TABLE_SIZE - i);
+      int swap = i + drand48 () % (RANDOM_TABLE_SIZE - i);
       tmp = random_table[i];
       random_table[i] = random_table[swap];
       random_table[swap] = tmp;
@@ -838,9 +841,12 @@ dissolve_pixels (unsigned char *src,
   int rand_val;
 
   /*  Set up the random number generator  */
-  srand (random_table [y % RANDOM_TABLE_SIZE]);
+#if 0
+  srand48 (random_table [y % RANDOM_TABLE_SIZE]);
+#endif
+
   for (b = 0; b < x; b++)
-    rand ();
+    drand48 ();
 
   alpha = db - 1;
 
@@ -851,7 +857,7 @@ dissolve_pixels (unsigned char *src,
 	dest[b] = src[b];
 
       /*  dissolve if random value is > opacity  */
-      rand_val = (rand() & 0xFF);
+      rand_val = (drand48 () & 0xFF);
 
       if (has_alpha)
 	dest[alpha] = (rand_val > opacity) ? 0 : src[alpha];

@@ -1650,7 +1650,7 @@ static void brush_mask_noise_float16 (
   gfloat yoff; 
   gfloat out;
   gfloat c,s,theta,xnew,ynew;
-  
+ 
 #ifdef BRUSH_WITH_BORDER
   guint16* data =(guint16*)canvas_portion_data (noise_brush, 0, 1);
 #else
@@ -1660,12 +1660,13 @@ static void brush_mask_noise_float16 (
 
   gimp_brush_get_noise_info (&info);
  
-  f = info.freq * 256;
+  f = info.freq * 256.0;
 
   if (f) 
   {
-    xoff = (int)((rand()/32767.0)*255); 
-    yoff = (int)((rand()/32767.0)*255); 
+    xoff = (drand48()*255.0); 
+    yoff = (drand48()*255.0);
+    printf ("%f %f\n", xoff, yoff);  
   }
   else 
   {
@@ -1673,15 +1674,15 @@ static void brush_mask_noise_float16 (
     yoff = 0;
   }
 
-  xoff = xoff + .5;
-  yoff = yoff + .5;
+  xoff = (int)(xoff + .5);
+  yoff = (int)(yoff + .5);
 
   start = info.step_start * .7;
   width = info.step_width;
 
-  theta = rand()/32767.0; 
-  c = cos (2 * 3.14 * theta);
-  s = sin (2 * 3.14 * theta);
+  theta = drand48();
+  c = cos (2.0 * 3.14 * theta);
+  s = sin (2.0 * 3.14 * theta);
   
   for (i = 0; i < h; i++)
     {
@@ -1701,7 +1702,7 @@ static void brush_mask_noise_float16 (
 
 	  val = noise (xnew, ynew);   
 #if 1 
-	  out =  (.5 * (val + 1)); 
+	  out =  (.5 * (val + 1.0)); 
 	  end = start + width;
           if (end>1) end = 1.0;
 	  out = noise_smoothstep (start, end, out);

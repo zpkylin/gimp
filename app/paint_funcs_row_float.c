@@ -807,7 +807,7 @@ dissolve_row_float  (
 	dest[b] = src[b];
 
       /*  dissolve if random value is > *opacity  */
-      rand_val = rand() / (gfloat)RAND_MAX;
+      rand_val = drand48() / (gfloat)RAND_MAX;
 
       if (has_alpha)
 	dest[alpha] = (rand_val > opacity) ? 0.0 : src[alpha];

@@ -824,7 +824,7 @@ dissolve_row_u16  (
 	dest[b] = src[b];
 
       /*  dissolve if random value is > opacity  */
-      rand_val = (rand() & 0xFFFF);
+      rand_val = (((int)drand48()) & 0xFFFF);
 
       if (has_alpha)
 	dest[alpha] = (rand_val > rand_opac) ? 0 : src[alpha];

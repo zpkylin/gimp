@@ -820,7 +820,7 @@ dissolve_row_u8  (
 	dest[b] = src[b];
 
       /*  dissolve if random value is > *opacity  */
-      rand_val = (rand() & 0xFF);
+      rand_val = (((int)drand48()) & 0xFF);
 
       if (has_alpha)
 	dest[alpha] = (rand_val > rand_opac) ? 0 : src[alpha];
