@@ -1880,6 +1880,7 @@ xcf_read_int32 (FILE     *fp,
 {
   guint total;
 
+
   total = count;
   if (count > 0)
     {
@@ -1909,7 +1910,7 @@ xcf_read_int16 (FILE     *fp,
 
       while (count--)
         {
-          *data = ntohl (*data);
+          /**data = ntohl (*data);*/
           data++;
         }
     }
@@ -1979,7 +1980,8 @@ xcf_write_float (FILE     *fp,
       for (i = 0; i < count; i++)
         {
 	  tmp_long = (guint32 *) &data[i];
-          tmp = htonl (*tmp_long);
+          /*tmp = htonl (*tmp_long);*/
+          tmp = tmp_long;
           xcf_write_int8 (fp, (guint8*) &tmp, 4);
         }
     }
@@ -2019,7 +2021,8 @@ xcf_write_int16 (FILE     *fp,
     {
       for (i = 0; i < count; i++)
         {
-          tmp = htonl (data[i]);
+          /*tmp = htonl (data[i]);*/
+          tmp = data[i];
           xcf_write_int8 (fp, (guint8*) &tmp, 2);
         }
     }
