@@ -27,11 +27,13 @@ typedef struct
   GtkWidget *istep;
   GtkWidget *iflip;
   GtkWidget *ibg;
+  GtkWidget *isave;
   GtkWidget *label;
   GImage *gimage;
   GtkWidget *list_item;
   char flip;
   char bg;
+  char save;
   char step;
   char selected;
   char active;
@@ -82,5 +84,6 @@ void frame_manager_set_bg (GDisplay *display);
 void frame_manager_store_add (GImage *, frame_manager_t *, int);
 store_t* frame_manager_store_new (GImage *gimage, char active);
 GDisplay* frame_manager_load (GImage *gimage);
+void frame_manager_set_dirty_flag (int flag); 
 
 #endif /* __FRAME_MANAGER_H__ */

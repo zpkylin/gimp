@@ -113,7 +113,6 @@ typedef enum
   CONVOLVE,
   DODGEBURN,
   SMUDGE,
-  MEASURE,
 
   /*  Non-toolbox tools  */
   BY_COLOR_SELECT,

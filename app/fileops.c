@@ -1168,6 +1168,8 @@ file_save (int   image_ID,
 
       /*  set the image title  */
       gimage_set_filename (gimage, filename);
+
+      frame_manager_set_dirty_flag (0); 
     }
   else
     {
@@ -1930,6 +1932,8 @@ file_save_invoker (Argument *args)
   
   if (!return_vals)
     printf ("ERROR : saving\n");
+      
+  frame_manager_set_dirty_flag (1); 
 
   g_free (new_args);
 

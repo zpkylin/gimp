@@ -34,6 +34,7 @@
 #include "devices.h"
 #include "tools.h"
 #include "clone.h"
+#include "frame_manager.h"
 
 
 #define HORIZONTAL  1
@@ -353,6 +354,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
         default:
           break;
       }
+      frame_manager_set_dirty_flag (0);
       break;
 
     case GDK_MOTION_NOTIFY:
