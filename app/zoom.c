@@ -4,16 +4,17 @@
 #include "scale.h"
 #include "zoom.h"
 #include "stdio.h"
+#include "scroll.h"
 
 /************************************************************/
 /*     Internal Function Declarations                       */
 /************************************************************/
 static void zoom_control_close(GtkObject *wid, gpointer data);
-
 static void zoom_update_pulldown_slider(GDisplay *disp);
 static void zoom_update_slider(GDisplay *disp);
 static void zoom_update_pulldown(GDisplay *disp);
 static void zoom_update_scale(GDisplay *gdisp, gint scale_val);
+static void zoom_update_extents(GDisplay *gdisp);
 static GDisplay *zoom_get_active_display();
 static int zoom_control_activate();
 static void zoom_slider_value_changed(
@@ -39,7 +40,19 @@ static gboolean zoom_preview_button_press_event(
    GtkWidget *widget,
    GdkEventButton *event,
    gpointer user_data);
-static void zoom_clear_pixmap(GtkWidget *preview, GdkPixmap *pixmap);
+static gboolean zoom_preview_button_release_event(
+   GtkWidget *widget,
+   GdkEventButton *event,
+   gpointer user_data);
+static gboolean zoom_preview_general_event(
+   GtkWidget *widget,
+   GdkEvent *event,
+   gpointer user_data);
+static void zoom_preview_draw();
+static void zoom_preview_clear_pixmap();
+static void zoom_preview_render_image();
+static void zoom_preview_draw_extents();
+static void zoom_preview_jump_to(gfloat x, gfloat y);
 
 /************************************************************/
 /*     Global variables (yikes!)                            */
@@ -72,6 +85,7 @@ void zoom_view_changed(GDisplay *disp)
    // notify dialog's widgets to update zoom
    zoom_update_pulldown_slider(disp); 
    // notify drawing area to update rect.
+   zoom_update_extents(disp);
    
    // reset state
    zoom_external_generated = 0;
@@ -79,7 +93,6 @@ void zoom_view_changed(GDisplay *disp)
 
 void zoom_image_preview_changed(GImage *image)
 {
-   printf("Image changed\n");
 }
 
 void zoom_set_focus(GDisplay *gdisp)
@@ -125,6 +138,7 @@ ZoomControl * zoom_control_open()
 
 ZoomControl * zoom_control_new()
 {
+  GtkWidget * vbox;
   ZoomControl *zoom;
   GList *items = NULL;
 
@@ -136,6 +150,10 @@ ZoomControl * zoom_control_new()
   zoom->slider = NULL;
   zoom->preview = NULL;
   zoom->adjust = NULL;  
+  zoom->map_w = zoom->map_h = 0;
+  zoom->top = zoom->bottom = zoom->left = zoom->right = 0;
+  zoom->preview_width = zoom->preview_height = zoom->preview_x_offset = zoom->preview_y_offset = 0;
+  zoom->mouse_capture = 0;
 
   zoom->window = gtk_dialog_new();
   gtk_signal_connect(GTK_OBJECT(zoom->window), "destroy", 
@@ -190,18 +208,22 @@ ZoomControl * zoom_control_new()
 
   zoom->preview = gtk_drawing_area_new();
   gtk_drawing_area_size(GTK_DRAWING_AREA(zoom->preview), 128, 128);
-  gtk_signal_connect (GTK_OBJECT (zoom->preview), "expose_event",
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "expose-event",
 		      (GtkSignalFunc) zoom_preview_expose_event, NULL);
-  gtk_signal_connect (GTK_OBJECT(zoom->preview),"configure_event",
+  gtk_signal_connect (GTK_OBJECT(zoom->preview),"configure-event",
 		      (GtkSignalFunc) zoom_preview_configure_event, NULL);
-  gtk_signal_connect (GTK_OBJECT (zoom->preview), "motion_notify_event",
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "motion-notify-event",
 		      (GtkSignalFunc) zoom_preview_motion_notify_event, NULL);
-  gtk_signal_connect (GTK_OBJECT (zoom->preview), "button_press_event",
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "button-press-event",
 		      (GtkSignalFunc) zoom_preview_button_press_event, NULL);
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "button-release-event",
+		      (GtkSignalFunc) zoom_preview_button_release_event, NULL);
+  gtk_widget_set_events(zoom->preview, GDK_BUTTON_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
 
- 
-  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), zoom->pull_down, TRUE, TRUE, 0); 
-  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), zoom->slider, TRUE, TRUE, 0); 
+  vbox = gtk_vbox_new(FALSE, 10); 
+  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), vbox, TRUE, TRUE, 0); 
+  gtk_box_pack_start(GTK_BOX(vbox), zoom->pull_down, TRUE, TRUE, 0); 
+  gtk_box_pack_start(GTK_BOX(vbox), zoom->slider   , TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->vbox), zoom->preview, TRUE, TRUE, 0); 
 
   gtk_widget_show(zoom->pull_down);
@@ -221,6 +243,130 @@ void zoom_control_delete(ZoomControl *zoom)
 /************************************************************/
 /*     Utility Functions                                    */
 /************************************************************/
+
+void zoom_preview_jump_to(gfloat x, gfloat y)
+{
+   gfloat x_dist, y_dist;
+   gfloat scale;
+
+   if (!zoom_control || !zoom_control->gdisp)
+      return;
+
+   
+   // figure out the distance translated
+   x_dist = zoom_control->drag_offset_x + x - .5 * (zoom_control->left + zoom_control->right);
+   y_dist = zoom_control->drag_offset_y + y - .5 * (zoom_control->top + zoom_control->bottom);
+
+   // convert to image units
+   scale = ((float)zoom_control->gdisp->gimage->width) / ((float)zoom_control->preview_width);
+  
+   scroll_display(zoom_control->gdisp, (int) (x_dist * scale), (int) (y_dist * scale)); 
+}
+
+void zoom_update_extents(GDisplay *gdisp)
+{
+   // recompute the visualized extents, redraw the offscreen pixmap, then force a redraw
+   gint disp_scale, image_scale;
+   float image_width, image_height;
+   float disp_width, disp_height;
+   float fleft, fright, ftop, fbottom;  // position of the view bounds normalized by the size of the image
+
+   float preview_aratio;
+   float image_aratio;
+
+   disp_scale = SCALESRC(gdisp);
+   image_scale = SCALEDEST(gdisp);
+   image_width = image_scale * gdisp->gimage->width; 
+   image_height = image_scale * gdisp->gimage->height; 
+   disp_width = disp_scale * gdisp->disp_width;
+   disp_height = disp_scale * gdisp->disp_height;
+
+   ftop  = gdisp->offset_y <= 0 ? 0 : ((float)(gdisp->offset_y * disp_scale)) / image_height;
+   fleft = gdisp->offset_x <= 0 ? 0 : ((float)(gdisp->offset_x * disp_scale)) / image_width;
+   fright = (disp_width + disp_scale * gdisp->offset_x) / image_width;
+   fbottom= (disp_height + disp_scale * gdisp->offset_y) / image_height;
+	    
+   if (fright > 1) fright = 1;
+   if (fbottom > 1) fbottom = 1;
+
+   // figure out the placement of the actual preview image in the preview window
+   preview_aratio = ((float)zoom_control->map_w)/((float)zoom_control->map_h);
+   image_aratio =   ((float)gdisp->gimage->width)/((float)gdisp->gimage->height);
+
+   if (image_aratio < preview_aratio) {
+      zoom_control->preview_height = zoom_control->map_h;
+      zoom_control->preview_y_offset = 0;
+      zoom_control->preview_width = (int) ((image_aratio / preview_aratio) * zoom_control->map_w);
+      zoom_control->preview_x_offset = (zoom_control->map_w - zoom_control->preview_width) / 2;
+   }
+   else {
+      zoom_control->preview_width = zoom_control->map_w;
+      zoom_control->preview_x_offset = 0;
+      zoom_control->preview_height = (int) ((preview_aratio / image_aratio) * zoom_control->map_h);
+      zoom_control->preview_y_offset = (zoom_control->map_h - zoom_control->preview_height) / 2;
+   }
+
+   // compute coordinates of the bounding box in the preview window
+   zoom_control->left  = (int) (zoom_control->preview_x_offset+ fleft * zoom_control->preview_width); 
+   zoom_control->right = (int) (zoom_control->preview_x_offset+ fright * zoom_control->preview_width);
+   zoom_control->top =   (int) (zoom_control->preview_y_offset+ ftop * zoom_control->preview_height); 
+   zoom_control->bottom= (int) (zoom_control->preview_y_offset+ fbottom* zoom_control->preview_height); 
+
+   // draw it
+   zoom_preview_draw();
+}
+
+static void zoom_preview_draw()
+{
+   GdkRectangle rect;
+   if (!zoom_control || !zoom_control->pixmap)
+      return;
+   
+   zoom_preview_clear_pixmap();
+   zoom_preview_render_image();
+   zoom_preview_draw_extents();
+
+   rect.x = 0;
+   rect.y = 0;
+   rect.width = zoom_control->map_w;
+   rect.height= zoom_control->map_h;
+   gtk_widget_draw(zoom_control->preview, &rect);
+}
+
+static void zoom_preview_clear_pixmap()
+{
+   if (!zoom_control || !zoom_control->pixmap)
+      return;
+
+   gdk_draw_rectangle(zoom_control->pixmap, zoom_control->preview->style->mid_gc[0], TRUE, 0, 0, 
+		   zoom_control->map_w, zoom_control->map_h);
+}
+
+static void zoom_preview_render_image()
+{
+   if (!zoom_control || !zoom_control->pixmap)
+      return;
+
+   gdk_draw_rectangle(zoom_control->pixmap, zoom_control->preview->style->white_gc, TRUE, 
+		   zoom_control->preview_x_offset, zoom_control->preview_y_offset, 
+		   zoom_control->preview_width, 
+		   zoom_control->preview_height);
+}
+
+static void zoom_preview_draw_extents()
+{
+   if (!zoom_control || !zoom_control->pixmap)
+      return;
+
+   gdk_draw_line(zoom_control->pixmap, zoom_control->preview->style->black_gc, 
+      zoom_control->left, zoom_control->top, zoom_control->left, zoom_control->bottom);
+   gdk_draw_line(zoom_control->pixmap, zoom_control->preview->style->black_gc,
+      zoom_control->left, zoom_control->bottom, zoom_control->right, zoom_control->bottom);
+   gdk_draw_line(zoom_control->pixmap, zoom_control->preview->style->black_gc, 
+      zoom_control->right, zoom_control->bottom, zoom_control->right, zoom_control->top);
+   gdk_draw_line(zoom_control->pixmap, zoom_control->preview->style->black_gc,
+      zoom_control->right, zoom_control->top, zoom_control->left, zoom_control->top);
+}
 
 void zoom_update_pulldown_slider(GDisplay *disp)
 {
@@ -246,7 +392,6 @@ void zoom_update_slider(GDisplay *disp)
       val = src - 1;
    }
 
-   //printf("src %d dst %d val %f\n", src, dst, val);
    gtk_adjustment_set_value(zoom_control->adjust, -val);
    zoom_updating_ui = 0;
 }
@@ -350,7 +495,6 @@ zoom_slider_value_changed(
 
    // convert to an integer value, and round
    scale_val = (int) (-adjustment->value + .5);
-   //printf("Raw value %f, int %d\n", -adjustment->value, scale_val);
 
    // need to pack scale_val into the weird format used by change_scale().  
    scale_val = scale_val < 0 ? (-scale_val + 1) * 100 + 1 :
@@ -358,6 +502,7 @@ zoom_slider_value_changed(
 
     // now set the zoom factor for the display
    zoom_update_scale(zoom_control->gdisp, scale_val);
+   zoom_update_extents(zoom_control->gdisp);
    zoom_update_pulldown(zoom_control->gdisp);
 }
 
@@ -400,6 +545,7 @@ static void zoom_pulldown_value_changed(
    scale_val = dst_val * 100 + src_val;
 
    zoom_update_scale(zoom_control->gdisp, scale_val);
+   zoom_update_extents(zoom_control->gdisp);
    zoom_update_slider(zoom_control->gdisp);
 }
 
@@ -407,15 +553,6 @@ static void zoom_pulldown_value_changed(
 /************************************************************/
 /*     Callback functions for preview widget events         */
 /************************************************************/
-
-static void zoom_clear_pixmap(GtkWidget *preview, GdkPixmap *pixmap)
-{
-   gdk_draw_rectangle(pixmap, preview->style->white_gc, TRUE, 0, 0, 
-		   preview->allocation.width, preview->allocation.height);
-   gdk_draw_line(pixmap,
-		   preview->style->black_gc,
-		   10, 10, 100,45);
-}
 
 static gboolean zoom_preview_expose_event(
    GtkWidget *widget,
@@ -446,7 +583,12 @@ static gboolean zoom_preview_configure_event(
       // make one
       zoom_control->pixmap = 
 	 gdk_pixmap_new(widget->window, widget->allocation.width, widget->allocation.height, -1);
-      zoom_clear_pixmap(widget, zoom_control->pixmap);
+      zoom_control->map_w = widget->allocation.width;
+      zoom_control->map_h = widget->allocation.height;
+      zoom_preview_clear_pixmap();
+      if (zoom_control->gdisp) {
+         zoom_update_extents(zoom_control->gdisp);
+      }
    }
 
    return TRUE;
@@ -457,15 +599,74 @@ static gboolean zoom_preview_motion_notify_event(
    GdkEventMotion *event,
    gpointer user_data)
 {
+   if (!zoom_control || !zoom_control->gdisp)
+      return FALSE;
+
+   if (!zoom_control->mouse_capture)
+      return FALSE;
+
+   zoom_preview_jump_to(event->x, event->y);
    return FALSE;
 }
+
+static gboolean zoom_preview_button_release_event(
+   GtkWidget *widget,
+   GdkEventButton *event,
+   gpointer user_data)
+{
+   if (!zoom_control || !zoom_control->gdisp)
+      return FALSE;
+
+   if (event->button == 1) {
+      zoom_control->mouse_capture = 0;
+
+   }
+   return FALSE;
+}
+
 
 static gboolean zoom_preview_button_press_event(
    GtkWidget *widget,
    GdkEventButton *event,
    gpointer user_data)
 {
+   if (!zoom_control || !zoom_control->gdisp)
+      return FALSE;
+
+   if (event->button == 1) {
+      zoom_control->mouse_capture = 1;
+
+      // if the click was outside the box, jump there 
+      if (event->x < zoom_control->left || event->x > zoom_control->right ||
+	  event->y < zoom_control->top || event->y > zoom_control->bottom) {
+	 zoom_control->drag_offset_x = zoom_control->drag_offset_y = 0;
+         zoom_preview_jump_to(event->x, event->y);
+      }
+      else {
+         zoom_control->drag_offset_x = (int) (((zoom_control->left + zoom_control->right) / 2) - event->x);
+         zoom_control->drag_offset_y = (int) (((zoom_control->top  + zoom_control->bottom) / 2) - event->y);
+      }
+
+   }
    return FALSE;
 }
 
+
+/**********************************************/
+/*  This handler is not used                  */
+/**********************************************/
+static gboolean zoom_preview_general_event(
+   GtkWidget *widget,
+   GdkEvent *event,
+   gpointer user_data)
+{
+   if (event->type == GDK_BUTTON_PRESS) {
+      return zoom_preview_button_press_event(widget, (GdkEventButton *)event, user_data);
+   }
+   else if (event->type == GDK_MOTION_NOTIFY) {
+      return zoom_preview_motion_notify_event(widget, (GdkEventMotion *)event, user_data);
+   }
+
+   return FALSE;
+}
 

@@ -35,4 +35,5 @@ void end_grab_and_scroll (GDisplay *, GdkEventButton *);
 void grab_and_scroll (GDisplay *, GdkEventMotion *);
 void scroll_to_pointer_position (GDisplay *, GdkEventMotion *);
 
+int scroll_display (GDisplay *, int, int);
 #endif  /*  __SCROLL_H__  */

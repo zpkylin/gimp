@@ -21,15 +21,12 @@
 #include "scroll.h"
 #include "cursorutil.h"
 #include "tools.h"
-
+#include "zoom.h"
 
 /*  This is the delay before dithering begins
  *  for example, after an operation such as scrolling
  */
 #define DITHER_DELAY 250  /*  milliseconds  */
-
-/*  Locally defined functions  */
-static int scroll_display (GDisplay *, int, int);
 
 /*  STATIC variables  */
 /*  These are the values of the initial pointer grab   */
@@ -134,7 +131,7 @@ scroll_to_pointer_position (GDisplay       *gdisp,
 }
 
 
-static int
+int
 scroll_display (GDisplay *gdisp,
 		int       x_offset,
 		int       y_offset)
@@ -224,6 +221,8 @@ scroll_display (GDisplay *gdisp,
         gdk_event_free (event);
       }
 
+      // notify the zoom control
+      zoom_view_changed(gdisp);
       return 1;
     }
 

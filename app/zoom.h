@@ -21,12 +21,20 @@ typedef struct
   GtkAdjustment * adjust;  
   GDisplay  *gdisp;         
   GdkPixmap *pixmap;
+  gint       map_w, map_h;
+  gint       top, bottom, left, right; // coordinates of the extents in the the preview widget
+  gint preview_width; // coordinates of the preview image inside the actual preview widget
+  gint preview_height;
+  gint preview_x_offset;
+  gint preview_y_offset;
+  gint mouse_capture; // whether the preview widget is between mouse button 1 down and up.
+  gint drag_offset_x; // intitial offset from the center of the extent box during a mouse drag
+  gint drag_offset_y;
 } ZoomControl;
 
 ZoomControl * zoom_control_open();
 ZoomControl * zoom_control_new();
 void zoom_control_delete(ZoomControl *zoom);
-void zoom_control_extents_changed(); 
 
 // call this to notify the dialog that the actual pan/zoom parameters from the given
 // display have changed.  The dialog will determine whether or not it cares (i.e., 
