@@ -64,7 +64,8 @@
    structure should also be defined and typedef'd properly here.
 
 */
-     
+
+/* Misc macros. These may need to be renamed.. */
 #define DEF_GET_TYPE(class, prefix, parent_prefix) \
 guint prefix##_get_type (void)\
 {\
@@ -94,6 +95,8 @@ guint prefix##_get_type (void)\
      
      
 #define GIMP_IS_OBJECT(obj) GTK_CHECK_TYPE (obj, gimp_object_get_type())
+
+#define CLASS (obj) (GTK_OBJECT(obj)->klass)
 
 
 guint gimp_object_get_type(void);

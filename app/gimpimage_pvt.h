@@ -1,22 +1,22 @@
 #ifndef __GIMP_IMAGE_PVT_H__
 #define __GIMP_IMAGE_PVT_H__
 
-#include "gimpimage.h"
 #include "gimpobject_pvt.h"
+#include "gimpimage.h"
 
 #include "tile_manager_decl.h"
 #include "layer_decl.h"
 #include "channel_decl.h"
 #include "temp_buf_decl.h"
 
-struct _GImage
+struct _GimpImage
 {
   GimpObject gobject;
   char *filename;		      /*  original filename            */
   int has_filename;                   /*  has a valid filename         */
 
   int width, height;		      /*  width and height attributes  */
-  GImageBaseType base_type;                      /*  base gimage type             */
+  GimpImageBaseType base_type;                      /*  base gimage type             */
 
   unsigned char * cmap;               /*  colormap--for indexed        */
   int num_cols;                       /*  number of cols--for indexed  */
@@ -25,10 +25,13 @@ struct _GImage
   int undo_on;                        /*  Is undo enabled?             */
 
   int instance_count;                 /*  number of instances          */
+
+  /* Legacy, we should use GtkObject ref counting */
   int ref_count;                      /*  number of references         */
 
   TileManager *shadow;                /*  shadow buffer tiles          */
 
+  /* Legacy */
   int ID;                             /*  Unique gimage identifier     */
 
                                       /*  Projection attributes  */
@@ -70,7 +73,7 @@ struct _GImage
   int comp_preview_valid[3];          /*  preview valid-1/channel      */
 };
 
-struct _GImageClass
+struct _GimpImageClass
 {
   GimpObjectClass parent_class;
   void (*dirty) (GtkObject*);
@@ -78,6 +81,10 @@ struct _GImageClass
   void (*rename) (GtkObject*);
 };
 
-typedef struct _GImageClass GImageClass;
+typedef struct _GimpImageClass GimpImageClass;
+
+#define GIMP_IMAGE_CLASS(klass) \
+GTK_CHECK_CLASS_CAST (klass, gimp_image_get_type(), GimpImageClass)
+     
 
 #endif

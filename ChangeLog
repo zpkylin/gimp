@@ -1,3 +1,22 @@
+Mon Apr  6 18:35:11 EEST 1998  Lauri Alanko  <nether@gimp.org>
+
+	* app/gimage.c
+	* app/gimage.h
+	* app/gimpimage.c
+	* app/gimpimage.h
+	* app/gimpimage_decl.h
+	* app/gimpimage_pvt.h
+	* app/gimpobject.h
+	* docs/gtkob.txt
+
+	Started moving dirt from gimpimage to gimage. This is rather hard, 
+	though. GImage has gdisplay calls everywhere. Undo calls, too, but 
+	I'm not sure if this is a bad thing. Undo code has to be
+	rearranged at some point, in any case.
+
+	The "dirt" in gimage.c and globals.c should be moved to
+	appropriate modules. Be my guest.
+	
 Sun Apr  5 01:37:45 EEST 1998  Lauri Alanko  <nether@gimp.org>
 
 	* app/gimpimage.c

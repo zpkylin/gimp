@@ -86,3 +86,28 @@ Tiles
 These are rather primitive objects, they might not necessarily need to 
 be gtkobjectified.
 
+
+
+Design principles
+
+
+The idea of gtkobjectification is to make things more OO. This means
+that classes should be as isolated from each other as possible. There
+is high level code and lower level code, and lower level code should
+never ever call higher level code. For example, the image class should 
+_not_ call up message boxes to notify errors. Instead, it should
+return an error value (or use global variables a la errno, but these
+are not thread-safe).
+
+The best way to think about it is to see gimp as an an application
+that provides an interactive gtk interface, as well as the
+programmable pdb api, to control image manipulation operations.
+
+Optimally, these image manipulation functions will be completely
+separate from any other code (well, besides gtk's object system &
+deps). The fact is that the current gimp executable is far too
+big. In addition to the messiness, linking takes too much time. The
+real objective is to encapsulate all the image manipulation code into
+a separate library. Not because it would be useful generically (though 
+that is definitely a possibility!) but because it will add
+abstraction.
