@@ -557,7 +557,6 @@ create_toolbox ()
   gtk_window_set_title (GTK_WINDOW (window), "The GIMP");
   gtk_widget_set_uposition (window, toolbox_x, toolbox_y);
   layout_connect_window_position(window, &toolbox_x, &toolbox_y, TRUE);
-  printf("connected\n");
   minimize_track_toolbox(window);
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (toolbox_delete),
@@ -601,9 +600,7 @@ create_toolbox ()
   /*create_progress_area (vbox);*/
   create_color_area (vbox);
 
-  printf("before show\n");
   gtk_widget_show (window);
-  printf("after show\n");
   toolbox_shell = window;
 }
 

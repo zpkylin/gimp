@@ -1992,6 +1992,10 @@ file_reload_warning_callback (GtkWidget *w,
   mbox = (GtkWidget *) client_data;
   /*gdisplay = (GDisplay *) gtk_object_get_user_data (GTK_OBJECT (mbox));
   */
+  if (gimage->onionskin)
+    {
+      frame_manager_rm_onionskin (cur_gdisplay);
+    }
   gimage = cur_gdisplay->gimage;
 
   if (!file_load (cur_gdisplay->gimage->filename,

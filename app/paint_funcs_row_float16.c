@@ -292,7 +292,7 @@ blend_row_float16  (
   guint16 *src1         = (guint16*)pixelrow_data (src1_row);
   guint16 *src2         = (guint16*)pixelrow_data (src2_row);
   gint    width        = pixelrow_width (dest_row);
-  /*gint    has_alpha    = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;*/
+  gint    has_alpha    = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;
   gint    num_channels = tag_num_channels (src1_tag);
   gfloat  blend_comp   = (1.0 - blend);
   gfloat  s1b, s2b, db;

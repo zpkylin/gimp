@@ -172,7 +172,6 @@ gdisplay_fm (GImage *gimage,
 	      GDisplay *display)
 {
  
-  printf ("lala\n");  
   return frame_manager_load (display, gimage);
 }
 
@@ -712,7 +711,6 @@ gdisplay_paint_area (GDisplay *gdisp,
   y = y1;
   w = (x2 - x1);
   h = (y2 - y1);
-  /* printf("x,y,w,h %d %d %d %d\n", x, y, w, h);*/
   /* composite the area */
   gimage_construct (gdisp->gimage, x, y, w, h);
   
@@ -979,6 +977,7 @@ gdisplay_untransform_coords_f (GDisplay *gdisp,
 
   *nx = (x + gdisp->offset_x) / scale - offset_x;
   *ny = (y + gdisp->offset_y) / scale - offset_y;
+
 }
 
 

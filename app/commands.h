@@ -110,6 +110,7 @@ void dialogs_frame_manager_raise_store_cmd_callback (GtkWidget *, gpointer);
 void dialogs_frame_manager_lower_store_cmd_callback (GtkWidget *, gpointer);
 void dialogs_frame_manager_lower_step_forward_cmd_callback (GtkWidget *, gpointer);
 void dialogs_frame_manager_lower_step_backwards_cmd_callback (GtkWidget *, gpointer);
+void dialogs_store_frame_manager_cmd_callback (GtkWidget *, gpointer);
 void dialogs_gradient_editor_cmd_callback (GtkWidget *, gpointer);
 void dialogs_lc_cmd_callback (GtkWidget *, gpointer);
 void dialogs_indexed_palette_cmd_callback (GtkWidget *, gpointer);

@@ -19,6 +19,7 @@
 #ifndef __OPS_BUTTONS_H__
 #define __OPS_BUTTONS_H__
 
+#include "gdisplay.h"
 
 /* Structures */
 
@@ -50,7 +51,7 @@ GtkWidget * ops_button_box_new        (GtkWidget *,      /* parent widget */
 GtkWidget * ops_button_box_new2        (GtkWidget *,      /* parent widget */
 				       GtkTooltips *,    
 				       OpsButton *,
-                                        GtkObject *);
+                                        GDisplay *);
 void ops_button_box_set_insensitive   (OpsButton *);
 void ops_button_set_sensitive         (OpsButton, gint);
 

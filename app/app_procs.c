@@ -648,6 +648,15 @@ really_quit_cancel_callback (GtkWidget *widget,
   gtk_widget_destroy (dialog);
 }
 
+static gint
+really_quit_delete_callback (GtkWidget *widget,
+			     GdkEvent  *event,
+			     gpointer client_data)
+{
+  really_quit_cancel_callback (widget, (GtkWidget *) client_data);
+
+  return TRUE;
+}
 
 static GtkWidget *dialog;
 
@@ -676,6 +685,11 @@ really_quit_dialog ()
   minimize_register(dialog);
 
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dialog)->action_area), 2);
+  
+     gtk_signal_connect (GTK_OBJECT (dialog), "delete_event",
+     (GtkSignalFunc) really_quit_delete_callback,
+     dialog);
+   
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (vbox), 1);
   gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox),

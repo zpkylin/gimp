@@ -115,7 +115,7 @@ static gint frame_manager_opacity_75 (GtkWidget *, gpointer);
 static gint frame_manager_opacity_10 (GtkWidget *, gpointer);
 
 static gint frame_manager_close (GtkWidget *, gpointer);
-
+static gint frame_manager_delete_callback (GtkWidget *, GdkEvent *, gpointer);
 static void frame_manager_link_forward (GDisplay*);
 static void frame_manager_link_backward (GDisplay*);
 
@@ -124,6 +124,7 @@ static int frame_manager_get_bg_id (GDisplay*);
 
 static int create_warning (char*, GDisplay*);
 static gint warning_close (GtkWidget *, gpointer);
+static gint warning_delete_callback (GtkWidget *, GdkEvent *, gpointer);
 static gint warning_ok (GtkWidget *, gpointer);
 
 static void step_forward (GDisplay *);
@@ -238,6 +239,11 @@ frame_manager_create (GDisplay *gdisplay)
       gtk_window_set_policy (GTK_WINDOW (gdisplay->frame_manager->shell), FALSE, TRUE, FALSE);
       sprintf (tmp, "Frame Manager for %s\0", gdisplay->gimage->filename); 
       gtk_window_set_title (GTK_WINDOW (gdisplay->frame_manager->shell), tmp);
+
+      /* handle the wm close signal */
+        gtk_signal_connect (GTK_OBJECT (gdisplay->frame_manager->shell), "delete_event",
+	                          GTK_SIGNAL_FUNC (frame_manager_delete_callback),
+				                        gdisplay);
       gtk_widget_set_uposition(gdisplay->frame_manager->shell, frame_manager_x, frame_manager_y);
       layout_connect_window_position(gdisplay->frame_manager->shell, &frame_manager_x, &frame_manager_y, TRUE);
       minimize_register(gdisplay->frame_manager->shell);
@@ -1241,11 +1247,18 @@ frame_manager_close (GtkWidget *w, gpointer client_data)
   frame_manager_t *fm = ((GDisplay*)client_data)->frame_manager; 
   frame_manager_rm_onionskin ((GDisplay*)client_data); 
   frame_manager_store_clear ((GDisplay*)client_data); 
-  
+
   if (GTK_WIDGET_VISIBLE (fm->shell))
     gtk_widget_hide (fm->shell);
 
   return TRUE; 
+}
+
+static gint
+frame_manager_delete_callback (GtkWidget *w, GdkEvent *e, gpointer data)
+{
+  frame_manager_close (w, data);
+  return TRUE;
 }
 
 static void
@@ -1801,6 +1814,7 @@ static void
 frame_manager_store_option_close (GtkWidget *w, gpointer client_data)
 {
   frame_manager_t *fm = ((GDisplay*) client_data)->frame_manager;
+      
 
   if (fm)
     {
@@ -1813,6 +1827,22 @@ frame_manager_store_option_close (GtkWidget *w, gpointer client_data)
 	  dont_change_frame = 1; 
 	}
     }
+}
+
+static gint
+frame_manager_store_option_delete_callback (GtkWidget *w, GdkEvent *e, gpointer data)
+{
+  frame_manager_t *fm = ((GDisplay*) data)->frame_manager;
+
+
+  if (fm)
+    {
+      if (GTK_WIDGET_VISIBLE (fm->store_option))
+	{
+	  gtk_widget_hide (fm->store_option);
+	}
+    }
+  return TRUE;
 }
 
 char *options[4] =
@@ -1850,6 +1880,11 @@ frame_manager_store_new_options (GDisplay *gdisplay)
       gtk_window_set_wmclass (GTK_WINDOW (fm->store_option), "Store Option", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (fm->store_option), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->store_option), "New Store Option");
+
+      gtk_signal_connect (GTK_OBJECT (fm->store_option), "delete_event",
+	  GTK_SIGNAL_FUNC (frame_manager_store_option_delete_callback),
+	  gdisplay);
+
       gtk_widget_set_uposition(fm->store_option, generic_window_x, generic_window_y);
       layout_connect_window_position(fm->store_option, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->store_option);
@@ -1900,6 +1935,13 @@ frame_manager_change_frame_close (GtkWidget *w, gpointer client_data)
     }
 }
 
+static int
+frame_manager_change_frame_delete_callback (GtkWidget *w, GdkEvent *e, gpointer data)
+{
+  frame_manager_change_frame_close (w, data);
+  return TRUE;
+}
+
 static ActionAreaItem change_action_items[] =
 {
   { "Close",         frame_manager_change_frame_close, NULL, NULL },
@@ -1927,6 +1969,9 @@ frame_manager_change_frame_num (GDisplay *gdisplay, store_t *item)
       gtk_window_set_wmclass (GTK_WINDOW (fm->change_frame_num), "Change Frame Num", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (fm->change_frame_num), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->change_frame_num), "Change Frame Num");
+      gtk_signal_connect (GTK_OBJECT (fm->change_frame_num), "delete_event",
+	  GTK_SIGNAL_FUNC (frame_manager_change_frame_delete_callback),
+	  gdisplay);
       gtk_widget_set_uposition(fm->change_frame_num, generic_window_x, generic_window_y);
       layout_connect_window_position(fm->change_frame_num, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->change_frame_num);
@@ -2001,7 +2046,6 @@ static gint
 frame_manager_store_select_update (GtkWidget *w, gpointer client_pointer)
 {
   GList *item_list;
-  int i;
   store_t *cur, *item = (store_t*) gtk_object_get_user_data (GTK_OBJECT (w));
   GDisplay *gdisplay = (GDisplay*) client_pointer;
   
@@ -2931,6 +2975,9 @@ frame_manager_rm_onionskin (GDisplay *gdisplay)
 
   frame_manager_t *fm = gdisplay->frame_manager;
 
+  if (!fm)
+    return;
+  
   list = fm->stores;
   if (fm->onionskin)
     {
@@ -3292,6 +3339,7 @@ frame_manager_image_reload (GDisplay *gdisplay, GImage *old, GImage *new)
       if (item->gimage == old)
 	{
 	  item->gimage = new;
+	  frame_manager_set_dirty_flag (gdisplay, 0); 
 	}
       list = g_slist_next (list);
     }
@@ -3316,6 +3364,10 @@ create_warning (char* warning, GDisplay *gdisplay)
       gtk_window_set_wmclass (GTK_WINDOW (fm->warning), "Warning", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (fm->warning), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (fm->warning), "Warning");
+
+      gtk_signal_connect (GTK_OBJECT (fm->warning), "delete_event",
+	  GTK_SIGNAL_FUNC (warning_delete_callback),
+	  gdisplay);
       gtk_widget_set_uposition(fm->warning, generic_window_x, generic_window_y);
       layout_connect_window_position(fm->warning, &generic_window_x, &generic_window_y, FALSE);
       minimize_register(fm->warning);
@@ -3353,6 +3405,12 @@ warning_close (GtkWidget *w, gpointer client_pointer)
   GDisplay *gdisplay = (GDisplay*) client_pointer; 
   if (GTK_WIDGET_VISIBLE (gdisplay->frame_manager->warning))
     gtk_widget_hide (gdisplay->frame_manager->warning);
+  return TRUE;
+}
+static gint
+warning_delete_callback (GtkWidget *w, GdkEvent *e, gpointer data)
+{
+  warning_close (w, data);
   return TRUE;
 }
 

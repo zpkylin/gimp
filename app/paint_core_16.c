@@ -614,8 +614,10 @@ paint_core_16_motion  (
   paint_core->curxtilt    = mevent->xtilt;
   paint_core->curytilt    = mevent->ytilt;
 
-  paint_core_16_interpolate (paint_core, gimage_active_drawable (gdisp->gimage));
   
+  paint_core_16_interpolate (paint_core, gimage_active_drawable (gdisp->gimage));
+ 
+
   gdisplay_flush (gdisp);
   
   paint_core->lastx = paint_core->curx;
@@ -636,18 +638,18 @@ paint_core_16_cursor_update  (
   GDisplay *gdisp;
   Layer *layer;
   GdkCursorType ctype = GDK_TOP_LEFT_ARROW;
-  int x, y;
+  double x, y;
 
   gdisp = (GDisplay *) gdisp_ptr;
 
-  gdisplay_untransform_coords (gdisp,
+  gdisplay_untransform_coords_f (gdisp,
                                mevent->x, mevent->y,
                                &x, &y,
-                               FALSE, FALSE);
+                               FALSE);
   
   if ((layer = gimage_get_active_layer (gdisp->gimage)))
     {
-      int off_x, off_y;
+      double off_x, off_y;
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
       if (x >= off_x && y >= off_y &&
           x < (off_x + drawable_width (GIMP_DRAWABLE(layer))) &&

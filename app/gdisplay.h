@@ -48,6 +48,7 @@ typedef enum
 } SelectionControl;
 
 typedef struct _frame_manager_t frame_manager_t;
+typedef struct _base_frame_manager base_frame_manager;
 
 typedef struct _GDisplay GDisplay;
 struct _GDisplay
@@ -102,6 +103,8 @@ struct _GDisplay
 				     associated with it */
 
   frame_manager_t *frame_manager; /* link to the frame manager */ 
+  
+  base_frame_manager *bfm; 	  /* link to the frame manager */ 
 };
 
 extern GSList *display_list;

@@ -94,7 +94,7 @@ GtkWidget *ops_button_box_new (GtkWidget   *parent,
 GtkWidget *ops_button_box_new2 (GtkWidget   *parent,
 			       GtkTooltips *tool_tips,
 			       OpsButton   *ops_buttons,
-                               GtkObject   *parent2)
+                               GDisplay   *parent2)
 			   
 {
   GtkWidget *button;

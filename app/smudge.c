@@ -227,7 +227,7 @@ smudge_init ( PaintCore *paint_core,
 #endif
 
   /*  Allocate the accumulation buffer */
-  accum_canvas = canvas_new (tag_set_alpha (tag, ALPHA_NO), w, h, STORAGE_FLAT);
+  accum_canvas = canvas_new (tag_set_alpha (tag, tag_alpha (tag)), w, h, STORAGE_FLAT);
   if (paint_core->linked_drawable) 
     linked_accum_canvas = canvas_new (tag_set_alpha (linked_tag, ALPHA_NO), w, h, STORAGE_FLAT);
 
@@ -343,10 +343,12 @@ smudge_painthit_setup (PaintCore * paint_core, Canvas * painthit)
 	  paint_core->w, paint_core->h, 
 	  TRUE);  
 
-      /*  if (!drawable_has_alpha (paint_core->drawable))
+        /*if (!drawable_has_alpha (paint_core->drawable))
 	  add_alpha_area (&tempPR, &destPR);
 	  else*/
       copy_area(&tempPR, &destPR);
+
+
     }
   else
     if (paint_core->setup_mode == LINKED_SETUP)

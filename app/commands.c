@@ -2946,6 +2946,15 @@ dialogs_frame_manager_lower_step_backwards_cmd_callback (GtkWidget *widget,
 }
 
 void
+dialogs_store_frame_manager_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+  bfm_create_sfm (gdisplay);
+}
+
+void
 dialogs_gradient_editor_cmd_callback(GtkWidget *widget,
 				     gpointer   client_data)
 {

@@ -58,8 +58,6 @@ layout_configure_event(
    if (g_ignore_further_updates || !widget->window)
       return;
 
-   printf("Event info: \n\tsent event %d\tx %d\ty %d\tw %d\th %d\n", 
-		   ev->send_event, ev->x, ev->y, ev->width, ev->height);
 
    info = (LayoutInfo *)user_data;
 
@@ -74,7 +72,6 @@ layout_configure_event(
       else {
          info->x_offset = ev->x - *(info->x_var);
          info->y_offset = ev->y - *(info->y_var);
-	 printf("Offset %d %d\n", info->x_offset, info->y_offset);
       }
        
       info->offset_set = TRUE;

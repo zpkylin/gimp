@@ -1665,7 +1665,7 @@ layers_dialog_duplicate_layer_callback (GtkWidget *w,
   undo_push_group_start (gimage, EDIT_PASTE_UNDO);
 
   active_layer = gimage_get_active_layer (gimage);
-  new_layer = layer_copy (active_layer, TRUE);
+  new_layer = layer_copy (active_layer, layer_has_alpha (active_layer) /*TRUE*/);
   gimage_add_layer (gimage, new_layer, -1);
   
   /*  end the group undo  */

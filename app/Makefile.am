@@ -267,6 +267,10 @@ gimp_SOURCES = \
 	palette.h		\
 	frame_manager.c		\
 	frame_manager.h		\
+	base_frame_manager.c		\
+	base_frame_manager.h		\
+	store_frame_manager.c		\
+	store_frame_manager.h		\
 	paintbrush.c		\
 	paintbrush.h		\
 	pattern_header.h	\

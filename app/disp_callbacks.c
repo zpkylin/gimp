@@ -147,7 +147,6 @@ gdisplay_canvas_events (GtkWidget *canvas,
     gdisp->disp_height = gdisp->canvas->allocation.height;
 
     /*  create GC for scrolling */
-
     gdisp->scroll_gc = gdk_gc_new (gdisp->canvas->window);
     gdk_gc_set_exposures (gdisp->scroll_gc, TRUE);
 
@@ -231,7 +230,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
           if (active_tool && ((active_tool->type == MOVE) ||
                 !gimage_is_empty (gdisp->gimage)))
           {
-            if (active_tool->auto_snap_to)
+            if (0&&active_tool->auto_snap_to)
             {
               gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
               bevent->x = tx;
@@ -320,12 +319,13 @@ gdisplay_canvas_events (GtkWidget *canvas,
                 !gimage_is_empty (gdisp->gimage)))
             if (active_tool->state == ACTIVE)
             {
-              if (active_tool->auto_snap_to)
+    	      if (0&&active_tool->auto_snap_to)
               {
                 gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
                 bevent->x = tx;
                 bevent->y = ty;
               }
+
 
               /* hack hack hack */
               if (no_cursor_updating == 0)
@@ -359,6 +359,8 @@ gdisplay_canvas_events (GtkWidget *canvas,
 
               (* active_tool->button_release_func) (active_tool, bevent, gdisp);
             }
+	  if (!(state & GDK_CONTROL_MASK && active_tool->type==CLONE))
+	    frame_manager_set_dirty_flag (gdisp, 0);
           break;
 
         case 2:
@@ -375,7 +377,6 @@ gdisplay_canvas_events (GtkWidget *canvas,
         default:
           break;
       }
-      frame_manager_set_dirty_flag (gdisp, 0);
       break;
 
     case GDK_MOTION_NOTIFY:
@@ -415,7 +416,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
               scroll_to_pointer_position (gdisp, mevent);
           }
 
-          if (active_tool->auto_snap_to)
+          if (0&&active_tool->auto_snap_to)
           {
             gdisplay_snap_point (gdisp, mevent->x, mevent->y, &tx, &ty);
             mevent->x = tx;
