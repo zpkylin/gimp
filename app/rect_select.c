@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include <stdlib.h>
+#include <stdio.h> 
 #include "appenv.h"
 #include "gdisplay.h"
 #include "gimage_mask.h"
@@ -326,7 +327,7 @@ rect_select_button_press (Tool           *tool,
   tool->state = ACTIVE;
   tool->gdisp_ptr = gdisp_ptr;
 
-  if (bevent->state & GDK_MOD1_MASK)
+  if (0 && bevent->state & GDK_MOD1_MASK)
     {
       init_edit_selection (tool, gdisp_ptr, bevent, MaskTranslate);
       return;
@@ -458,7 +459,7 @@ rect_select_motion (Tool           *tool,
   h = (y - oy);
 
   /*  If the shift key is down, then make the rectangle square (or ellipse circular) */
-  if (mevent->state & GDK_SHIFT_MASK)
+  if (mevent->state & GDK_MOD1_MASK)
     {
       s = MAXIMUM(abs(w), abs(h));
 
@@ -474,7 +475,7 @@ rect_select_motion (Tool           *tool,
     }
 
   /*  If the control key is down, create the selection from the center out */
-  if (mevent->state & GDK_CONTROL_MASK)
+  if (mevent->state & GDK_LOCK_MASK)
     {
       w = abs(w);
       h = abs(h);
@@ -536,7 +537,7 @@ rect_select_cursor_update (Tool           *tool,
   active = (active_tool->state == ACTIVE);
 
   /*  if alt key is depressed, use the diamond cursor  */
-  if (mevent->state & GDK_MOD1_MASK && !active)
+  if (0 && mevent->state & GDK_MOD1_MASK && !active)
     gdisplay_install_tool_cursor (gdisp, GDK_DIAMOND_CROSS);
   /*  if the cursor is over the selected region, but no modifiers
    *  are depressed, use a fleur cursor--for cutting and moving the selection

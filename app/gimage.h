@@ -95,7 +95,7 @@ struct _GImage
   GSList *layer_stack;                /*  the layers in MRU order      */
 
   Layer * active_layer;               /*  ID of active layer           */
-  Channel * active_channel;	      /*  ID of active channel         */
+  Channel * active_channel;	      /*  ID of cur active channel     */
   Layer * floating_sel;               /*  ID of fs layer               */
   Channel * selection_mask;           /*  selection mask channel       */
 
@@ -117,12 +117,15 @@ struct _GImage
   int comp_preview_valid[3];          /*  preview valid-1/channel      */
   float xresolution;                  /*  image x-res, in dpi          */
   float yresolution;                  /*  image y-res, in dpi          */
+
+  char onionskin;		      /*  if onion skin is in use      */ 
 };
 
 
 /* function declarations */
 
 GImage *        gimage_new                    (int, int, Tag);
+GImage * 	gimage_copy		      (GImage *);
 void            gimage_set_filename           (GImage *, char *);
 void            gimage_resize                 (GImage *, int, int, int, int);
 void            gimage_scale                  (GImage *, int, int);
@@ -165,7 +168,7 @@ int             gimage_get_component_visible  (GImage *, ChannelType);
 int             gimage_layer_boundary         (GImage *, BoundSeg **, int *);
 Layer *         gimage_set_active_layer       (GImage *, Layer *);
 Channel *       gimage_set_active_channel     (GImage *, Channel *);
-Channel *       gimage_unset_active_channel   (GImage *);
+Channel *       gimage_unset_active_channel   (GImage *, Channel *);
 void            gimage_set_component_active   (GImage *, ChannelType, int);
 void            gimage_set_component_visible  (GImage *, ChannelType, int);
 Layer *         gimage_pick_correlate_layer   (GImage *, int, int);
@@ -180,6 +183,7 @@ Layer *         gimage_flatten                (GImage *);
 Layer *         gimage_merge_layers           (GImage *, GSList *, MergeType);
 Layer *         gimage_merge_copy_layers      (GImage *, GSList *, MergeType);
 Layer *         gimage_add_layer              (GImage *, Layer *, int);
+Layer *         gimage_add_layer2             (GImage *, Layer *, int, int, int, int, int);
 Layer *         gimage_remove_layer           (GImage *, Layer *);
 LayerMask *     gimage_add_layer_mask         (GImage *, Layer *, LayerMask *);
 Channel *       gimage_remove_layer_mask      (GImage *, Layer *, int);
@@ -197,6 +201,7 @@ GSList * 	gimage_channels		      (GImage *);
 
 int             gimage_is_empty               (GImage *);
 int             gimage_is_layered             (GImage *);
+void            gimage_active_drawable2       (GImage *, GimpDrawable ***, int *);
 GimpDrawable *  gimage_active_drawable        (GImage *);
 GimpDrawable *  gimage_linked_drawable        (GImage *);
 Tag             gimage_tag                    (GImage *);

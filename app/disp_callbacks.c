@@ -31,6 +31,9 @@
 #include "scroll.h"
 #include "tools.h"
 #include "gimage.h"
+#include "devices.h"
+#include "tools.h"
+#include "clone.h"
 
 
 #define HORIZONTAL  1
@@ -72,8 +75,30 @@ redraw (GDisplay *gdisp,
 }
 
 gint
+gdisplay_shell_events (GtkWidget *widget,
+                       GdkEvent  *event,
+                       GDisplay  *gdisp)
+{
+  switch (event->type)
+    {
+    case GDK_BUTTON_PRESS:
+    case GDK_KEY_PRESS:
+#if 0
+      /*  Setting the context's display automatically sets the image, too  */
+      gimp_context_set_display (gimp_context_get_user (), gdisp);
+#endif 
+      break;
+    default:
+      break;
+    }
+
+  return FALSE;
+}
+
+
+gint
 gdisplay_canvas_events (GtkWidget *canvas,
-			GdkEvent  *event)
+    GdkEvent  *event)
 {
   GDisplay *gdisp;
   GdkEventExpose *eevent;
@@ -89,57 +114,72 @@ gdisplay_canvas_events (GtkWidget *canvas,
 
   gdisp = (GDisplay *) gtk_object_get_user_data (GTK_OBJECT (canvas));
 
-
-  if (!canvas->window) 
+  if (!canvas->window)
+    {
     return FALSE;
-
+    }
   /*  If this is the first event...  */
   if (!gdisp->select)
-    {
-      /*  create the selection object  */
-      gdisp->select = selection_create (gdisp->canvas->window, gdisp,
-					gdisp->gimage->height,
-					gdisp->gimage->width, marching_speed);
+  {
+    /*  create the selection object  */
+    gdisp->select = selection_create (gdisp->canvas->window, gdisp,
+        gdisp->gimage->height,
+        gdisp->gimage->width, marching_speed);
 
-      gdisp->disp_width = gdisp->canvas->allocation.width;
-      gdisp->disp_height = gdisp->canvas->allocation.height;
+    gdisp->disp_width = gdisp->canvas->allocation.width;
+    gdisp->disp_height = gdisp->canvas->allocation.height;
 
-      /*  create GC for scrolling */
- 
-      gdisp->scroll_gc = gdk_gc_new (gdisp->canvas->window);
-      gdk_gc_set_exposures (gdisp->scroll_gc, TRUE);
+    /*  create GC for scrolling */
 
-      /*  set up the scrollbar observers  */
-      gtk_signal_connect (GTK_OBJECT (gdisp->hsbdata), "value_changed",
-			  (GtkSignalFunc) scrollbar_horz_update,
-			  gdisp);
-      gtk_signal_connect (GTK_OBJECT (gdisp->vsbdata), "value_changed",
-			  (GtkSignalFunc) scrollbar_vert_update,
-			  gdisp);
+    gdisp->scroll_gc = gdk_gc_new (gdisp->canvas->window);
+    gdk_gc_set_exposures (gdisp->scroll_gc, TRUE);
 
-      /*  setup scale properly  */
-      setup_scale (gdisp);
-    }
+    /*  set up the scrollbar observers  */
+    gtk_signal_connect (GTK_OBJECT (gdisp->hsbdata), "value_changed",
+        (GtkSignalFunc) scrollbar_horz_update,
+        gdisp);
+    gtk_signal_connect (GTK_OBJECT (gdisp->vsbdata), "value_changed",
+        (GtkSignalFunc) scrollbar_vert_update,
+        gdisp);
 
+    /*  setup scale properly  */
+    setup_scale (gdisp);
+  }
+
+  /*  Find out what device the event occurred upon  */
+
+  /*  if (!gdisp_busy && devices_check_change (event))
+      gdisplay_check_device_cursor (gdisp); */
   /*  get the pointer position  */
-  gdk_window_get_pointer (canvas->window, &tx, &ty, &tmask);
-
+  if (!current_device)
+    gdk_window_get_pointer (canvas->window, &tx, &ty, &tmask);
+  else
+  {
+    gdk_window_get_pointer (canvas->window, &tx, &ty, &tmask);
+    gdk_input_window_get_pointer (canvas->window, current_device, 
+        NULL, NULL, NULL, NULL, NULL, NULL);
+  }
   switch (event->type)
-    {
+  {
     case GDK_EXPOSE:
       eevent = (GdkEventExpose *) event;
+      if (active_tool->type == CLONE)
+	clone_expose (); 
       redraw (gdisp, eevent->area.x, eevent->area.y,
-	      eevent->area.width, eevent->area.height);
+          eevent->area.width, eevent->area.height);
+      return_val = TRUE;
       break;
 
     case GDK_CONFIGURE:
       if ((gdisp->disp_width != gdisp->canvas->allocation.width) ||
-	  (gdisp->disp_height != gdisp->canvas->allocation.height))
-	{
-	  gdisp->disp_width = gdisp->canvas->allocation.width;
-	  gdisp->disp_height = gdisp->canvas->allocation.height;
-	  resize_display (gdisp, 0, FALSE);
-	}
+          (gdisp->disp_height != gdisp->canvas->allocation.height))
+      {
+        gdisp->disp_width = gdisp->canvas->allocation.width;
+        gdisp->disp_height = gdisp->canvas->allocation.height;
+        resize_display (gdisp, 0, FALSE);
+      
+      }
+	return_val = TRUE;
       break;
 
     case GDK_BUTTON_PRESS:
@@ -147,92 +187,92 @@ gdisplay_canvas_events (GtkWidget *canvas,
       state = bevent->state;
 
       switch (bevent->button)
-	{
-	case 1:
-	  
-	  gtk_grab_add (canvas);
+      {
+        case 1:
 
-	  /* This is a hack to prevent other stuff being run in the middle of
-	     a tool operation (like changing image types.... brrrr). We just
-	     block all the keypress event. A better solution is to implement
-	     some sort of locking for images.
-	     Note that this is dependent on specific GTK behavior, and isn't
-	     guaranteed to work in future versions of GTK.
-	     -Yosh
-	   */
-	  if (key_signal_id == 0)
-	    key_signal_id = gtk_signal_connect (GTK_OBJECT (canvas),
-						"key_press_event",
-						GTK_SIGNAL_FUNC (gtk_true),
-						NULL);
+          gtk_grab_add (canvas);
 
-	  if (active_tool && ((active_tool->type == MOVE) ||
-			      !gimage_is_empty (gdisp->gimage)))
-	      {
-		if (active_tool->auto_snap_to)
-		  {
-		    gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
-		    bevent->x = tx;
-		    bevent->y = ty;
-		  }
-		
-		/* reset the current tool if we're changing gdisplays */
-		/*
-		if (active_tool->gdisp_ptr) {
-		  tool_gdisp = active_tool->gdisp_ptr;
-		  if (tool_gdisp->ID != gdisp->ID) {
-		    tools_initialize (active_tool->type, gdisp);
-		    active_tool->drawable = gimage_active_drawable(gdisp->gimage);
-		  }
-		} else
-		*/
-		/* reset the current tool if we're changing drawables */
-		  if (active_tool->drawable) {
-		    if (((gimage_active_drawable(gdisp->gimage)) !=
-			 active_tool->drawable) &&
-			!active_tool->preserve)
-		      tools_initialize (active_tool->type, gdisp);
-		  } else
-		    active_tool->drawable = gimage_active_drawable(gdisp->gimage);
+          /* This is a hack to prevent other stuff being run in the middle of
+             a tool operation (like changing image types.... brrrr). We just
+             block all the keypress event. A better solution is to implement
+             some sort of locking for images.
+             Note that this is dependent on specific GTK behavior, and isn't
+             guaranteed to work in future versions of GTK.
+             -Yosh
+           */
+          if (key_signal_id == 0)
+            key_signal_id = gtk_signal_connect (GTK_OBJECT (canvas),
+                "key_press_event",
+                GTK_SIGNAL_FUNC (gtk_true),
+                NULL);
 
-                  /* hack hack hack */
-                  if (no_cursor_updating == 0)
-                    {
-                      switch (active_tool->type)
-                        {
-                        case BEZIER_SELECT:
-                          gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
-                          break;
-                          
-                        case FUZZY_SELECT:                          
-                          gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
-                          gdisp_busy = BUSY_UP;
-                          break;
+          if (active_tool && ((active_tool->type == MOVE) ||
+                !gimage_is_empty (gdisp->gimage)))
+          {
+            if (active_tool->auto_snap_to)
+            {
+              gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
+              bevent->x = tx;
+              bevent->y = ty;
+            }
 
-                        default:
-                          break;
-                        }
-                    }
-                      
-                  (* active_tool->button_press_func) (active_tool, bevent, gdisp);
-	      }
-	  break;
+            /* reset the current tool if we're changing gdisplays */
+            /*
+               if (active_tool->gdisp_ptr) {
+               tool_gdisp = active_tool->gdisp_ptr;
+               if (tool_gdisp->ID != gdisp->ID) {
+               tools_initialize (active_tool->type, gdisp);
+               active_tool->drawable = gimage_active_drawable(gdisp->gimage);
+               }
+               } else
+             */
+            /* reset the current tool if we're changing drawables */
+            if (active_tool->drawable) {
+              if (((gimage_active_drawable(gdisp->gimage)) !=
+                    active_tool->drawable) &&
+                  !active_tool->preserve)
+                tools_initialize (active_tool->type, gdisp);
+            } else
+              active_tool->drawable = gimage_active_drawable(gdisp->gimage);
 
-	case 2:
-	  scrolled = TRUE;
-	  gtk_grab_add (canvas);
-	  start_grab_and_scroll (gdisp, bevent);
-	  break;
+            /* hack hack hack */
+            if (no_cursor_updating == 0)
+            {
+              switch (active_tool->type)
+              {
+                case BEZIER_SELECT:
+                  gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
+                  break;
 
-	case 3:
-	  popup_shell = gdisp->shell;
-	  gdisplay_set_menu_sensitivity (gdisp);
-	  gtk_menu_popup (GTK_MENU (gdisp->popup), NULL, NULL, NULL, NULL, 3, bevent->time);
-	  break;
+                case FUZZY_SELECT:                          
+                  gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
+                  gdisp_busy = BUSY_UP;
+                  break;
 
-	default:
-	  break;
-	}
+                default:
+                  break;
+              }
+            }
+
+            (* active_tool->button_press_func) (active_tool, bevent, gdisp);
+          }
+          break;
+
+        case 2:
+          scrolled = TRUE;
+          gtk_grab_add (canvas);
+          start_grab_and_scroll (gdisp, bevent);
+          break;
+
+        case 3:
+          popup_shell = gdisp->shell;
+          gdisplay_set_menu_sensitivity (gdisp);
+          gtk_menu_popup (GTK_MENU (gdisp->popup), NULL, NULL, NULL, NULL, 3, bevent->time);
+          break;
+
+        default:
+          break;
+      }
       break;
 
     case GDK_BUTTON_RELEASE:
@@ -240,126 +280,131 @@ gdisplay_canvas_events (GtkWidget *canvas,
       state = bevent->state;
 
       switch (bevent->button)
-	{
-	case 1:
-	  /* Lame hack. See above */
-	  if (key_signal_id)
-	    {
-	      gtk_signal_disconnect (GTK_OBJECT (canvas), key_signal_id);
-	      key_signal_id = 0;
-	    }
+      {
+        case 1:
+          /* Lame hack. See above */
+          if (key_signal_id)
+          {
+            gtk_signal_disconnect (GTK_OBJECT (canvas), key_signal_id);
+            key_signal_id = 0;
+          }
 
-	  gtk_grab_remove (canvas);
-	  gdk_pointer_ungrab (bevent->time);  /* fixes pointer grab bug */
-	  if (active_tool && ((active_tool->type == MOVE) ||
-			      !gimage_is_empty (gdisp->gimage)))
-	    if (active_tool->state == ACTIVE)
-	      {
-		if (active_tool->auto_snap_to)
-		  {
-		    gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
-		    bevent->x = tx;
-		    bevent->y = ty;
-		  }
+          gtk_grab_remove (canvas);
+          gdk_pointer_ungrab (bevent->time);  /* fixes pointer grab bug */
+          if (active_tool && ((active_tool->type == MOVE) ||
+                !gimage_is_empty (gdisp->gimage)))
+            if (active_tool->state == ACTIVE)
+            {
+              if (active_tool->auto_snap_to)
+              {
+                gdisplay_snap_point (gdisp, bevent->x, bevent->y, &tx, &ty);
+                bevent->x = tx;
+                bevent->y = ty;
+              }
 
-                /* hack hack hack */
-                if (no_cursor_updating == 0)
-                  {
-                    switch (active_tool->type)
-                      {
-                      case ROTATE:
-                      case SCALE:
-                      case SHEAR:
-                      case PERSPECTIVE:
+              /* hack hack hack */
+              if (no_cursor_updating == 0)
+              {
+                switch (active_tool->type)
+                {
+                  case ROTATE:
+                  case SCALE:
+                  case SHEAR:
+                  case PERSPECTIVE:
 
-                      case RECT_SELECT:
-                      case ELLIPSE_SELECT:
-                      case FREE_SELECT:
-                      case BEZIER_SELECT:
-                      case FUZZY_SELECT:
+                  case RECT_SELECT:
+                  case ELLIPSE_SELECT:
+                  case FREE_SELECT:
+                  case BEZIER_SELECT:
+                  case FUZZY_SELECT:
 
-                      case FLIP_HORZ:
-                      case FLIP_VERT:
-                      case BUCKET_FILL:
-                      case BLEND:
+                  case FLIP_HORZ:
+                  case FLIP_VERT:
+                  case BUCKET_FILL:
+                  case BLEND:
 
-                        gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
-                        gdisp_busy = BUSY_DOWN;
-                        break;
-                          
-                      default:
-                        break;
-                      }
-                  }
-                
-                (* active_tool->button_release_func) (active_tool, bevent, gdisp);
-	      }
+                    gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
+                    gdisp_busy = BUSY_DOWN;
+                    break;
+
+                  default:
+                    break;
+                }
+              }
+
+              (* active_tool->button_release_func) (active_tool, bevent, gdisp);
+            }
+          break;
+
+        case 2:
+          /*scrolled = FALSE;
+          gtk_grab_remove (canvas);
+          end_grab_and_scroll (gdisp, bevent);
+          */
+	  scrolled = TRUE;
+	  gtk_grab_add (canvas);
+	  start_grab_and_scroll (gdisp, bevent);
 	  break;
 
-	case 2:
-	  scrolled = FALSE;
-	  gtk_grab_remove (canvas);
-	  end_grab_and_scroll (gdisp, bevent);
-	  break;
 
+        case 3:
+          break;
 
-	case 3:
-	  break;
-
-	default:
-	  break;
-	}
+        default:
+          break;
+      }
       break;
 
     case GDK_MOTION_NOTIFY:
+
       mevent = (GdkEventMotion *) event;
       state = mevent->state;
 
       if (mevent->is_hint)
-	{
-	  mevent->x = tx;
-	  mevent->y = ty;
-	  mevent->state = tmask;
-	}
-     
+      {
+        mevent->x = tx;
+        mevent->y = ty;
+        mevent->state = tmask;
+      }
+
       if (gdisp->window_info_dialog) 
       {
-	int x,y;
+        int x,y;
         gdisplay_untransform_coords (gdisp, mevent->x, mevent->y, &x, &y, FALSE, 0);
         info_window_update_xy (gdisp->window_info_dialog, (void *)gdisp, x, y);
       }
-       
+
       if (active_tool && ((active_tool->type == MOVE) ||
-			  !gimage_is_empty (gdisp->gimage)) &&
-	  (mevent->state & GDK_BUTTON1_MASK))
-	{
-	  if (active_tool->state == ACTIVE)
-	    {
-	      /*  if the first mouse button is down, check for automatic
-	       *  scrolling...
-	       */
-	      if ((mevent->state & Button1Mask) && !active_tool->scroll_lock)
-		{
-		  if (mevent->x < 0 || mevent->y < 0 ||
-		      mevent->x > gdisp->disp_width ||
-		      mevent->y > gdisp->disp_height)
-		    scroll_to_pointer_position (gdisp, mevent);
-		}
+            !gimage_is_empty (gdisp->gimage)) &&
+          (mevent->state & GDK_BUTTON1_MASK))
+      {
+        if (active_tool->state == ACTIVE)
+        {
+          /*  if the first mouse button is down, check for automatic
+           *  scrolling...
+           */
+          if ((mevent->state & Button1Mask) && !active_tool->scroll_lock)
+          {
+            if (mevent->x < 0 || mevent->y < 0 ||
+                mevent->x > gdisp->disp_width ||
+                mevent->y > gdisp->disp_height)
+              scroll_to_pointer_position (gdisp, mevent);
+          }
 
-	      if (active_tool->auto_snap_to)
-		{
-		  gdisplay_snap_point (gdisp, mevent->x, mevent->y, &tx, &ty);
-		  mevent->x = tx;
-		  mevent->y = ty;
-		}
+          if (active_tool->auto_snap_to)
+          {
+            gdisplay_snap_point (gdisp, mevent->x, mevent->y, &tx, &ty);
+            mevent->x = tx;
+            mevent->y = ty;
+          }
 
-	      (* active_tool->motion_func) (active_tool, mevent, gdisp);
-	    }
-	}
+          (* active_tool->motion_func) (active_tool, mevent, gdisp);
+        }
+      }
       else if ((mevent->state & GDK_BUTTON2_MASK) && scrolled)
-	{
-	  grab_and_scroll (gdisp, mevent);
-	}
+      {
+        grab_and_scroll (gdisp, mevent);
+      }
       break;
 
     case GDK_KEY_PRESS:
@@ -367,33 +412,33 @@ gdisplay_canvas_events (GtkWidget *canvas,
       state = kevent->state;
 
       switch (kevent->keyval)
-	{
-	case GDK_Left: case GDK_Right:
-	case GDK_Up: case GDK_Down:
-	  if (active_tool && !gimage_is_empty (gdisp->gimage))
-	    (* active_tool->arrow_keys_func) (active_tool, kevent, gdisp);
-	  return_val = TRUE;
-	  break;
+      {
+        case GDK_Left: case GDK_Right:
+        case GDK_Up: case GDK_Down:
+                     if (active_tool && !gimage_is_empty (gdisp->gimage))
+                       (* active_tool->arrow_keys_func) (active_tool, kevent, gdisp);
+                     return_val = TRUE;
+                     break;
 
-	case GDK_Tab:
-	  if (kevent->state & GDK_MOD1_MASK && !gimage_is_empty (gdisp->gimage))
-	    layer_select_init (gdisp->gimage, 1, kevent->time);
-	  if (kevent->state & GDK_CONTROL_MASK && !gimage_is_empty (gdisp->gimage))
-	    layer_select_init (gdisp->gimage, -1, kevent->time);
-	  return_val = TRUE;
-	  break;
+        case GDK_Tab:
+                     if (kevent->state & GDK_MOD1_MASK && !gimage_is_empty (gdisp->gimage))
+                       layer_select_init (gdisp->gimage, 1, kevent->time);
+                     if (kevent->state & GDK_CONTROL_MASK && !gimage_is_empty (gdisp->gimage))
+                       layer_select_init (gdisp->gimage, -1, kevent->time);
+                     return_val = TRUE;
+                     break;
 
-	  /*  Update the state based on modifiers being pressed  */
-	case GDK_Alt_L: case GDK_Alt_R:
-	  state |= GDK_MOD1_MASK;
-	  break;
-	case GDK_Shift_L: case GDK_Shift_R:
-	  state |= GDK_SHIFT_MASK;
-	  break;
-	case GDK_Control_L: case GDK_Control_R:
-	  state |= GDK_CONTROL_MASK;
-	  break;
-	}
+                     /*  Update the state based on modifiers being pressed  */
+        case GDK_Alt_L: case GDK_Alt_R:
+                        state |= GDK_MOD1_MASK;
+                        break;
+        case GDK_Shift_L: case GDK_Shift_R:
+                          state |= GDK_SHIFT_MASK;
+                          break;
+        case GDK_Control_L: case GDK_Control_R:
+                            state |= GDK_CONTROL_MASK;
+                            break;
+      }
 
       /*  We need this here in case of accelerators  */
       gdisplay_set_menu_sensitivity (gdisp);
@@ -404,69 +449,77 @@ gdisplay_canvas_events (GtkWidget *canvas,
       state = kevent->state;
 
       switch (kevent->keyval)
-	{
-	case GDK_Alt_L: case GDK_Alt_R:
-	  state &= ~GDK_MOD1_MASK;
-	  break;
-	case GDK_Shift_L: case GDK_Shift_R:
-	  kevent->state &= ~GDK_SHIFT_MASK;
-	  break;
-	case GDK_Control_L: case GDK_Control_R:
-	  kevent->state &= ~GDK_CONTROL_MASK;
-	  break;
-	}
+      {
+        case GDK_Alt_L: case GDK_Alt_R:
+                        state &= ~GDK_MOD1_MASK;
+                        break;
+        case GDK_Shift_L: case GDK_Shift_R:
+                          kevent->state &= ~GDK_SHIFT_MASK;
+                          break;
+        case GDK_Control_L: case GDK_Control_R:
+                            kevent->state &= ~GDK_CONTROL_MASK;
+                            break;
+      }
 
       return_val = TRUE;
       break;
+    case GDK_LEAVE_NOTIFY:
+      if (active_tool->type == CLONE)
+	clone_clean_up ();
+      break;
 
+    case GDK_ENTER_NOTIFY:
+      if (active_tool->type == CLONE)
+	clone_undo_clean_up ();
+      break;
     default:
       break;
-    }
+  }
 
   if (no_cursor_updating == 0)
+  {
+    if (gdisp_busy == BUSY_UP)
     {
-      if (gdisp_busy == BUSY_UP)
-        {
-          gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
-          gdisp_busy = BUSY_ON;
-        }
-      else if (active_tool && !gimage_is_empty (gdisp->gimage) &&
-	  !(state & (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK | GDK_BUTTON3_MASK)))
-	{
-	  GdkEventMotion me;
-	  me.x = tx;  me.y = ty;
-	  me.state = state;
-	  (* active_tool->cursor_update_func) (active_tool, &me, gdisp);
-	}
-      else if (gdisp_busy == BUSY_DOWN)
-        {
-          gdisplay_install_tool_cursor (gdisp, GDK_TOP_LEFT_ARROW);
-          gdisp_busy = BUSY_OFF;
-        }
-      else if (gimage_is_empty (gdisp->gimage))
-        {
-          gdisplay_install_tool_cursor (gdisp, GDK_TOP_LEFT_ARROW);
-        }
+      gdisplay_install_tool_cursor (gdisp, GDK_WATCH);
+      gdisp_busy = BUSY_ON;
     }
+    else if (active_tool && !gimage_is_empty (gdisp->gimage) &&
+        !(state & (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK | GDK_BUTTON3_MASK)))
+    {
+      GdkEventMotion me;
+      me.x = tx;  me.y = ty;
+      me.state = state;
+      (* active_tool->cursor_update_func) (active_tool, &me, gdisp);
+    }
+    else if (gdisp_busy == BUSY_DOWN)
+    {
+      gdisplay_install_tool_cursor (gdisp, GDK_TOP_LEFT_ARROW);
+      gdisp_busy = BUSY_OFF;
+    }
+    else if (gimage_is_empty (gdisp->gimage))
+    {
+      gdisplay_install_tool_cursor (gdisp, GDK_TOP_LEFT_ARROW);
+    }
+  }
 
   return return_val;
 }
 
 gint
 gdisplay_hruler_button_press (GtkWidget      *widget,
-			      GdkEventButton *event,
-			      gpointer        data)
+    GdkEventButton *event,
+    gpointer        data)
 {
   GDisplay *gdisp;
 
   if (event->button == 1)
-    {
-      gdisp = data;
+  {
+    gdisp = data;
 
-      gtk_widget_activate (tool_widgets[tool_info[(int) MOVE].toolbar_position]);
-      move_tool_start_hguide (active_tool, gdisp);
-      gtk_grab_add (gdisp->canvas);
-    }
+    gtk_widget_activate (tool_widgets[tool_info[(int) MOVE].toolbar_position]);
+    move_tool_start_hguide (active_tool, gdisp);
+    gtk_grab_add (gdisp->canvas);
+  }
 
   return FALSE;
 }
@@ -487,5 +540,8 @@ gdisplay_vruler_button_press (GtkWidget      *widget,
       gtk_grab_add (gdisp->canvas);
     }
 
-  return FALSE;
+ return FALSE;
 }
+
+
+

@@ -1,6 +1,9 @@
 ## Process this file with automake to produce Makefile.in
 
 SUBDIRS = \
+	rll		\
+	pts		\
+	parsley		\
 	blur		\
 	bz2		\
 	compose		\
@@ -11,17 +14,16 @@ SUBDIRS = \
 	gauss_rle	\
 	gbr		\
 	gz		\
-	mail		\
 	mblur		\
 	noisify		\
-	script-fu	\
 	sgi		\
 	sharpen		\
 	snoise		\
 	sobel		\
 	spread		\
 	@TIFF@		\
-	url
+	script-fu
+	
 
 scriptdata =
 

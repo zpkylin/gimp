@@ -40,6 +40,9 @@ void file_save_by_extension_callback (GtkWidget *w,
 int  file_load                       (char      *filename,
 				      char      *raw_filename,
 				      GDisplay *gdisplay);
+GImage*  file_load_without_display       (char      *filename,
+				      char      *raw_filename,
+				      GDisplay *gdisplay);
 int  file_open                       (char      *filename,
 				      char      *raw_filename);
 int  file_save                       (int        image_ID,

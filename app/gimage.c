@@ -248,6 +248,8 @@ gimage_new  (
   
   gimage->tag = tag;
 
+  gimage->onionskin = 0;
+
   switch (tag_format (tag))
     {
     case FORMAT_INDEXED:
@@ -284,6 +286,117 @@ gimage_new  (
   indexed_palette_update_image_list ();
 
   return gimage;
+}
+
+GImage * 
+gimage_copy  (GImage *gimage)
+{
+  GImage *new_gimage;
+  int i;
+  GSList *list=NULL;
+
+  Layer *layer, *new_layer;
+  Channel *channel, *new_channel;
+  
+  new_gimage = (GImage *) g_malloc (sizeof (GImage));
+
+  new_gimage->has_filename = 1;
+  new_gimage->num_cols = 0;
+  new_gimage->cmap = NULL;
+  new_gimage->ID = global_gimage_ID++;
+  new_gimage->ref_count = 0;
+  new_gimage->instance_count = 0;
+  new_gimage->shadow = NULL;
+  new_gimage->dirty = 1;
+  new_gimage->undo_on = TRUE;
+  new_gimage->construct_flag = 0;
+  new_gimage->projection = NULL;
+  new_gimage->guides = NULL;
+  new_gimage->layers = NULL;
+  new_gimage->channels = NULL;
+  new_gimage->layer_stack = NULL;
+  new_gimage->undo_stack = NULL;
+  new_gimage->redo_stack = NULL;
+  new_gimage->undo_bytes = 0;
+  new_gimage->undo_levels = 0;
+  new_gimage->pushing_undo_group = 0;
+  new_gimage->comp_preview_valid[0] = FALSE;
+  new_gimage->comp_preview_valid[1] = FALSE;
+  new_gimage->comp_preview_valid[2] = FALSE;
+  new_gimage->comp_preview = NULL;
+
+  image_list = g_slist_append (image_list, (void *) new_gimage);
+
+  new_gimage->filename = gimage->filename;
+  new_gimage->width = gimage->width;
+  new_gimage->height = gimage->height; 
+  
+  new_gimage->tag = gimage->tag;
+
+  new_gimage->onionskin = 0;
+
+  switch (tag_format (new_gimage->tag))
+    {
+    case FORMAT_INDEXED:
+      /* always allocate 256 colors for the colormap */
+      new_gimage->num_cols = 0;
+      new_gimage->cmap = (unsigned char *) g_malloc (COLORMAP_SIZE);
+      memset (new_gimage->cmap, 0, COLORMAP_SIZE);
+      break;
+    case FORMAT_RGB:
+    case FORMAT_GRAY:
+    case FORMAT_NONE:
+    default:
+      break;
+    }
+
+  /*  configure the active pointers  */
+  new_gimage->active_layer = NULL;
+  new_gimage->active_channel = NULL;  /* no default active channel */
+  new_gimage->floating_sel = NULL;
+
+  /*  set all color channels visible and active  */
+  for (i = 0; i < MAX_CHANNELS; i++)
+    {
+      new_gimage->visible[i] = 1;
+      new_gimage->active[i] = 1;
+    }
+
+  /* create the selection mask */
+  new_gimage->selection_mask = channel_new_mask (gimage->ID, 
+                                             gimage->width, gimage->height,
+                                             tag_precision (new_gimage->tag));
+
+  lc_dialog_update_image_list ();
+  indexed_palette_update_image_list ();
+  
+  /* do the layers */
+  list = gimage->layers;
+  i = 0; 
+  while (list)
+    {
+      layer = (Layer*) list->data;
+    
+      new_layer = layer_copy (layer, 1); 
+      gimage_add_layer (new_gimage, new_layer, i);
+      i++;  
+      list = g_slist_next (list);
+    }
+  
+  /* do the channels */
+  list = gimage->channels;
+  i = 0; 
+  while (list)
+    {
+      channel = (Channel*) list->data;
+    
+      new_channel = channel_copy (channel); 
+      gimage_add_layer (new_gimage, new_channel, i);
+      i++;  
+      list = g_slist_next (list);
+    }
+  
+  return new_gimage;
 }
 
 
@@ -1339,12 +1452,12 @@ gimage_get_component_active (GImage *gimage, ChannelType type)
   /*  No sanity checking here...  */
   switch (type)
     {
-    case Red:     return gimage->active[RED_PIX]; break;
-    case Green:   return gimage->active[GREEN_PIX]; break;
-    case Blue:    return gimage->active[BLUE_PIX]; break;
-    case Gray:    return gimage->active[GRAY_PIX]; break;
-    case Indexed: return gimage->active[INDEXED_PIX]; break;
-    default:      return 0; break;
+    case Red:     return gimage->active[RED_PIX]; 
+    case Green:   return gimage->active[GREEN_PIX]; 
+    case Blue:    return gimage->active[BLUE_PIX]; 
+    case Gray:    return gimage->active[GRAY_PIX]; 
+    case Indexed: return gimage->active[INDEXED_PIX]; 
+    default:      return 0; 
     }
 }
 
@@ -1355,12 +1468,12 @@ gimage_get_component_visible (GImage *gimage, ChannelType type)
   /*  No sanity checking here...  */
   switch (type)
     {
-    case Red:     return gimage->visible[RED_PIX]; break;
-    case Green:   return gimage->visible[GREEN_PIX]; break;
-    case Blue:    return gimage->visible[BLUE_PIX]; break;
-    case Gray:    return gimage->visible[GRAY_PIX]; break;
-    case Indexed: return gimage->visible[INDEXED_PIX]; break;
-    default:      return 0; break;
+    case Red:     return gimage->visible[RED_PIX]; 
+    case Green:   return gimage->visible[GREEN_PIX]; 
+    case Blue:    return gimage->visible[BLUE_PIX]; 
+    case Gray:    return gimage->visible[GRAY_PIX]; 
+    case Indexed: return gimage->visible[INDEXED_PIX]; 
+    default:      return 0; 
     }
 }
 
@@ -1368,7 +1481,10 @@ gimage_get_component_visible (GImage *gimage, ChannelType type)
 Channel *
 gimage_get_mask (GImage *gimage)
 {
-  return gimage->selection_mask;
+  if (!gimage)
+    return NULL;
+
+  return gimage->selection_mask == NULL ? NULL : gimage->selection_mask;
 }
 
 
@@ -1438,7 +1554,7 @@ gimage_set_active_channel (GImage *gimage, Channel * channel)
   /*  First, find the channel
    *  If it doesn't exist, find the first channel that does
    */
-  if (! channel) 
+  if (!channel) 
     {
       if (! gimage->channels)
 	{
@@ -1450,6 +1566,21 @@ gimage_set_active_channel (GImage *gimage, Channel * channel)
 
   /*  Set the active channel  */
   gimage->active_channel = channel;
+  gimage->active_channel->is_active = 1; 
+
+  /**/
+  switch (tag_num_channels (gimage->tag))
+    {
+    case 1:
+      gimage->active[GRAY_PIX] = 1;
+      break;
+    default:
+
+      gimage->active[RED_PIX] = 1;
+      gimage->active[GREEN_PIX] = 1;
+      gimage->active[BLUE_PIX] = 1;
+      break;
+    }
 
   /*  return the channel  */
   return channel;
@@ -1457,16 +1588,18 @@ gimage_set_active_channel (GImage *gimage, Channel * channel)
 
 
 Channel *
-gimage_unset_active_channel (GImage *gimage)
+gimage_unset_active_channel (GImage *gimage, Channel *channel)
 {
-  Channel *channel;
 
   /*  make sure there is an active channel  */
   if (! (channel = gimage->active_channel))
     return NULL;
 
   /*  Set the active channel  */
-  gimage->active_channel = NULL;
+  channel->is_active = 0; 
+  channel = NULL;
+
+  gimage->active_channel = 0;
 
   return channel;
 }
@@ -1489,9 +1622,15 @@ gimage_set_component_active (GImage *gimage, ChannelType type, int value)
   /*  If there is an active channel and we mess with the components,
    *  the active channel gets unset...
    */
-  if (type != Auxillary)
-    gimage_unset_active_channel (gimage);
-}
+  if (type != Auxillary && value)
+    gimage_unset_active_channel (gimage, gimage->active_channel);
+/*
+  if (type != Auxillary && !value && 
+      !(gimage->active[RED_PIX] || gimage->active[GREEN_PIX] ||
+	gimage->active[BLUE_PIX] || gimage->active[GRAY_PIX]))
+    gimage_set_active_channel (gimage, gimage->active_channel);
+*/
+    }
 
 
 void
@@ -2338,12 +2477,22 @@ gimage_add_layer (GImage *gimage, Layer *layer, int position)
       /*  If there is a floating selection (and this isn't it!),
        *  make sure the insert position is greater than 0
        */
-      if (gimage_floating_sel (gimage) && (gimage->floating_sel != layer) && position == 0)
+      if (!gimage->onionskin && gimage_floating_sel (gimage) && (gimage->floating_sel != layer)
+	  && position == 0)
+	{
 	position = 1;
+	}
       gimage->layers = g_slist_insert (gimage->layers, layer_ref (layer), position);
     }
   else
     gimage->layers = g_slist_prepend (gimage->layers, layer_ref (layer));
+  
+  if (gimage->onionskin)
+    {
+      gimage->layer_stack = g_slist_insert (gimage->layer_stack, layer, 0);
+    }
+  else
+    
   gimage->layer_stack = g_slist_prepend (gimage->layer_stack, layer);
 
   /*  notify the layers dialog of the currently active layer  */
@@ -2353,6 +2502,88 @@ gimage_add_layer (GImage *gimage, Layer *layer, int position)
   drawable_update (GIMP_DRAWABLE(layer), 
                    0, 0,
                    0, 0);
+
+  /*  invalidate the composite preview  */
+  gimage_invalidate_preview (gimage);
+
+  return layer;
+}
+
+Layer *
+gimage_add_layer2 (GImage *gimage, Layer *layer, int position, int x, int y, int w, int h)
+{
+  LayerUndo * lu;
+
+#if 0
+  if (GIMP_DRAWABLE(layer)->gimage_ID != 0 && 
+      GIMP_DRAWABLE(layer)->gimage_ID != gimage->ID) 
+    {
+      g_message ("gimage_add_layer: attempt to add layer to wrong image");
+      return NULL;
+    }
+#endif
+
+  {
+    GSList *ll = gimage->layers;
+    while (ll) 
+      {
+	if (ll->data == layer) 
+	  {
+	    g_message ("gimage_add_layer: trying to add layer to image twice");
+	    return NULL;
+	  }
+	ll = g_slist_next(ll);
+      }
+  }  
+
+  /*  Prepare a layer undo and push it  */
+  lu = (LayerUndo *) g_malloc (sizeof (LayerUndo));
+  lu->layer = layer;
+  lu->prev_position = 0;
+  lu->prev_layer = gimage->active_layer;
+  lu->undo_type = 0;
+  undo_push_layer (gimage, lu);
+
+  /*  If the layer is a floating selection, set the ID  */
+  if (layer_is_floating_sel (layer))
+    gimage->floating_sel = layer;
+
+  /*  let the layer know about the gimage  */
+  GIMP_DRAWABLE(layer)->gimage_ID = gimage->ID;
+
+  /*  add the layer to the list at the specified position  */
+  if (position == -1)
+    position = gimage_get_layer_index (gimage, gimage->active_layer);
+  if (position != -1)
+    {
+      /*  If there is a floating selection (and this isn't it!),
+       *  make sure the insert position is greater than 0
+       */
+      if (!gimage->onionskin && gimage_floating_sel (gimage) && (gimage->floating_sel != layer)
+	  && position == 0)
+	{
+	position = 1;
+	}
+      gimage->layers = g_slist_insert (gimage->layers, layer_ref (layer), position);
+    }
+  else
+    gimage->layers = g_slist_prepend (gimage->layers, layer_ref (layer));
+  
+  if (gimage->onionskin)
+    {
+      gimage->layer_stack = g_slist_insert (gimage->layer_stack, layer, 0);
+    }
+  else
+    
+  gimage->layer_stack = g_slist_prepend (gimage->layer_stack, layer);
+
+  /*  notify the layers dialog of the currently active layer  */
+  gimage_set_active_layer (gimage, layer);
+
+  /*  update the new layer's area  */
+  drawable_update (GIMP_DRAWABLE(layer), 
+                   x, y,
+                   w, h);
 
   /*  invalidate the composite preview  */
   gimage_invalidate_preview (gimage);
@@ -2763,6 +2994,7 @@ gimage_is_empty (GImage *gimage)
   return (! gimage->layers);
 }
 
+
 GimpDrawable *
 gimage_active_drawable (GImage *gimage)
 {
@@ -2772,7 +3004,9 @@ gimage_active_drawable (GImage *gimage)
    *  we ignore the active layer
    */
   if (gimage->active_channel != NULL)
+    {
     return GIMP_DRAWABLE (gimage->active_channel);
+    }
   else if (gimage->active_layer != NULL)
     {
       layer = gimage->active_layer;
@@ -2782,8 +3016,9 @@ gimage_active_drawable (GImage *gimage)
 	return GIMP_DRAWABLE(layer);
     }
   else
+    {
     return NULL;
-}
+}}
 
 char *
 gimage_filename (GImage *gimage)
@@ -3097,11 +3332,11 @@ gimage_preview_valid (gimage, type)
 {
   switch (type)
     {
-    case Red:     return gimage->comp_preview_valid [RED_PIX]; break;
-    case Green:   return gimage->comp_preview_valid [GREEN_PIX]; break;
-    case Blue:    return gimage->comp_preview_valid [BLUE_PIX]; break;
-    case Gray:    return gimage->comp_preview_valid [GRAY_PIX]; break;
-    case Indexed: return gimage->comp_preview_valid [INDEXED_PIX]; break;
+    case Red:     return gimage->comp_preview_valid [RED_PIX]; 
+    case Green:   return gimage->comp_preview_valid [GREEN_PIX]; 
+    case Blue:    return gimage->comp_preview_valid [BLUE_PIX]; 
+    case Gray:    return gimage->comp_preview_valid [GRAY_PIX]; 
+    case Indexed: return gimage->comp_preview_valid [INDEXED_PIX]; 
     default: return TRUE;
     }
 }

@@ -31,9 +31,9 @@
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "devices.h"
 
 /*  forward function declarations  */
-static void         paintbrush_motion      (PaintCore *, GimpDrawable *, double, gboolean);
 static Argument *   paintbrush_invoker     (Argument *);
 static Argument *   paintbrush_extended_invoker     (Argument *);
 static void         paintbrush_motion      (PaintCore *, GimpDrawable *, double, gboolean);
@@ -208,7 +208,7 @@ paintbrush_motion (PaintCore *paint_core,
       
       /* apply it to the image */
       paint_core_16_area_paste (paint_core, drawable,
-                                (gfloat) paint_left,
+                                current_device ? (gfloat) paint_left * paint_core->curpressure : (gfloat) paint_left,
                                 (gfloat) gimp_brush_get_opacity (),
                                 SOFT,
                                 incremental ? INCREMENTAL : CONSTANT,

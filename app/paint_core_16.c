@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "appenv.h"
 #include "gimpbrush.h"
@@ -156,9 +157,7 @@ paint_core_16_new  (
 
 
 void 
-paint_core_16_free  (
-                     Tool * tool
-                     )
+paint_core_16_free  (Tool * tool)
 {
   PaintCore16 * paint_core;
 
@@ -189,11 +188,19 @@ paint_core_16_init_linked  (
                      )
 {
   GimpBrushP brush;
+
   
   paint_core->drawable = drawable; 
   paint_core->linked_drawable = linked_drawable; 
   paint_core->curx = x;
   paint_core->cury = y;
+
+  if (paint_core == &non_gui_paint_core)
+    {
+      paint_core->startpressure = paint_core->lastpressure = paint_core->curpressure = 0.4;
+      paint_core->startxtilt = paint_core->lastxtilt = paint_core->curxtilt = 0.1;
+      paint_core->startytilt = paint_core->lastytilt = paint_core->curytilt = 0.1;
+    }
 
   /* get the brush mask */
   if (!(brush = get_active_brush ()))
@@ -270,13 +277,11 @@ paint_core_16_init  (
 }
 
 void 
-paint_core_16_interpolate  (
-                            PaintCore16 * paint_core,
-                            GimpDrawable *drawable
-                            )
+paint_core_16_interpolate  (PaintCore16 * paint_core,
+                            GimpDrawable *drawable)
 {
 #define    EPSILON  0.00001
-  int n;
+  int n, i;
   double dx, dy;
   double left;
   double t;
@@ -284,13 +289,23 @@ paint_core_16_interpolate  (
   double dist;
   double total;
 
+  /* wacom */
+  gdouble dpressure, dxtilt, dytilt;
+
+
   /* see how far we've moved */
   dx = paint_core->curx - paint_core->lastx;
   dy = paint_core->cury - paint_core->lasty;
+  dpressure = paint_core->curpressure - paint_core->lastpressure;
+  dxtilt    = paint_core->curxtilt    - paint_core->lastxtilt;
+  dytilt    = paint_core->curytilt    - paint_core->lastytilt;
 
+  
   /* bail if we haven't moved */
-  if (!dx && !dy)
+  if (!dx && !dy && !dpressure && !dxtilt && !dytilt)
+{
     return;
+}
 
   dist = sqrt (SQR (dx) + SQR (dy));
   total = dist + paint_core->distance;
@@ -308,6 +323,10 @@ paint_core_16_interpolate  (
 
 	  paint_core->curx = paint_core->lastx + dx * t;
 	  paint_core->cury = paint_core->lasty + dy * t;
+	  paint_core->curpressure = paint_core->lastpressure + dpressure * t;
+	  paint_core->curxtilt    = paint_core->lastxtilt + dxtilt * t;
+	  paint_core->curytilt    = paint_core->lastytilt + dytilt * t;
+
 	  (* paint_core->paint_func) (paint_core, drawable, MOTION_PAINT);
 	}
     }
@@ -315,6 +334,10 @@ paint_core_16_interpolate  (
   paint_core->distance = total;
   paint_core->curx = paint_core->lastx + dx;
   paint_core->cury = paint_core->lasty + dy;
+  paint_core->curpressure = paint_core->lastpressure + dpressure;
+  paint_core->curxtilt    = paint_core->lastxtilt + dxtilt;
+  paint_core->curytilt    = paint_core->lastytilt + dytilt;
+
 }
 
 
@@ -328,8 +351,11 @@ paint_core_16_finish  (
   GImage *gimage;
   PaintUndo *pu;
 
+
   if (! (gimage = drawable_gimage (drawable)))
-    return;
+{
+   return;
+}
 
   /*  Determine if any part of the image has been altered--
    *  if nothing has, then just return...
@@ -343,6 +369,9 @@ paint_core_16_finish  (
   pu->tool_ID = tool_id;
   pu->lastx = paint_core->startx;
   pu->lasty = paint_core->starty;
+  pu->lastpressure = paint_core->startpressure;
+  pu->lastxtilt    = paint_core->startxtilt;
+  pu->lastytilt    = paint_core->startytilt;
 
   /*  Push a paint undo  */
   undo_push_paint (gimage, pu);
@@ -433,11 +462,9 @@ paint_core_16_cleanup  (
 }
 
 static void 
-paint_core_16_button_press  (
-                             Tool * tool,
+paint_core_16_button_press  (Tool * tool,
                              GdkEventButton * bevent,
-                             gpointer gdisp_ptr
-                             )
+                             gpointer gdisp_ptr)
 {
   PaintCore16 * paint_core;
   GDisplay * gdisp;
@@ -445,6 +472,7 @@ paint_core_16_button_press  (
   GimpDrawable * linked_drawable;
   int draw_line = 0;
   double x, y;
+
 
   gdisp = (GDisplay *) gdisp_ptr;
   paint_core = (PaintCore16 *) tool->private;
@@ -461,10 +489,18 @@ paint_core_16_button_press  (
     linked_drawable = NULL; 
   
   if (! paint_core_16_init_linked (paint_core, drawable, linked_drawable, x, y))
-    return;
+    {
+return;
+}
 
   paint_core->state = bevent->state;
 
+  /* wacom stuff */
+  paint_core->curpressure = bevent->pressure;
+  paint_core->curxtilt = bevent->xtilt;
+  paint_core->curytilt = bevent->ytilt;
+
+  
   /*  if this is a new image, reinit the core vals  */
   if (gdisp_ptr != tool->gdisp_ptr ||
       ! (bevent->state & GDK_SHIFT_MASK))
@@ -472,6 +508,9 @@ paint_core_16_button_press  (
       /*  initialize some values  */
       paint_core->startx = paint_core->lastx = paint_core->curx;
       paint_core->starty = paint_core->lasty = paint_core->cury;
+      paint_core->startpressure = paint_core->lastpressure = paint_core->curpressure;
+      paint_core->startytilt    = paint_core->lastytilt    = paint_core->curytilt;
+      paint_core->startxtilt    = paint_core->lastxtilt    = paint_core->curxtilt;
     }
   /*  If shift is down and this is not the first paint
    *  stroke, then draw a line from the last coords to the pointer
@@ -481,6 +520,9 @@ paint_core_16_button_press  (
       draw_line = 1;
       paint_core->startx = paint_core->lastx;
       paint_core->starty = paint_core->lasty;
+      paint_core->startpressure = paint_core->lastpressure;
+      paint_core->startxtilt    = paint_core->lastxtilt;
+      paint_core->startytilt    = paint_core->lastytilt;
     }
 
   tool->state = ACTIVE;
@@ -511,6 +553,9 @@ paint_core_16_button_press  (
       paint_core_16_interpolate (paint_core, drawable);
       paint_core->lastx = paint_core->curx;
       paint_core->lasty = paint_core->cury;
+      paint_core->lastpressure = paint_core->curpressure;
+      paint_core->lastxtilt    = paint_core->curxtilt;
+      paint_core->lastytilt    = paint_core->curytilt;
     }
   else
     (* paint_core->paint_func) (paint_core, drawable, MOTION_PAINT);
@@ -529,6 +574,7 @@ paint_core_16_button_release  (
   GDisplay * gdisp;
   GImage * gimage;
   PaintCore16 * paint_core;
+
 
   gdisp = (GDisplay *) gdisp_ptr;
   gimage = gdisp->gimage;
@@ -570,13 +616,20 @@ paint_core_16_motion  (
                                  TRUE);
 
   paint_core->state = mevent->state;
+  /*wacom */
+  paint_core->curpressure = mevent->pressure;
+  paint_core->curxtilt    = mevent->xtilt;
+  paint_core->curytilt    = mevent->ytilt;
 
   paint_core_16_interpolate (paint_core, gimage_active_drawable (gdisp->gimage));
-
+  
   gdisplay_flush (gdisp);
-
+  
   paint_core->lastx = paint_core->curx;
   paint_core->lasty = paint_core->cury;
+  paint_core->lastpressure = paint_core->curpressure;
+  paint_core->lastxtilt    = paint_core->curxtilt;
+  paint_core->lastytilt    = paint_core->curytilt;
 }
 
 
@@ -616,6 +669,7 @@ paint_core_16_cursor_update  (
             ctype = GDK_PENCIL;
         }
     }
+  
   gdisplay_install_tool_cursor (gdisp, ctype);
 
   if (tool->type == CLONE)
@@ -641,6 +695,7 @@ paint_core_16_control  (
   GDisplay *gdisp;
   GimpDrawable * drawable;
 
+ 
   gdisp = (GDisplay *) gdisp_ptr;
   paint_core = (PaintCore16 *) tool->private;
   drawable = gimage_active_drawable (gdisp->gimage);
@@ -923,8 +978,9 @@ paint_core_16_area_paste  (
   Canvas *undo_linked_canvas;
 
   if (! drawable_gimage (drawable))
+    {
     return;
-
+    }
   painthit_init (paint_core, drawable, paint_core->undo_tiles);
 
   if (paint_core->linked_drawable)

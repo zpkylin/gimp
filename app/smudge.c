@@ -33,6 +33,7 @@
 #include "selection.h"
 #include "smudge.h"
 #include "tools.h"
+#include "devices.h"
 
 /*  the smudge structures  */
 
@@ -350,7 +351,8 @@ smudge_motion (PaintCore *paint_core,
   paint_core_16_area_setup (paint_core, drawable);                                            
 
   /* Apply the painthit to the drawable */                                                    
-  paint_core_16_area_replace (paint_core, drawable, 1.0, 
+  paint_core_16_area_replace (paint_core, drawable, 
+        current_device ? paint_core->curpressure : 1.0, 
 	gimp_brush_get_opacity(), SOFT, INCREMENTAL, NORMAL_MODE);
 }
 

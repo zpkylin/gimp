@@ -31,8 +31,8 @@ batch_init ()
   eval_proc = procedural_db_lookup ("extension_script_fu_eval");
   if (!eval_proc)
     {
-      g_message ("script-fu not available: batch mode disabled\n");
-      return;
+/*      g_message ("script-fu not available: batch mode disabled\n");
+  */    return;
     }
 
   read_from_stdin = FALSE;

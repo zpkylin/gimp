@@ -30,6 +30,7 @@
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "devices.h"
 
 /*  forward function declarations  */
 static void         pencil_motion       (PaintCore *, GimpDrawable *);
@@ -103,7 +104,7 @@ pencil_motion (paint_core, drawable)
 
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
-                            (gfloat) 1.0,
+                            current_device ? paint_core->curpressure : 1.0,
                             (gfloat) gimp_brush_get_opacity(),
                             HARD,
                             CONSTANT,

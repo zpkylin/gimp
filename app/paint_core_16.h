@@ -74,6 +74,17 @@ struct _PaintCore16
   double   curx, cury;
   double   lastx, lasty;
 
+  /* variables for wacom */
+  double          curpressure;   /*  current pressure           */
+  double          curxtilt;      /*  current xtilt              */
+  double          curytilt;      /*  current ytilt              */
+  double    startpressure; /*  starting pressure          */
+  double    startxtilt;    /*  starting xtilt             */
+  double    startytilt;    /*  starting ytilt             */
+  double    lastpressure;  /*  last pressure              */
+  double    lastxtilt;     /*  last xtilt                 */
+  double    lastytilt;     /*  last ytilt		  */ 
+
   /* state of buttons and keys */
   int      state;
 
@@ -146,8 +157,9 @@ void               paint_core_16_free            (struct _tool *);
 
 /* high level tool control functions */
 
-void               paint_core_16_interpolate     (PaintCore16 *,
-                                                  struct _GimpDrawable *);
+void               paint_core_16_interpolate     (PaintCore16 *, struct _GimpDrawable *);
+void               paint_core_16_interpolate2     (PaintCore16 *,
+                                                  struct _GimpDrawable **, int);
 
 void               paint_core_16_finish          (PaintCore16 *,
                                                   struct _GimpDrawable *,
@@ -228,6 +240,10 @@ struct _PaintUndo
   int             tool_ID;
   double          lastx;
   double          lasty;
+  double          lastpressure;
+  double          lastxtilt;
+  double          lastytilt;
+
 };
 
 

@@ -40,6 +40,7 @@
 #include "datafiles.h"
 #include "errors.h"
 #include "general.h"
+#include "gdisplay.h" 
 #include "gimprc.h"
 #include "gimpsignal.h"
 #include "menus.h"
@@ -59,6 +60,7 @@ double              opacity = 1.0;
 int                 paint_mode = 0;
 int                 noise_mode = 0;  /*noise on or off*/
 BrushNoiseInfo      brush_noise_info;
+char 		    BRUSH_CHANGED = 0;
 
 BrushSelectP        brush_select_dialog = NULL;
 
@@ -464,6 +466,9 @@ select_brush (GimpBrush * brush)
     brush_select_select (brush_select_dialog,
 			 gimp_brush_list_get_brush_index(brush_list, brush));
 
+
+  BRUSH_CHANGED = 1; 
+  
 }
 
 

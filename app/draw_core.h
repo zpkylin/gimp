@@ -56,6 +56,8 @@ void          draw_core_start        (DrawCore *, GdkWindow *, Tool *);
 void          draw_core_stop         (DrawCore *, Tool *);
 void          draw_core_pause        (DrawCore *, Tool *);
 void          draw_core_resume       (DrawCore *, Tool *);
+void          draw_core_cont         (DrawCore *, Tool *);
+void          draw_core_start_cont   (DrawCore *, Tool *);
 void          draw_core_free         (DrawCore *);
 
 

@@ -32,6 +32,7 @@
 #include "pixelrow.h"
 #include "selection.h"
 #include "tools.h"
+#include "devices.h"
 
 typedef enum
 {
@@ -253,7 +254,7 @@ convolve_motion (PaintCore *paint_core,
 
   /* Apply the painthit to the drawable */
   paint_core_16_area_replace (paint_core, drawable, 
-                              1.0,
+                              current_device ? paint_core->curpressure : 1.0,
                               (gfloat) gimp_brush_get_opacity (),
                               SOFT,
                               INCREMENTAL, NORMAL); 

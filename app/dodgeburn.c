@@ -34,6 +34,7 @@
 #include "pixelrow.h"
 #include "selection.h"
 #include "tools.h"
+#include "devices.h"
 
 void dodgeburn_area ( PixelArea *, PixelArea *, gint,gint,gfloat  );
 typedef void  (*DodgeburnRowFunc) (PixelArea*,PixelArea*,gint,gfloat);
@@ -628,7 +629,8 @@ dodgeburn_motion (PaintCore *paint_core,
   /* Set up the painthit with the right thing*/ 
   paint_core_16_area_setup (paint_core, drawable);                                            
   /* Apply the painthit to the drawable */                                                    
-  paint_core_16_area_replace (paint_core, drawable, 1.0, 
+  paint_core_16_area_replace (paint_core, drawable, 
+	current_device ? paint_core->curpressure : 1.0, 
 	gimp_brush_get_opacity(), SOFT, CONSTANT, NORMAL_MODE);
 }
 

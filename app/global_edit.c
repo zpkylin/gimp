@@ -88,7 +88,7 @@ crop_buffer (TileManager *tiles,
   COLOR16_INIT (black_color);
   palette_get_black (&black_color);
 
-  num_channels = tag_num_channels (canvas_tag (tiles));
+  num_channels = tag_num_channels (canvas_tag (tiles))*2;
   alpha = num_channels - 1;
 
   /*  go through and calculate the bounds  */
@@ -106,6 +106,7 @@ crop_buffer (TileManager *tiles,
       data = pixelarea_data (&PR) + alpha;
       ex = pixelarea_x (&PR) + pixelarea_width (&PR);
       ey = pixelarea_y (&PR) + pixelarea_height (&PR);
+      
 
       for (y = pixelarea_y (&PR); y < ey; y++)
 	{
@@ -129,9 +130,10 @@ crop_buffer (TileManager *tiles,
 	}
     }
 
-  x2 = BOUNDS (x2 + 1, 0, canvas_width (tiles));
-  y2 = BOUNDS (y2 + 1, 0, canvas_height (tiles));
-
+  /*
+  x2 = BOUNDS (x2-x1 + 1, 0, canvas_width (tiles));
+  y2 = BOUNDS (y2-y1 + 1, 0, canvas_height (tiles));
+*/
   empty = (x1 == canvas_width (tiles) && y1 == canvas_height (tiles));
 
   /*  If there are no visible pixels, return NULL */
@@ -167,6 +169,7 @@ crop_buffer (TileManager *tiles,
 		0, new_height - border, new_width, border, TRUE);
 	  color_area (&destPR, &black_color);
 	}
+
 
       pixelarea_init (&srcPR, tiles, 
 		x1, y1, (x2 - x1), (y2 - y1), FALSE);
@@ -314,7 +317,6 @@ edit_paste (GImage      *gimage,
 	  
 	  GDisplay *disp = gdisplay_active ();
 
-	  
       cx = (float) (disp->offset_x + disp->disp_width /2) / ((float)SCALEDEST (disp) / (float)SCALESRC (disp));
       cy = (float) (disp->offset_y + disp->disp_height /2 )/ ((float)SCALEDEST (disp) / (float)SCALESRC (disp));
 	}

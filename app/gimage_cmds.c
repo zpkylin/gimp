@@ -1332,7 +1332,7 @@ gimage_unset_active_channel_invoker (Argument *args)
     {
       int_value = args[0].value.pdb_int;
       if ((gimage = gimage_get_ID (int_value)))
-	gimage_unset_active_channel (gimage);
+	gimage_unset_active_channel (gimage, gimage->active_channel);
     }
 
   return procedural_db_return_args (&gimage_unset_active_channel_proc, success);

@@ -87,6 +87,9 @@ struct _GDisplay
   GSList *display_areas;          /*  Display areas list                      */
 
   GdkCursorType current_cursor;   /*  Currently installed cursor              */
+
+  char framemanager;		  /* is one if the display has a frame_manager
+				     associated with it */
 };
 
 extern GSList *display_list;
@@ -135,6 +138,8 @@ int        gdisplays_dirty                 (void);
 void       gdisplays_delete                (void);
 void 	   gdisplays_delete_image 	   (GImage *image);
 void       gdisplays_flush                 (void);
+
+GDisplay* gdisplay_find_display (int ID);
 
 
 #endif /*  __GDISPLAY_H__  */

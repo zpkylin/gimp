@@ -1159,7 +1159,7 @@ channel_widget_select_update (GtkWidget *w,
 	    }
 	  else
 	    /*  unset the gimage's active channel  */
-	    gimage_unset_active_channel (channel_widget->gimage);
+	    gimage_unset_active_channel (channel_widget->gimage, channel_widget->channel);
 
 	  gdisplays_flush ();
 	}

@@ -75,4 +75,7 @@ float gimp_brush_generated_get_hardness      (const GimpBrushGenerated* brush);
 float gimp_brush_generated_get_angle        (const GimpBrushGenerated* brush);
 float gimp_brush_generated_get_aspect_ratio (const GimpBrushGenerated* brush);
 
+void gimp_brush_generated_increase_radius ();
+void gimp_brush_generated_decrease_radius ();
+
 #endif  /*  __GIMP_BRUSH_GENERATED_H__  */

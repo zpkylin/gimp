@@ -9,7 +9,7 @@ GIMP_MINOR_VERSION=0
 dnl $Format: "GIMP_MICRO_VERSION=$ReleaseMicroVersion$" $
 GIMP_MICRO_VERSION=4
 dnl $Format: "GIMP_RNH_VERSION=$ReleaseRNHVersion$" $
-GIMP_RNH_VERSION=9
+GIMP_RNH_VERSION=10b
 
 GIMP_VERSION=$GIMP_MAJOR_VERSION.$GIMP_MINOR_VERSION.$GIMP_MICRO_VERSION.$GIMP_RNH_VERSION
 
@@ -272,6 +272,9 @@ gimptool
 libgimp/gimpfeatures.h
 libgimp/Makefile
 plug-ins/Makefile
+plug-ins/pts/Makefile
+plug-ins/rll/Makefile
+plug-ins/parsley/Makefile
 plug-ins/blur/Makefile
 plug-ins/bz2/Makefile
 plug-ins/compose/Makefile
@@ -282,7 +285,6 @@ plug-ins/fur/Makefile
 plug-ins/gauss_rle/Makefile
 plug-ins/gbr/Makefile
 plug-ins/gz/Makefile
-plug-ins/mail/Makefile
 plug-ins/mblur/Makefile
 plug-ins/noisify/Makefile
 plug-ins/script-fu/Makefile
@@ -293,7 +295,7 @@ plug-ins/snoise/Makefile
 plug-ins/sobel/Makefile
 plug-ins/spread/Makefile
 plug-ins/tiff/Makefile
-plug-ins/url/Makefile
+dnl plug-ins/url/Makefile
 app/Makefile
 docs/Makefile,
 chmod +x gimptool

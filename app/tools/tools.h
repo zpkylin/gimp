@@ -25,6 +25,7 @@
 #define  INACTIVE               0
 #define  ACTIVE                 1
 #define  PAUSED                 2
+#define  INACT_PAUSED           3
 
 
 /*  Tool control actions  */

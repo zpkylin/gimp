@@ -39,19 +39,11 @@
 #include "channel_pvt.h"
 
 int channel_link_paint; 
-/*
-enum {
-  LAST_SIGNAL
-};
-*/
 
 static void gimp_channel_class_init (GimpChannelClass *klass);
 static void gimp_channel_init       (GimpChannel      *channel);
 static void gimp_channel_destroy    (GtkObject        *object);
 
-/*
-static gint channel_signals[LAST_SIGNAL] = { 0 };
-*/
 
 static GimpDrawableClass *parent_class = NULL;
 
@@ -882,6 +874,9 @@ channel_is_empty (Channel *mask)
   unsigned char * data;
   int x, y;
   void * pr;
+
+  if (!mask)
+    return NULL;
 
   if (mask->bounds_known)
   {

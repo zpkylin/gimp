@@ -71,7 +71,7 @@ draw_core_start (core, win, tool)
 
   (* core->draw_func) (tool);
 
-  core->draw_state = VISIBLE;
+  core->draw_state = VISIBLE; 
 }
 
 
@@ -98,7 +98,7 @@ draw_core_resume (core, tool)
   core->paused_count = (core->paused_count > 0) ? core->paused_count - 1 : 0;
   if (core->paused_count == 0)
     {
-      core->draw_state = VISIBLE;
+      core->draw_state = VISIBLE; 
       (* core->draw_func) (tool);
     }
 }
@@ -115,6 +115,47 @@ draw_core_pause (core, tool)
       (* core->draw_func) (tool);
     }
   core->paused_count++;
+}
+
+void
+draw_core_start_cont (core, tool)
+      DrawCore * core;
+      Tool * tool;
+      
+{
+  /*
+  if (core->draw_state != VISIBLE)
+    (* core->draw_func) (tool);
+*/
+    }
+
+
+void
+draw_core_cont (core, tool)
+      DrawCore * core;
+      Tool * tool;
+      
+{
+  if (VISIBLE == core->draw_state)
+    {
+      core->paused_count = (core->paused_count > 0) ? core->paused_count - 1 : 0;
+      if (core->paused_count == 0)
+	{
+	  (* core->draw_func) (tool);
+	  core->draw_state = INVISIBLE;
+	  (* core->draw_func) (tool);
+	  core->draw_state = VISIBLE;
+	}
+    }
+  else
+    {
+      core->paused_count = (core->paused_count > 0) ? core->paused_count - 1 : 0;
+      if (core->paused_count == 0)
+	{
+	  (* core->draw_func) (tool);
+	  core->draw_state = VISIBLE; 
+	}
+    }
 }
 
 

@@ -18,11 +18,23 @@
 #ifndef __CLONE_H__
 #define __CLONE_H__
 
+#include "gimage.h"
+
 struct _tool;
 struct _ProcRecord;
 
 struct _tool *  tools_new_clone   (void);
 void            tools_free_clone  (struct _tool *);
+void		clone_clean_up ();
+void		clone_undo_clean_up ();
+void		clone_delete_image (GImage *gimage);
+void		clone_flip_image ();
+void		clone_expose ();
+void		clone_x_offset_increase ();
+void		clone_x_offset_decrease ();
+void		clone_y_offset_increase ();
+void		clone_y_offset_decrease ();
+void		clone_reset_offset ();
 
 extern struct _ProcRecord clone_proc;
 

@@ -33,6 +33,7 @@
 #include "interface.h"
 #include "menus.h"
 #include "tools.h"
+#include "device.h"
 
 #include "pixmaps.h"
 
@@ -60,6 +61,11 @@ static GdkPixmap *create_pixmap    (GdkWindow  *parent,
 				    char      **data,
 				    int         width,
 				    int         height);
+
+static gint  toolbox_check_device  (GtkWidget      *widget,
+    GdkEvent       *event,
+    gpointer        data);
+
 
 typedef struct _ToolButton ToolButton;
 
@@ -546,7 +552,8 @@ create_toolbox ()
   GtkWidget *vbox;
   GtkWidget *menubar;
   GtkAccelGroup *table;
-
+  GList     *list;
+  
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_window_set_wmclass (GTK_WINDOW (window), "toolbox", "Gimp");
   gtk_window_set_title (GTK_WINDOW (window), "The GIMP");
@@ -639,31 +646,29 @@ create_display_shell (int   gdisp_id,
     return;
 
   /*  adjust the initial scale -- so that window fits on screen */
-  {
-    s_width = gdk_screen_width ();
-    s_height = gdk_screen_height ();
+  s_width = gdk_screen_width ();
+  s_height = gdk_screen_height ();
 
-    scalesrc = gdisp->scale & 0x00ff;
-    scaledest = gdisp->scale >> 8;
+  scalesrc = gdisp->scale & 0x00ff;
+  scaledest = gdisp->scale >> 8;
 
-    n_width = (width * scaledest) / scalesrc;
-    n_height = (height * scaledest) / scalesrc;
+  n_width = (width * scaledest) / scalesrc;
+  n_height = (height * scaledest) / scalesrc;
 
-    /*  Limit to the size of the screen...  */
-    while (n_width > s_width || n_height > s_height)
-      {
-	if (scaledest > 1)
-	  scaledest--;
-	else
-	  if (scalesrc < 0xff)
-	    scalesrc++;
+  /*  Limit to the size of the screen...  */
+  while (n_width > s_width || n_height > s_height)
+    {
+      if (scaledest > 1)
+	scaledest--;
+      else
+	if (scalesrc < 0xff)
+	  scalesrc++;
 
-	n_width = (width * scaledest) / scalesrc;
-	n_height = (height * scaledest) / scalesrc;
-      }
+      n_width = (width * scaledest) / scalesrc;
+      n_height = (height * scaledest) / scalesrc;
+    }
 
-    gdisp->scale = (scaledest << 8) + scalesrc;
-  }
+  gdisp->scale = (scaledest << 8) + scalesrc;
 
   /*  The adjustment datums  */
   gdisp->hsbdata = GTK_ADJUSTMENT (gtk_adjustment_new (0, 0, width, 1, 1, width));
@@ -676,7 +681,13 @@ create_display_shell (int   gdisp_id,
   gtk_window_set_wmclass (GTK_WINDOW (gdisp->shell), "image_window", "Gimp");
   gtk_window_set_policy (GTK_WINDOW (gdisp->shell), TRUE, TRUE, TRUE);
   gtk_object_set_user_data (GTK_OBJECT (gdisp->shell), (gpointer) gdisp);
-  gtk_widget_set_events (gdisp->shell, GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK);
+  gtk_widget_set_events (gdisp->shell, 
+	GDK_POINTER_MOTION_MASK | 
+      	GDK_POINTER_MOTION_HINT_MASK |
+      	GDK_BUTTON_PRESS_MASK |
+      	GDK_KEY_PRESS_MASK |
+      	GDK_KEY_RELEASE_MASK); 
+
   gtk_signal_connect (GTK_OBJECT (gdisp->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (gdisplay_delete),
 		      gdisp);
@@ -684,6 +695,14 @@ create_display_shell (int   gdisp_id,
   gtk_signal_connect (GTK_OBJECT (gdisp->shell), "destroy",
 		      (GtkSignalFunc) gdisplay_destroy,
 		      gdisp);
+
+ /*  active display callback  */
+ gtk_signal_connect (GTK_OBJECT (gdisp->shell), "button_press_event",
+                      GTK_SIGNAL_FUNC (gdisplay_shell_events),
+                      gdisp);
+  gtk_signal_connect (GTK_OBJECT (gdisp->shell), "key_press_event",
+                      GTK_SIGNAL_FUNC (gdisplay_shell_events),
+                      gdisp);
 
   /*  the table containing all widgets  */
   table = gtk_table_new (3, 3, FALSE);
@@ -693,7 +712,7 @@ create_display_shell (int   gdisp_id,
   gtk_table_set_row_spacing (GTK_TABLE (table), 1, 2);
   gtk_container_border_width (GTK_CONTAINER (table), 2);
   gtk_container_add (GTK_CONTAINER (gdisp->shell), table);
-
+  
   /*  scrollbars, rulers, canvas, menu popup button  */
   gdisp->origin = gtk_frame_new (NULL);
   gtk_frame_set_shadow_type (GTK_FRAME (gdisp->origin), GTK_SHADOW_OUT);
@@ -703,7 +722,8 @@ create_display_shell (int   gdisp_id,
 			 GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
   gtk_ruler_set_metric (GTK_RULER (gdisp->hrule), ruler_units);
   gtk_signal_connect_object (GTK_OBJECT (gdisp->shell), "motion_notify_event",
-			     (GtkSignalFunc) GTK_WIDGET_CLASS (GTK_OBJECT (gdisp->hrule)->klass)->motion_notify_event,
+			     (GtkSignalFunc) GTK_WIDGET_CLASS 
+				(GTK_OBJECT (gdisp->hrule)->klass)->motion_notify_event,
 			     GTK_OBJECT (gdisp->hrule));
   gtk_signal_connect (GTK_OBJECT (gdisp->hrule), "button_press_event",
 		      (GtkSignalFunc) gdisplay_hruler_button_press,
@@ -714,7 +734,8 @@ create_display_shell (int   gdisp_id,
 			 GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
   gtk_ruler_set_metric (GTK_RULER (gdisp->vrule), ruler_units);
   gtk_signal_connect_object (GTK_OBJECT (gdisp->shell), "motion_notify_event",
-			     (GtkSignalFunc) GTK_WIDGET_CLASS (GTK_OBJECT (gdisp->vrule)->klass)->motion_notify_event,
+			     (GtkSignalFunc) GTK_WIDGET_CLASS 
+				(GTK_OBJECT (gdisp->vrule)->klass)->motion_notify_event,
 			     GTK_OBJECT (gdisp->vrule));
   gtk_signal_connect (GTK_OBJECT (gdisp->vrule), "button_press_event",
 		      (GtkSignalFunc) gdisplay_vruler_button_press,
@@ -724,15 +745,21 @@ create_display_shell (int   gdisp_id,
   GTK_WIDGET_UNSET_FLAGS (gdisp->hsb, GTK_CAN_FOCUS);
   gdisp->vsb = gtk_vscrollbar_new (gdisp->vsbdata);
   GTK_WIDGET_UNSET_FLAGS (gdisp->vsb, GTK_CAN_FOCUS);
-
+  
+  /* canvas */ 
   gdisp->canvas = gtk_drawing_area_new ();
   gtk_drawing_area_size (GTK_DRAWING_AREA (gdisp->canvas), n_width, n_height);
   gtk_widget_set_events (gdisp->canvas, CANVAS_EVENT_MASK);
+  gtk_widget_set_extension_events (gdisp->canvas, GDK_EXTENSION_EVENTS_ALL);
   GTK_WIDGET_SET_FLAGS (gdisp->canvas, GTK_CAN_FOCUS);
+  gtk_object_set_user_data (GTK_OBJECT (gdisp->canvas), (gpointer) gdisp);
+
+  gtk_signal_connect (GTK_OBJECT (gdisp->canvas), "event",
+                      GTK_SIGNAL_FUNC (gdisplay_shell_events),
+                      gdisp);
   gtk_signal_connect (GTK_OBJECT (gdisp->canvas), "event",
 		      (GtkSignalFunc) gdisplay_canvas_events,
 		      gdisp);
-  gtk_object_set_user_data (GTK_OBJECT (gdisp->canvas), (gpointer) gdisp);
 
 
   /*  pack all the widgets  */
@@ -742,9 +769,9 @@ create_display_shell (int   gdisp_id,
 		    GTK_EXPAND | GTK_SHRINK | GTK_FILL, GTK_FILL, 0, 0);
   gtk_table_attach (GTK_TABLE (table), gdisp->vrule, 0, 1, 1, 2,
 		    GTK_FILL, GTK_EXPAND | GTK_SHRINK | GTK_FILL, 0, 0);
-  gtk_table_attach (GTK_TABLE (table), gdisp->canvas, 1, 2, 1, 2,
+  gtk_table_attach (GTK_TABLE (table), gdisp->canvas, 1, 2, 1, 2,   
 		    GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-		    GTK_EXPAND | GTK_SHRINK | GTK_FILL, 0, 0);
+		    GTK_EXPAND | GTK_SHRINK | GTK_FILL, 0, 0);  
   gtk_table_attach (GTK_TABLE (table), gdisp->hsb, 0, 2, 2, 3,
 		    GTK_EXPAND | GTK_SHRINK | GTK_FILL, GTK_FILL, 0, 0);
   gtk_table_attach (GTK_TABLE (table), gdisp->vsb, 2, 3, 0, 2,
@@ -1104,3 +1131,12 @@ progress_end ()
       gtk_progress_bar_update (GTK_PROGRESS_BAR (progress_area), 0.0);
     }
 }
+
+toolbox_check_device (GtkWidget *widget,
+    GdkEvent  *event,
+    gpointer   data)
+{
+
+  return FALSE;
+}
+

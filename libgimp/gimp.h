@@ -168,6 +168,11 @@ struct _GParam
   GParamData data;
 };
 
+typedef struct _GParam       GimpParam;
+typedef union  _GParamData   GimpParamData;
+typedef struct _GParamDef    GimpParamDef;
+typedef struct _GParamColor  GimpParamColor;
+typedef struct _GParamRegion GimpParamRegion;
 
 #define MAIN() int main (int argc, char *argv[]) { return gimp_main (argc, argv); }
 

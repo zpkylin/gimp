@@ -584,6 +584,41 @@ layer_translate (layer, off_x, off_y)
     }
 }
 
+void
+layer_translate2 (layer, off_x, off_y, x, y, w, h)
+     Layer * layer;
+     int off_x, off_y;
+     int x, y, h, w; 
+{
+  /*  the undo call goes here  */
+  undo_push_layer_displace (gimage_get_ID (GIMP_DRAWABLE(layer)->gimage_ID), GIMP_DRAWABLE(layer)->ID);
+
+  /*  update the affected region  */
+  drawable_update (GIMP_DRAWABLE(layer),
+                   x, y,
+                   w, h);
+
+  /*  invalidate the selection boundary because of a layer modification  */
+  layer_invalidate_boundary (layer);
+
+  /*  update the layer offsets  */
+  GIMP_DRAWABLE(layer)->offset_x += off_x;
+  GIMP_DRAWABLE(layer)->offset_y += off_y;
+
+  /*  update the affected region  */
+  drawable_update (GIMP_DRAWABLE(layer),
+                   x, y,
+                   w, h);
+
+  if (layer->mask) 
+    {
+      GIMP_DRAWABLE(layer->mask)->offset_x += off_x;
+      GIMP_DRAWABLE(layer->mask)->offset_y += off_y;
+  /*  invalidate the mask preview  */
+      drawable_invalidate_preview (GIMP_DRAWABLE(layer->mask));
+    }
+}
+
 
 void
 layer_remove_alpha (layer)

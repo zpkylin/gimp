@@ -6,6 +6,8 @@ bin_PROGRAMS = gimp
 
 gimp_SOURCES = \
 	\
+	devices.c		\
+	devices.h		\
 	tag.c                   \
 	tag.h                   \
 	canvas.c                \
@@ -342,7 +344,13 @@ EXTRA_DIST = \
 	tools/new.xpm		\
 	tools/new_is.xpm	\
 	tools/raise.xpm		\
-	tools/raise_is.xpm
+	tools/raise_is.xpm	\
+	tools/forward.xpm	\
+	tools/forward_is.xpm	\
+	tools/backward.xpm	\
+	tools/backward_is.xpm	\
+	tools/area.xpm		\
+	tools/area_is.xpm
 
 AM_CPPFLAGS = \
 	-DLIBDIR=\""$(gimpplugindir)"\"	\

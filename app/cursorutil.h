@@ -18,6 +18,9 @@
 #ifndef __CURSORUTIL_H__
 #define __CURSORUTIL_H__
 
+#include "gdk/gdk.h"
+
+void create_win_cursor(GdkWindow *, int);
 void change_win_cursor(GdkWindow *, GdkCursorType);
 void unset_win_cursor(GdkWindow *);
 

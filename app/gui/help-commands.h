@@ -94,13 +94,20 @@ void dialogs_brushes_cmd_callback (GtkWidget *, gpointer);
 void dialogs_patterns_cmd_callback (GtkWidget *, gpointer);
 void dialogs_palette_cmd_callback (GtkWidget *, gpointer);
 void dialogs_frame_manager_cmd_callback (GtkWidget *, gpointer);
-void dialogs_frame_manager_forward_cmd_callback (GtkWidget *, gpointer);
-void dialogs_frame_manager_backwards_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_step_forward_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_step_backwards_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_flip_forward_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_flip_backwards_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_raise_store_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_lower_store_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_lower_step_forward_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_lower_step_backwards_cmd_callback (GtkWidget *, gpointer);
 void dialogs_gradient_editor_cmd_callback (GtkWidget *, gpointer);
 void dialogs_lc_cmd_callback (GtkWidget *, gpointer);
 void dialogs_indexed_palette_cmd_callback (GtkWidget *, gpointer);
 void dialogs_tools_options_cmd_callback (GtkWidget *, gpointer);
 void about_dialog_cmd_callback (GtkWidget *, gpointer);
 void tips_dialog_cmd_callback (GtkWidget *, gpointer);
+void dialogs_input_devices_cmd_callback   (GtkWidget *, gpointer);
 
 #endif /* __COMMANDS_H__ */

@@ -18,18 +18,47 @@
 #ifndef __FRAME_MANAGER_H__
 #define __FRAME_MANAGER_H__
 
-#include <glib.h>
-#include "procedural_db.h"
+#include <gtk/gtkwidget.h>
+#include "drawable.h"
+#include "gdisplay.h"
 
+typedef struct 
+{
+  GtkWidget *shell;
+  GtkWidget *vbox; 
+  GtkWidget *auto_save;
+  GtkWidget *step_size;
+  GtkWidget *jump_to;
+  GtkWidget *trans;
+  GtkWidget *flip_area;
+  GtkWidget *link_menu;
+  GtkWidget *link_option_menu;
+  GtkWidget *store_list;
+  GtkWidget *store_size;
+  GtkWidget *b;
+  GSList *stores; 
+  char auto_save_on;
+  GtkAdjustment *trans_data; 
+  GDisplay *linked_display; 
+  GDisplay *gdisplay; 
+  GtkWidget *store_option;
+}frame_manager_t;
 
-          
 void frame_manager_create (void);
 void frame_manager_free (void);
-void frame_manager_forward_callback (GtkWidget *, gpointer);
-void frame_manager_backwards_callback (GtkWidget *, gpointer);
-
-
-
-
+gint frame_manager_step_forward (GtkWidget *, gpointer);
+gint frame_manager_step_backwards (GtkWidget *, gpointer);
+gint frame_manager_flip_forward (GtkWidget *, gpointer);
+gint frame_manager_flip_backwards (GtkWidget *, gpointer);
+gint frame_manager_flip_raise (GtkWidget *, gpointer);
+gint frame_manager_flip_lower (GtkWidget *, gpointer);
+GimpDrawable *frame_manager_onionskin_drawable (); 
+int frame_manager_onionskin_display (); 
+void frame_manager_onionskin_offset (int, int); 
+void frame_manager_rm_onionskin (frame_manager_t *); 
+void frame_manager_image_reload (GImage *, GImage*);
+GimpDrawable *frame_manager_bg_drawable ();
+int frame_manager_bg_display ();
+void frame_manager_set_bg (GDisplay *display);
 
 #endif /* __FRAME_MANAGER_H__ */

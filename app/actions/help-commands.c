@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <gtk/gtk.h>
 #include "appenv.h"
 #include "about_dialog.h"
 #include "actionarea.h"
@@ -33,6 +34,7 @@
 #include "convert.h"
 #include "curves.h"
 #include "desaturate.h"
+#include "devices.h" 
 #include "channel_ops.h"
 #include "channel.h"
 #include "drawable.h"
@@ -140,6 +142,7 @@ static   int          old_tile_cache_size;
 static   int          old_install_cmap;
 static   int          old_cycled_marching_ants;
 static   char *       old_temp_path;
+static   char*        old_default_brush;
 static   char *       old_swap_path;
 static   char *       old_brush_path;
 static   char *       old_pattern_path;
@@ -149,6 +152,7 @@ static   char *       old_plug_in_path;
 static   char *       old_gradient_path;
 
 static   char *       edit_temp_path = NULL;
+static   char*        edit_default_brush = NULL;
 static   char *       edit_swap_path = NULL;
 static   char *       edit_brush_path = NULL;
 static   char *       edit_pattern_path = NULL;
@@ -720,6 +724,7 @@ file_prefs_save_callback (GtkWidget *widget,
   int save_install_cmap;
   int save_cycled_marching_ants;
   gchar *save_temp_path;
+  gchar *save_default_brush; 
   gchar *save_swap_path;
   gchar *save_brush_path;
   gchar *save_pattern_path;
@@ -737,6 +742,7 @@ file_prefs_save_callback (GtkWidget *widget,
   save_install_cmap = install_cmap;
   save_cycled_marching_ants = cycled_marching_ants;
   save_temp_path = temp_path;
+  save_default_brush = default_brush; 
   save_swap_path = swap_path;
   save_brush_path = brush_path;
   save_pattern_path = pattern_path;
@@ -833,6 +839,13 @@ file_prefs_save_callback (GtkWidget *widget,
       temp_path = edit_temp_path;
       restart_notification = TRUE;
     }
+  if (file_prefs_strcmp (default_brush, edit_default_brush))
+    {
+      update = g_list_append (update, "default-brush");
+      default_brush = edit_default_brush;
+      restart_notification = TRUE;
+    }
+
   if (file_prefs_strcmp (swap_path, edit_swap_path))
     {
       update = g_list_append (update, "swap-path");
@@ -883,6 +896,7 @@ file_prefs_save_callback (GtkWidget *widget,
   install_cmap = save_install_cmap;
   cycled_marching_ants = save_cycled_marching_ants;
   temp_path = save_temp_path;
+  default_brush = save_default_brush;
   swap_path = save_swap_path;
   brush_path = save_brush_path;
   pattern_path = save_pattern_path;
@@ -956,6 +970,7 @@ file_prefs_cancel_callback (GtkWidget *widget,
   edit_install_cmap = old_install_cmap;
   edit_cycled_marching_ants = old_cycled_marching_ants;
   file_prefs_strset (&edit_temp_path, old_temp_path);
+  file_prefs_strset (&edit_default_brush, old_default_brush);
   file_prefs_strset (&edit_swap_path, old_swap_path);
   file_prefs_strset (&edit_brush_path, old_brush_path);
   file_prefs_strset (&edit_pattern_path, old_pattern_path);
@@ -1132,6 +1147,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 	  /* first time dialog is opened - copy config vals to edit
              variables. */
 	  edit_temp_path = file_prefs_strdup (temp_path);
+          edit_default_brush = file_prefs_strdup (default_brush);
 	  edit_swap_path = file_prefs_strdup (swap_path);
 	  edit_brush_path = file_prefs_strdup (brush_path);
 	  edit_pattern_path = file_prefs_strdup (pattern_path);
@@ -1168,6 +1184,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       old_install_cmap = edit_install_cmap;
       old_cycled_marching_ants = edit_cycled_marching_ants;
       file_prefs_strset (&old_temp_path, edit_temp_path);
+      file_prefs_strset (&old_default_brush, edit_default_brush);
       file_prefs_strset (&old_swap_path, edit_swap_path);
       file_prefs_strset (&old_brush_path, edit_brush_path);
       file_prefs_strset (&old_pattern_path, edit_pattern_path);
@@ -1694,6 +1711,27 @@ file_pref_cmd_callback (GtkWidget *widget,
 			  (GtkSignalFunc) file_prefs_toggle_callback,
 			  &enable_channel_revert);
       gtk_widget_show (button);
+
+      label = gtk_label_new ("Default Brush");
+      gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
+      /*gtk_table_attach (GTK_TABLE (table), label, 0, 1, i, i+1,
+	GTK_FILL, GTK_FILL, 0, 0);
+       */
+      gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 0);
+      gtk_widget_show (label);
+
+      entry = gtk_entry_new ();
+      gtk_widget_set_usize (entry, 20, 0);
+      gtk_entry_set_text (GTK_ENTRY (entry), *(&edit_default_brush));
+      gtk_signal_connect (GTK_OBJECT (entry), "changed",
+	  (GtkSignalFunc) file_prefs_string_callback,
+	  (&edit_default_brush));
+      /*gtk_table_attach (GTK_TABLE (table), entry, 1, 2, i, i+1,
+	GTK_EXPAND | GTK_FILL, 0, 0, 0);
+       */
+      gtk_box_pack_start (GTK_BOX (vbox), entry, FALSE, FALSE, 0);
+      gtk_widget_show (entry);
+
 
       label = gtk_label_new ("Global Settings");
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
@@ -2684,16 +2722,61 @@ dialogs_frame_manager_cmd_callback (GtkWidget *widget,
 }
 
 void
-dialogs_frame_manager_forward_cmd_callback (GtkWidget *widget,
+dialogs_frame_manager_step_forward_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_forward_callback (widget, client_data);
+  frame_manager_step_forward (widget, NULL/*client_data*/);
 }
+
 void
-dialogs_frame_manager_backwards_cmd_callback (GtkWidget *widget,
+dialogs_frame_manager_step_backwards_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
-  frame_manager_backwards_callback (widget, client_data);
+  frame_manager_step_backwards (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_flip_forward_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_forward (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_flip_backwards_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_backwards (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_raise_store_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_raise (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_lower_store_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_lower (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_lower_step_forward_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_lower (widget, NULL/*client_data*/);
+  frame_manager_step_forward (widget, NULL/*client_data*/);
+}
+
+void
+dialogs_frame_manager_lower_step_backwards_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_flip_lower (widget, NULL/*client_data*/);
+  frame_manager_step_backwards (widget, NULL/*client_data*/);
 }
 
 void
@@ -2906,9 +2989,18 @@ gimage_mask_shrink_callback (GtkWidget *w,
 
   if (!(gimage = gimage_get_ID ((int)client_data)))
     return;
+ 
 
   shrink_pixels = atoi (call_data);
 
   gimage_mask_shrink (gimage, shrink_pixels);
   gdisplays_flush ();
 }
+
+void
+dialogs_input_devices_cmd_callback (GtkWidget *widget,
+                                        gpointer   client_data)
+{
+    input_dialog_create ();
+}
+

@@ -30,6 +30,7 @@
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "devices.h"
 
 /*  forward function declarations  */
 static void        eraser_motion   (PaintCore *, GimpDrawable *, gboolean, gboolean);
@@ -177,7 +178,7 @@ eraser_motion  (
   
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
-                            (gfloat) 1.0,
+                            current_device ? paint_core->curpressure : (gfloat) 1.0,
                             (gfloat) gimp_brush_get_opacity (),
                             hard ? HARD : SOFT,
                             incremental ? INCREMENTAL : CONSTANT,

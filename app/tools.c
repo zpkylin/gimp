@@ -737,6 +737,14 @@ active_tool_control (int   action,
 		      (* active_tool->control_func) (active_tool, action, gdisp_ptr);
 		    }
 		}
+	      if (active_tool->state == INACTIVE)
+		{
+		  if (! active_tool->paused_count)
+		    {
+		      active_tool->state = INACT_PAUSED;
+		      (* active_tool->control_func) (active_tool, action, gdisp_ptr);
+		    }
+		}
 	      active_tool->paused_count++;
 
 	      break;
@@ -747,6 +755,14 @@ active_tool_control (int   action,
 		  if (! active_tool->paused_count)
 		    {
 		      active_tool->state = ACTIVE;
+		      (* active_tool->control_func) (active_tool, action, gdisp_ptr);
+		    }
+		}
+	      if (active_tool->state == INACT_PAUSED)
+		{
+		  if (! active_tool->paused_count)
+		    {
+		      active_tool->state = INACTIVE;
 		      (* active_tool->control_func) (active_tool, action, gdisp_ptr);
 		    }
 		}

@@ -31,6 +31,7 @@
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "devices.h"
 
 typedef struct _AirbrushTimeout AirbrushTimeout;
 
@@ -63,8 +64,8 @@ struct _AirbrushOptions
 
 
 /*  local variables  */
-static gint         timer;                 /*  timer for successive paint applications  */
-static int          timer_state = OFF;     /*  state of airbrush tool  */
+static gint         timer;              /*  timer for successive paint applications  */
+static int          timer_state = OFF;  /*  state of airbrush tool  */
 static AirbrushTimeout  airbrush_timeout;
 static AirbrushOptions *airbrush_options = NULL;
 
@@ -237,8 +238,7 @@ airbrush_time_out (gpointer client_data)
 }
 
 static void 
-airbrush_motion  (
-                  PaintCore * paint_core,
+airbrush_motion  (PaintCore * paint_core,
                   GimpDrawable * drawable,
                   double pressure
                   )
@@ -253,10 +253,11 @@ airbrush_motion  (
 
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
-                            (gfloat) pressure / 100.0,
-                            (gfloat) gimp_brush_get_opacity (),
+                            current_device ? (gfloat) pressure / 100.0 * paint_core->curpressure :
+			    (gfloat) pressure / 100.0,
+                            (gfloat) gimp_brush_get_opacity (), 
                             SOFT,
-                            CONSTANT,
+                            INCREMENTAL,
                             gimp_brush_get_paint_mode ());
 }
 

@@ -39,8 +39,7 @@
 typedef enum
 {
   FgColorFill,
-  BgColorFill,
-  PatternFill
+  BgColorFill
 } FillMode;
 
 typedef struct _BucketTool BucketTool;
@@ -136,11 +135,6 @@ create_bucket_options (void)
   GtkObject *threshold_scale_data;
   GSList *group = NULL;
   int i;
-  char *button_names[2] =
-  {
-    "Color Fill",
-    "Pattern Fill"
-  };
 
   /*  the new options structure  */
   options = (BucketOptions *) g_malloc (sizeof (BucketOptions));
@@ -209,30 +203,6 @@ create_bucket_options (void)
   gtk_widget_show (label);
   gtk_widget_show (option_menu);
   gtk_widget_show (hbox);
-
-  /*  the radio frame and box  */
-#if 0
-  radio_frame = gtk_frame_new ("Fill Type");
-  gtk_box_pack_start (GTK_BOX (vbox), radio_frame, FALSE, FALSE, 0);
-
-  radio_box = gtk_vbox_new (FALSE, 1);
-  gtk_container_border_width (GTK_CONTAINER (radio_box), 0);
-  gtk_container_add (GTK_CONTAINER (radio_frame), radio_box);
-
-  /*  the radio buttons  */
-  for (i = 0; i < 2; i++)
-    {
-      radio_button = gtk_radio_button_new_with_label (group, button_names[i]);
-      group = gtk_radio_button_group (GTK_RADIO_BUTTON (radio_button));
-      gtk_signal_connect (GTK_OBJECT (radio_button), "toggled",
-			  (GtkSignalFunc) bucket_fill_mode_callback,
-			  (gpointer) ((long) (i == 1 ? PatternFill : FgColorFill)));  /* kludgy */
-      gtk_box_pack_start (GTK_BOX (radio_box), radio_button, FALSE, FALSE, 0);
-      gtk_widget_show (radio_button);
-    }
-  gtk_widget_show (radio_box);
-  gtk_widget_show (radio_frame);
-#endif
 
   /*  the sample merged toggle  */
   sample_merged_toggle = gtk_check_button_new_with_label ("Sample Merged");
@@ -313,7 +283,8 @@ bucket_fill_button_release (tool, bevent, gdisp_ptr)
       return_vals = procedural_db_run_proc ("gimp_bucket_fill",
 					    &nreturn_vals,
 					    PDB_IMAGE, gdisp->gimage->ID,
-					    PDB_DRAWABLE, drawable_ID (gimage_active_drawable (gdisp->gimage)),
+					    PDB_DRAWABLE, 
+					    drawable_ID (gimage_active_drawable (gdisp->gimage)),
 					    PDB_INT32, (gint32) fill_mode,
 					    PDB_INT32, (gint32) bucket_options->paint_mode,
 					    PDB_FLOAT, (gdouble) bucket_options->opacity,
@@ -411,19 +382,6 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
     case FgColorFill:
     case BgColorFill:
       break;
-      
-    case PatternFill:
-      {
-        GPatternP pattern = get_active_pattern ();
-        
-        if (!pattern || !pattern->mask)
-          {
-            g_message ("No available patterns for this operation.");
-            return;
-          }
-      }
-      break;
-      
     default:
       g_warning ("bad fill type");
       return;
@@ -527,20 +485,6 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
         }
         break;
       
-      case PatternFill:
-        {
-          PixelArea patPR;
-          GPatternP pat = get_active_pattern ();
-
-          pixelarea_init2 (&patPR, pat->mask,
-                           0, 0,
-                           0, 0,
-                           REFTYPE_READ, EDGETYPE_WRAP) ;
-
-          copy_area (&patPR, &bufPR);
-        }
-        break;
-      
       default:
         g_warning ("bad fill type");
         return;
@@ -580,7 +524,7 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
   
   /*  update the image  */
   drawable_update (drawable, x1, y1, (x2 - x1), (y2 - y1));
-  if ( gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data)))
+  if (gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data)))
     drawable_update (GIMP_DRAWABLE(((Channel*)(gimage->channels->data))), 
       x1, y1, (x2 - x1), (y2 - y1));
 
@@ -746,7 +690,6 @@ bucket_fill_invoker (args)
 	{
 	case 0: fill_mode = FgColorFill; break;
 	case 1: fill_mode = BgColorFill; break;
-	case 2: fill_mode = PatternFill; break;
 	default: success = FALSE;
 	}
     }

@@ -29,6 +29,8 @@
 #include "scale.h"
 #include "tools.h"
 #include "gdisplay.h"
+#include "gimpbrushgenerated.h"
+#include "clone.h"
 
 #if 1 
 #define R_AND_H 1
@@ -39,8 +41,7 @@ static void menus_init (void);
 static GtkItemFactoryEntry toolbox_entries[] =
 {
   { "/File/New", "<control>N", file_new_cmd_callback, 0 },
-  { "/File/OpenFile", "<control>O", file_open_cmd_callback, 0 },
-  { "/File/OpenPTS", "<alt>O", NULL, 0 },
+  { "/File/Open/File", "<control>O", file_open_cmd_callback, 0 },
   { "/File/About...", NULL, about_dialog_cmd_callback, 0 },
   { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/Tip of the day", NULL, tips_dialog_cmd_callback, 0 },
@@ -52,7 +53,8 @@ static GtkItemFactoryEntry toolbox_entries[] =
   { "/File/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
   { "/File/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/File/Dialogs/Tool Options...", "<control><shift>T", dialogs_tools_options_cmd_callback, 0 },
-  { "/File/---", NULL, NULL, 0, "<Separator>" },
+    { "/File/Device Dialog", NULL, dialogs_input_devices_cmd_callback, 0}, 
+    { "/File/---", NULL, NULL, 0, "<Separator>" },
   { "/File/Quit", "<control>Q", file_quit_cmd_callback, 0 },
 };
 static guint n_toolbox_entries = sizeof (toolbox_entries) / sizeof (toolbox_entries[0]);
@@ -62,14 +64,16 @@ static GtkItemFactoryEntry image_entries[] =
 {
   { "/File/New", "<control>N", file_new_cmd_callback, 1 },
   { "/File/Revert to Saved", "<alt>R", file_reload_cmd_callback, 0 },
-  { "/File/OpenFile", "<control>O", file_open_cmd_callback, 0 },
-  { "/File/SaveFile", "<control>S", file_save_cmd_callback, 0 },
-  { "/File/SaveFile as", NULL, file_save_as_cmd_callback, 0 },
+  { "/File/Open/File", "<control>O", file_open_cmd_callback, 0 },
+  { "/File/Save/File", "<control>S", file_save_cmd_callback, 0 },
+  { "/File/Save as/File", NULL, file_save_as_cmd_callback, 0 },
   { "/File/SaveFile copy as", NULL, file_save_copy_as_cmd_callback, 0 }, 
-  { "/File/OpenPTS", "<alt>O", NULL, 0 },
+#if 0
+    { "/File/OpenPTS", "<alt>O", NULL, 0 },
   { "/File/SavePTS", "<alt>S", NULL, 0 },
   { "/File/SavePTS as", NULL, NULL, 0 },
-  { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
+#endif 
+    { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
   { "/File/Close", "<control>W", file_close_cmd_callback, 0 },
   { "/File/Quit", "<control>Q", file_quit_cmd_callback, 0 },
@@ -195,6 +199,13 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Tools/---", NULL, NULL, 0, "<Separator>" },
   { "/Tools/Toolbox", NULL, toolbox_raise_callback, 0 },
 #endif
+  { "/Short cuts/Increase Brush Radius (+1)", ".", gimp_brush_generated_increase_radius, 0 },
+  { "/Short cuts/Decrease Brush Radius (-1)", ",", gimp_brush_generated_decrease_radius, 0 },
+  { "/Short cuts/Increase clone x offset ", ",", clone_x_offset_increase, 0 },
+  { "/Short cuts/Decrease clone x offset ", ",", clone_x_offset_decrease, 0 },
+  { "/Short cuts/Increase clone y offset ", ",", clone_y_offset_increase, 0 },
+  { "/Short cuts/Decrease clone y offset ", ",", clone_y_offset_decrease, 0 },
+  { "/Short cuts/Reset clone offset ", ",", clone_reset_offset, 0 },
   { "/Filters/", NULL, NULL, 0 },
   { "/Filters/Repeat last", "<alt>F", filters_repeat_cmd_callback, 0x0 },
   { "/Filters/Re-show last", "<alt><shift>F", filters_repeat_cmd_callback, 0x1 },
@@ -208,9 +219,14 @@ static GtkItemFactoryEntry image_entries[] =
 #endif
   { "/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
   { "/Dialogs/Frame Manager/create", "<alt>F", dialogs_frame_manager_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/forward", "greater", dialogs_frame_manager_forward_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/backwards", "less", dialogs_frame_manager_backwards_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/create", "<alt>F", dialogs_frame_manager_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/step forward", "s", dialogs_frame_manager_step_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/step backwards", "a", dialogs_frame_manager_step_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/flip forward", "w", dialogs_frame_manager_flip_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/flip backwards", "q", dialogs_frame_manager_flip_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/raise store", "x", dialogs_frame_manager_raise_store_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower store", "z", dialogs_frame_manager_lower_store_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower step forward", "r", dialogs_frame_manager_lower_step_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower step backwards", "e", dialogs_frame_manager_lower_step_backwards_cmd_callback, 0 },
   { "/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/Dialogs/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
 #if 0

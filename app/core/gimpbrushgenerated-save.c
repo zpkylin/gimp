@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+#include "cursorutil.h"
+#include "gdisplay.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -696,3 +698,36 @@ gimp_brush_generated_get_aspect_ratio (const GimpBrushGenerated* brush)
   g_return_val_if_fail (GIMP_IS_BRUSH_GENERATED(brush), -1.0);
   return brush->aspect_ratio;
 }
+
+void
+gimp_brush_generated_increase_radius ()
+{
+
+  if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
+    {
+      int radius = gimp_brush_generated_get_radius (get_active_brush ());
+      radius = radius < 100 ? radius + 1 : radius;
+
+      gimp_brush_generated_set_radius (get_active_brush (), radius);
+      create_win_cursor (gdisplay_active ()->canvas->window, 
+	  radius*2*(SCALEDEST (gdisplay_active ()) / SCALESRC (gdisplay_active ()))); 
+    }
+  else
+    printf ("ERROR : you can not edit this brush\n");
+}
+
+void
+gimp_brush_generated_decrease_radius ()
+{
+  if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
+    {
+      int radius = gimp_brush_generated_get_radius (get_active_brush ());
+      radius = radius > 1 ? radius - 1 : radius;
+      gimp_brush_generated_set_radius (get_active_brush (), radius);
+      create_win_cursor (gdisplay_active ()->canvas->window, 
+	radius*2*(SCALEDEST (gdisplay_active ()) / SCALESRC (gdisplay_active ()))); 
+    }
+  else
+    printf ("ERROR : you can not edit this brush\n");
+}
+

@@ -91,6 +91,70 @@ GtkWidget *ops_button_box_new (GtkWidget   *parent,
   return (button_box);
 }
 
+GtkWidget *ops_button_box_new2 (GtkWidget   *parent,
+			       GtkTooltips *tool_tips,
+			       OpsButton   *ops_buttons,
+                               GtkObject   *parent2)
+			   
+{
+  GtkWidget *button;
+  GtkWidget *button_box;
+  GtkWidget *box;
+  GtkWidget *pixmapwid;
+  GdkPixmap *pixmap;
+  GdkBitmap *mask;
+  GdkPixmap *is_pixmap;
+  GdkBitmap *is_mask;
+  GtkStyle *style;
+
+  gtk_widget_realize(parent);
+  style = gtk_widget_get_style(parent);
+
+  button_box = gtk_hbox_new (FALSE, 1);
+
+  while (ops_buttons->xpm_data)
+    {
+      box = gtk_hbox_new (FALSE, 0);
+      gtk_container_border_width (GTK_CONTAINER (box), 0);
+      
+      pixmap = gdk_pixmap_create_from_xpm_d (parent->window,
+					     &mask,
+					     &style->bg[GTK_STATE_NORMAL],
+					     ops_buttons->xpm_data);
+      is_pixmap = gdk_pixmap_create_from_xpm_d (parent->window,
+						&is_mask,
+						&style->bg[GTK_STATE_NORMAL],
+						ops_buttons->xpm_is_data);
+      
+      pixmapwid =  gtk_pixmap_new (pixmap, mask);
+      gtk_box_pack_start (GTK_BOX (box), pixmapwid, TRUE, TRUE, 3);
+      gtk_widget_show(pixmapwid);
+      gtk_widget_show(box);
+
+      button = gtk_button_new ();
+      gtk_container_add (GTK_CONTAINER (button), box);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+				 (GtkSignalFunc) ops_buttons->callback,
+				 parent2);
+
+      if (tool_tips != NULL)
+	gtk_tooltips_set_tip (tool_tips, button, ops_buttons->tooltip, NULL);
+
+      gtk_box_pack_start (GTK_BOX(button_box), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+
+      ops_buttons->pixmap    = pixmap;
+      ops_buttons->mask      = mask;
+      ops_buttons->is_pixmap = is_pixmap;
+      ops_buttons->is_mask   = is_mask;
+      ops_buttons->pixmapwid = pixmapwid;
+      ops_buttons->widget    = button;
+
+      ops_buttons++;
+    }
+  return (button_box);
+}
+
 
 void
 ops_button_box_set_insensitive(OpsButton *ops_buttons)

@@ -52,6 +52,7 @@
 GSList *               display_list = NULL;
 static int             display_num  = 1;
 static GdkCursorType   default_gdisplay_cursor = GDK_TOP_LEFT_ARROW;
+extern char 	       BRUSH_CHANGED;
 
 #define ROUND(x) ((int) (x + 0.5))
 
@@ -100,7 +101,7 @@ gdisplay_new (GImage       *gimage,
   gdisp->window_info_dialog = NULL;
   gdisp->depth = g_visual->depth;
   gdisp->select = NULL;
-  gdisp->ID = display_num++;
+  gdisp->ID = gimage->ID/*display_num++*/;
   gdisp->instance = instance;
   gdisp->update_areas = NULL;
   gdisp->display_areas = NULL;
@@ -109,6 +110,8 @@ gdisplay_new (GImage       *gimage,
   gdisp->current_cursor = -1;
   gdisp->draw_guides = TRUE;
   gdisp->snap_to_guides = TRUE;
+
+  gdisp->framemanager = 0;
 
   /* format the title */
   gdisplay_format_title (gimage, title, gdisp);
@@ -129,8 +132,8 @@ gdisplay_new (GImage       *gimage,
 
   /*  set the current tool cursor  */
   gdisplay_install_tool_cursor (gdisp, default_gdisplay_cursor);
- 
- gdisplays_update_title (gimage->ID); 
+
+  gdisplays_update_title (gimage->ID); 
 
   return gdisp;
 }
@@ -153,6 +156,9 @@ gdisplay_format_title (GImage *gimage,
 	   "",
            empty ? " (empty)" : "",
 	   100 * SCALEDEST (gdisp) / SCALESRC (gdisp));
+
+  if (gdisp->current_cursor != -1 )
+  change_win_cursor (gdisp->canvas->window, gdisp->current_cursor); 
 }
 
 
@@ -818,6 +824,7 @@ gdisplay_transform_coords (GDisplay *gdisp,
   double scale;
   int offset_x, offset_y;
 
+
   /*  transform from image coordinates to screen coordinates  */
   scale = (SCALESRC (gdisp) == 1) ? SCALEDEST (gdisp) :
     1.0 / SCALESRC (gdisp);
@@ -941,10 +948,12 @@ void
 gdisplay_install_tool_cursor (GDisplay      *gdisp,
 			      GdkCursorType  cursor_type)
 {
-  if (gdisp->current_cursor != cursor_type)
+  if (gdisp->current_cursor != cursor_type || (gdisp->current_cursor == GDK_PENCIL && BRUSH_CHANGED))
     {
+      if ((gdisp->current_cursor == GDK_PENCIL && BRUSH_CHANGED))
       gdisp->current_cursor = cursor_type;
       change_win_cursor (gdisp->canvas->window, cursor_type);
+      BRUSH_CHANGED = 0; 
     }
 }
 
@@ -1104,7 +1113,7 @@ gdisplay_active ()
   /*  If the popup shell is valid, then get the gdisplay associated with that shell  */
   event = gtk_get_current_event ();
   event_widget = gtk_get_event_widget (event);
-  gdk_event_free (event);
+  if (event) gdk_event_free (event);
 
   if (event_widget == NULL)
     return NULL;
@@ -1427,4 +1436,24 @@ static guint
 gdisplay_hash (GDisplay *display)
 {
   return (gulong) display;
+}
+
+GDisplay *
+gdisplay_find_display (int ID)
+{
+  GDisplay *gdisp;
+  GSList *list = display_list;
+
+  /*  Traverse the list of displays, returning the one that matches the ID  */
+  /*  If no display in the list is a match, return NULL.                    */
+  while (list)
+    {
+      gdisp = (GDisplay *) list->data;
+      if (gdisp->gimage->ID == ID)
+	return gdisp;
+
+      list = g_slist_next (list);
+    }
+
+  return NULL;
 }

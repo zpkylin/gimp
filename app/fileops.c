@@ -932,6 +932,64 @@ file_load (char *filename, char* raw_filename, GDisplay *gdisplay)
   return return_val;
 }
 
+GImage *
+file_load_without_display (char *filename, char* raw_filename, GDisplay *gdisplay)
+{
+  PlugInProcDef *file_proc;
+  ProcRecord *proc;
+  Argument *args;
+  Argument *return_vals;
+  GImage *gimage;
+  int gimage_ID;
+  int return_val;
+  int i;
+
+  file_proc = load_file_proc;
+  if (!file_proc)
+    file_proc = file_proc_find (load_procs, filename);
+
+  if (!file_proc)
+    {
+      /* WARNING */
+      return FALSE;
+    }
+
+  proc = &file_proc->db_info;
+
+  args = g_new (Argument, proc->num_args);
+  memset (args, 0, (sizeof (Argument) * proc->num_args));
+
+  for (i = 0; i < proc->num_args; i++)
+    args[i].arg_type = proc->args[i].arg_type;
+
+  args[0].value.pdb_int = 0;
+  args[1].value.pdb_pointer = filename;
+  args[2].value.pdb_pointer = raw_filename;
+
+  return_vals = procedural_db_execute (proc->name, args);
+  return_val = (return_vals[0].value.pdb_int == PDB_SUCCESS);
+  gimage_ID = return_vals[1].value.pdb_int;
+
+  procedural_db_destroy_args (return_vals, proc->num_values);
+  g_free (args);
+
+  
+  if ((gimage = gimage_get_ID (gimage_ID)) != NULL)
+    {
+      /*  enable & clear all undo steps  */
+      gimage_enable_undo (gimage);
+
+      /*  set the image to clean  */
+      gimage_clean_all (gimage);
+
+   }
+
+  if (return_val)
+    return gimage;
+  else
+    return NULL; 
+}
+
 int
 file_open (char *filename, char* raw_filename)
 {
@@ -1030,6 +1088,10 @@ file_save (int   image_ID,
   if ((gimage = gimage_get_ID (image_ID)) == NULL)
     return FALSE;
 
+  if (gimage->onionskin)
+    {
+      frame_manager_rm_onionskin (0);
+    }
   if (save_copy)
     {
      merged_layer = gimage_merge_visible_layers (gimage, 0, 1);  
@@ -1068,14 +1130,20 @@ file_save (int   image_ID,
     args[2].value.pdb_int = drawable_ID (GIMP_DRAWABLE (gimage_get_active_layer(gimage)));
   if (enable_tmp_saving)
     {
-      int i; 
-      sprintf (temp_raw_filename, "tmp.%s\0", raw_filename); 
+      int i=strlen(raw_filename) - 1;
+      while (raw_filename[i] != '.')
+	{
+	  i--;
+	}
+      sprintf (temp_raw_filename, "%s.tmp%s\0", raw_filename, &(raw_filename[i])); 
       sprintf (temp_filename, "%s\0", filename);
-      i = strlen (filename) - strlen (raw_filename); 
+      i = strlen (filename) - strlen (raw_filename);
+      if (temp_raw_filename[0] == '~')
+	sprintf (&(temp_filename[i+1]), "%s\0", &(temp_raw_filename[1]));
+      else	
       sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
       args[3].value.pdb_pointer = temp_filename;
       args[4].value.pdb_pointer = temp_raw_filename;
-
     }
   else
     {
@@ -1100,6 +1168,11 @@ file_save (int   image_ID,
 
       /*  set the image title  */
       gimage_set_filename (gimage, filename);
+    }
+  else
+    {
+     printf ("ERROR : saving\n"); 
+      
     }
 
   g_free (return_vals);
@@ -1322,10 +1395,10 @@ file_save_ok_callback (GtkWidget *w,
 static void
 file_dialog_show (GtkWidget *filesel)
 {
-  menus_set_sensitive ("<Toolbox>/File/OpenFile", FALSE);
-  menus_set_sensitive ("<Image>/File/OpenFile", FALSE);
-  menus_set_sensitive ("<Image>/File/SaveFile", FALSE);
-  menus_set_sensitive ("<Image>/File/SaveFile as", FALSE);
+  menus_set_sensitive ("<Toolbox>/File/Open/File", FALSE);
+  menus_set_sensitive ("<Image>/File/Open/File", FALSE);
+  menus_set_sensitive ("<Image>/File/Save/File", FALSE);
+  menus_set_sensitive ("<Image>/File/Save as/File", FALSE);
 
   gtk_widget_show (filesel);
 }
@@ -1335,10 +1408,10 @@ file_dialog_hide (GtkWidget *filesel)
 {
   gtk_widget_hide (filesel);
 
-  menus_set_sensitive ("<Toolbox>/File/OpenFile", TRUE);
-  menus_set_sensitive ("<Image>/File/OpenFile", TRUE);
-  menus_set_sensitive ("<Image>/File/SaveFile", TRUE);
-  menus_set_sensitive ("<Image>/File/SaveFile as", TRUE);
+  menus_set_sensitive ("<Toolbox>/File/Open/File", TRUE);
+  menus_set_sensitive ("<Image>/File/Open/File", TRUE);
+  menus_set_sensitive ("<Image>/File/Save/File", TRUE);
+  menus_set_sensitive ("<Image>/File/Save as/File", TRUE);
 
   return TRUE;
 }
@@ -1795,14 +1868,17 @@ file_load_invoker (Argument *args)
 {
   PlugInProcDef *file_proc;
   ProcRecord *proc;
-
+  Argument *return_val;
+  
   file_proc = file_proc_find (load_procs, args[2].value.pdb_pointer);
   if (!file_proc)
     return procedural_db_return_args (&file_load_proc, FALSE);
 
   proc = &file_proc->db_info;
 
-  return procedural_db_execute (proc->name, args);
+  return_val = procedural_db_execute (proc->name, args);
+
+  return return_val;
 }
 
 static Argument*
@@ -1833,13 +1909,12 @@ file_save_invoker (Argument *args)
     {
       strcpy (filename, new_args[4].value.pdb_pointer); 
       i = strlen (filename) - 1; 
-      while (filename[i] != '/')
+      while (filename[i] != '.')
 	  i --;
 	 
-     i ++;  
-      sprintf (temp_raw_filename, "tmp.%s\0", &(filename[i])); 
+      sprintf (temp_raw_filename, "%s.tmp%s\0", filename, &(filename[i])); 
       sprintf (temp_filename, "%s\0", new_args[3].value.pdb_pointer);
-      i = strlen (new_args[3].value.pdb_pointer) - strlen (&(filename[i])); 
+      i = strlen (new_args[3].value.pdb_pointer) - strlen (new_args[4].value.pdb_pointer); 
       sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
       new_args[3].value.pdb_pointer = temp_filename;
       new_args[4].value.pdb_pointer = temp_raw_filename;
@@ -1848,10 +1923,14 @@ file_save_invoker (Argument *args)
 
   return_vals = procedural_db_execute (proc->name, new_args);
   
-  if (enable_tmp_saving)
-        {
-	  rename (temp_filename, args[3].value.pdb_pointer);
-	}
+  if (return_vals && enable_tmp_saving)
+    {
+      rename (temp_filename, args[3].value.pdb_pointer);
+    }
+  
+  if (!return_vals)
+    printf ("ERROR : saving\n");
+
   g_free (new_args);
 
   return return_vals;
@@ -1898,7 +1977,7 @@ file_reload_warning_callback (GtkWidget *w,
  int i; 
   Layer *layer, *layer2; 
   
-  menus_set_sensitive ("<Image>/File/Reload", TRUE);
+  menus_set_sensitive ("<Image>/File/Revert to Saved", TRUE);
   mbox = (GtkWidget *) client_data;
   /*gdisplay = (GDisplay *) gtk_object_get_user_data (GTK_OBJECT (mbox));
   */
@@ -1965,12 +2044,17 @@ file_reload_warning_callback (GtkWidget *w,
 	      cur_gdisplay->gimage->active_layer->mask->drawable.drawable.visible = 0;
 	  }
     }
+  
+  cur_gdisplay->ID = cur_gdisplay->gimage->ID;
+
+  /* fix frame manager */
+  frame_manager_image_reload (gimage, cur_gdisplay->gimage);
 
   /* image channels */
   gimage_delete (gimage);
 
-  cur_gdisplay->ID = cur_gdisplay->gimage->ID;
 
+  
   gtk_widget_destroy (mbox);
   warning_dialog = NULL; 
 
