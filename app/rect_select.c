@@ -26,6 +26,7 @@
 #include "bezier_select.h"
 #include "rect_selectP.h"
 #include "tag.h"
+#include "store_frame_manager.h"
 
 #define NO  0
 #define YES 1
@@ -408,6 +409,8 @@ rect_select_button_release (Tool           *tool,
 		       rect_sel->op,
 		       rect_options->feather,
 		       rect_options->feather_radius);
+	  sfm_setting_aofi (gdisp);
+
 	  break;
 
 	case ELLIPSE_SELECT:

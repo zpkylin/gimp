@@ -29,11 +29,14 @@ void bfm_delete_cfm (GDisplay *);
 
 GImage* bfm_get_fg (GDisplay *);
 GImage* bfm_get_bg (GDisplay *);
-void bfm_set_dirty_flag (GDisplay *, int);
+void bfm_dirty (GDisplay *);
 
 char bfm_onionskin (GDisplay *);
 void bfm_onionskin_set_offset (GDisplay *, int, int);
 void bfm_onionskin_rm (GDisplay *);
+void bfm_onionskin_set_fg (GDisplay *, GImage *);
+void bfm_onionskin_set_bg (GDisplay *, GImage *);
+void bfm_onionskin_display (GDisplay *, double, int, int, int, int); 
 
 void bfm_next_filename (GImage *, char **, char **, char, GDisplay *);
 char* bfm_get_name (GImage *image);
@@ -67,12 +70,17 @@ typedef struct
 struct _store_frame_manager
 {
   GSList *stores;
-  gint selected;
+  gint fg;
+  gint bg;
   gint readonly;
+  gint s_x, s_y, e_x, e_y;
+  gint sx, sy, ex, ey;
   /* GUI */
+  GtkToggleButton *aofi;
+  GtkToggleButton *onionskin;
   GtkWidget *shell;  
   GtkWidget *store_list;  
-  GtkWidget *trans_data;  
+  GtkWidget *onionskin_val;  
   GtkWidget *add_dialog;  
   GtkWidget *num_to_add;  
 };

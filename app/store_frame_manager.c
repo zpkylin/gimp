@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tools.h"
+#include "rect_selectP.h"
 
 #include "tools/forward.xpm"
 #include "tools/forward_is.xpm"
@@ -38,6 +40,7 @@ static gint sfm_auto_save (GtkWidget *, gpointer);
 static gint sfm_set_aofi (GtkWidget *, gpointer);
 static gint sfm_aofi (GtkWidget *, gpointer);
 
+static void sfm_unset_aofi (GDisplay *);
 
 static void sfm_play_backwards (GtkWidget *, gpointer);
 static void sfm_play_forward (GtkWidget *, gpointer);
@@ -56,11 +59,19 @@ static gint sfm_store_revert (GtkWidget *, gpointer);
 static gint sfm_store_load (GtkWidget *, gpointer); 
 static gint sfm_store_change_frame (GtkWidget *, gpointer); 
 
+static gint sfm_store_set_src (GtkWidget *, gpointer);
+static gint sfm_store_recent_src (GtkWidget *, gpointer);
+static gint sfm_store_set_dest (GtkWidget *, gpointer);
+static gint sfm_store_recent_dest (GtkWidget *, gpointer);
+static gint sfm_store_load_smart (GtkWidget *, gpointer);
+
 static store* sfm_store_create (GDisplay*, GImage*, int, int, int);
 
 static void sfm_store_select (GtkCList *, gint, gint, GdkEventButton *, gpointer);
 static void sfm_store_unselect (GtkCList *, gint, gint, GdkEventButton *, gpointer);
 static void sfm_store_set_option (GtkCList *, gint, gpointer);
+
+static void sfm_store_make_cur (GDisplay *, int);
 
 static void sfm_store_add_create_dialog (GDisplay *disp);
 
@@ -109,6 +120,14 @@ sfm_create_gui (GDisplay *disp)
       "Change frame" 
 	
     };
+  char *menu2_names[5] =
+    {
+      "Set source",
+      "Recent source",
+      "Set dest",
+      "Recent dest",
+      "Load smart"
+    };
   CallbackAction menu_callbacks[9] =
     {
       sfm_store_add,
@@ -120,6 +139,14 @@ sfm_create_gui (GDisplay *disp)
       sfm_store_revert,
       sfm_store_load,
       sfm_store_change_frame
+    };
+  CallbackAction menu2_callbacks[5] =
+    {
+      sfm_store_set_src,
+      sfm_store_recent_src,
+      sfm_store_set_dest,
+      sfm_store_recent_dest,
+      sfm_store_load_smart
     };
   OpsButton flip_button[] =
     {
@@ -157,12 +184,26 @@ sfm_create_gui (GDisplay *disp)
       gtk_widget_show (menu_item);
     }
 
-
-
   menu_bar = gtk_menu_bar_new ();
   gtk_box_pack_start (GTK_BOX (GTK_DIALOG (disp->bfm->sfm->shell)->vbox), menu_bar, FALSE, FALSE, 0);
   gtk_widget_show (menu_bar);
   menu_item = gtk_menu_item_new_with_label ("Store");
+  gtk_widget_show (menu_item);
+  gtk_menu_item_set_submenu (GTK_MENU_ITEM (menu_item), menu);
+  gtk_menu_bar_append (GTK_MENU_BAR (menu_bar), menu_item);
+  
+  menu = gtk_menu_new ();
+  for (i=0; i<5; i++)
+    {
+      menu_item = gtk_menu_item_new_with_label (menu2_names[i]);
+      gtk_menu_append (GTK_MENU (menu), menu_item);
+      gtk_signal_connect (GTK_OBJECT (menu_item), "activate",
+	  GTK_SIGNAL_FUNC (menu2_callbacks[i]),
+	  disp);
+      gtk_widget_show (menu_item);
+    }
+
+  menu_item = gtk_menu_item_new_with_label ("Dir");
   gtk_widget_show (menu_item);
   gtk_menu_item_set_submenu (GTK_MENU_ITEM (menu_item), menu);
   gtk_menu_bar_append (GTK_MENU_BAR (menu_bar), menu_item);
@@ -175,10 +216,10 @@ sfm_create_gui (GDisplay *disp)
   gtk_widget_show (hbox);
   for (i = 0; i < 3; i++)
     {
-      check_button = gtk_check_button_new_with_label (check_names[i]);
+      disp->bfm->sfm->aofi = check_button = gtk_check_button_new_with_label (check_names[i]);
       gtk_signal_connect (GTK_OBJECT (check_button), "clicked",
 	  (GtkSignalFunc) check_callbacks[i],
-	  (void *)((long) i));
+	  disp);
       gtk_box_pack_start (GTK_BOX (hbox), check_button, FALSE, FALSE, 0);
       gtk_widget_show (check_button);
     }
@@ -235,23 +276,23 @@ sfm_create_gui (GDisplay *disp)
   gtk_widget_show (hbox);
 
 
-  check_button = gtk_check_button_new_with_label ("onionskin");
-  gtk_signal_connect (GTK_OBJECT (check_button), "clicked",
+  disp->bfm->sfm->onionskin = gtk_check_button_new_with_label ("onionskin");
+  gtk_signal_connect (GTK_OBJECT (disp->bfm->sfm->onionskin), "clicked",
       (GtkSignalFunc) sfm_onionskin_on,
       disp);
-  gtk_box_pack_start (GTK_BOX (hbox), check_button, FALSE, FALSE, 0);
-  gtk_widget_show (check_button);
+  gtk_box_pack_start (GTK_BOX (hbox), disp->bfm->sfm->onionskin, FALSE, FALSE, 0);
+  gtk_widget_show (disp->bfm->sfm->onionskin);
 
   utilbox = gtk_hbox_new (FALSE, 1);
   gtk_box_pack_start (GTK_BOX (hbox), utilbox, TRUE, TRUE, 0);
   gtk_widget_show (utilbox);
 
-  disp->bfm->sfm->trans_data = (GtkWidget*) gtk_adjustment_new (1.0, 0.0, 1.0, .01, .01, 0.0);
-  slider = gtk_hscale_new (GTK_ADJUSTMENT (disp->bfm->sfm->trans_data));
+  disp->bfm->sfm->onionskin_val = (GtkWidget*) gtk_adjustment_new (1.0, 0.0, 1.0, .01, .01, 0.0);
+  slider = gtk_hscale_new (GTK_ADJUSTMENT (disp->bfm->sfm->onionskin_val));
   gtk_range_set_update_policy (GTK_RANGE (slider), GTK_UPDATE_CONTINUOUS);
   gtk_scale_set_value_pos (GTK_SCALE (slider), GTK_POS_RIGHT);
   gtk_box_pack_start (GTK_BOX (utilbox), slider, TRUE, TRUE, 0);
-  gtk_signal_connect (GTK_OBJECT (disp->bfm->sfm->trans_data), "value_changed",
+  gtk_signal_connect (GTK_OBJECT (disp->bfm->sfm->onionskin_val), "value_changed",
       (GtkSignalFunc) sfm_onionskin,
       disp);
   gtk_widget_show (slider);
@@ -268,7 +309,8 @@ sfm_create_gui (GDisplay *disp)
 
   /* add store */
   sfm_store_add_image (disp->gimage, disp, 0, 1, 0);
-  
+  sfm_unset_aofi (disp);
+
   gtk_widget_show (disp->bfm->sfm->shell); 
 }
 
@@ -289,11 +331,43 @@ sfm_play_forward (GtkWidget *w, gpointer data)
 static void 
 sfm_flip_backwards (GtkWidget *w, gpointer data)
 {
+  GDisplay *gdisplay = (GDisplay*) data;
+  store_frame_manager *fm;
+  gint row=0;
+
+  if (!gdisplay || row == -1)
+    return;
+
+  fm = gdisplay->bfm->sfm; 
+  row = fm->fg - 1 < 0 ? g_slist_length (fm->stores)-1 : fm->fg - 1;
+
+  while (!((store*)g_slist_nth (fm->stores, row)->data)->flip && row != fm->fg)
+    {
+      row = row - 1 < 0 ? g_slist_length (fm->stores) - 1: row - 1; 
+    }
+
+  gtk_clist_select_row (fm->store_list, row, 0);
 }
 
 static void 
 sfm_flip_forward (GtkWidget *w, gpointer data)
 {
+  GDisplay *gdisplay = (GDisplay*) data;
+  store_frame_manager *fm;
+  gint row=0;
+
+  if (!gdisplay || row == -1)
+    return;
+
+  fm = gdisplay->bfm->sfm; 
+  row = fm->fg + 1 == g_slist_length (fm->stores) ? 0 : fm->fg + 1;
+
+  while (!((store*)g_slist_nth (fm->stores, row)->data)->flip && row != fm->fg)
+    {
+      row = row + 1 == g_slist_length (fm->stores)  ? 0 : row + 1; 
+    }
+
+  gtk_clist_select_row (fm->store_list, row, 0);
 }
 
 static void 
@@ -307,18 +381,63 @@ sfm_stop (GtkWidget *w, gpointer data)
 static gint 
 sfm_onionskin (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay*) data)->bfm->sfm;
+
+ if (fm->bg == -1 || fm->bg == fm->fg)
+   {
+     printf ("ERROR: you must select a bg\n");
+     if (((GtkAdjustment*)fm->onionskin_val)->value != 1)
+       gtk_adjustment_set_value (((GDisplay*)data)->bfm->sfm->onionskin_val, 1);
+     return 1;
+   } 
+  gtk_toggle_button_set_active (((GDisplay*)data)->bfm->sfm->onionskin, TRUE); 
+ 
+  bfm_onionskin_display (((GDisplay*) data), ((GtkAdjustment*)fm->onionskin_val)->value,
+      fm->s_x, fm->s_y, fm->e_x, fm->e_y); 
+  
   return 1;
 }
 
 static gint 
 sfm_onionskin_on (GtkWidget *w, gpointer data)
 {
+
+  static flag = 0;
+  store_frame_manager *fm = ((GDisplay*) data)->bfm->sfm;
+
+  if (fm->bg == -1 || fm->bg == fm->fg)
+    {
+      printf ("ERROR: you must select a bg\n");
+      return 1;
+    }
+
+  if (!gtk_toggle_button_get_active (((GDisplay*)data)->bfm->sfm->onionskin))
+    {
+      /* rm onionskin */
+      flag = 1;
+      gtk_adjustment_set_value (((GDisplay*)data)->bfm->sfm->onionskin_val, 1);
+      bfm_onionskin_rm ((GDisplay*)data); 
+    }
+  else
+    {
+      /* set onionskin */
+      if (flag)
+	gtk_toggle_button_set_active (((GDisplay*)data)->bfm->sfm->onionskin, FALSE); 
+    }
   return 1;
 }
 
 static gint 
 sfm_onionskin_fgbg (GtkWidget *w, gpointer data)
 {
+  if (!gtk_toggle_button_get_active (((GDisplay*)data)->bfm->sfm->onionskin))
+    return 1;
+
+  if (((GtkAdjustment*)((GDisplay*)data)->bfm->sfm->onionskin_val)->value)
+    gtk_adjustment_set_value (((GDisplay*)data)->bfm->sfm->onionskin_val, 0);
+  else
+    gtk_adjustment_set_value (((GDisplay*)data)->bfm->sfm->onionskin_val, 1);
+
   return 1;
 }
 
@@ -347,38 +466,146 @@ static gint sfm_store_add (GtkWidget *w, gpointer data)
   return 1; 
 }
 
+static void
+sfm_store_remove (GDisplay *disp)
+{
+  store_frame_manager *fm = disp->bfm->sfm; 
+  store *item = (store*) (g_slist_nth (fm->stores, fm->fg));
+  gint new_fg, i;
+
+  gint l = g_slist_length (fm->stores);
+
+  if (item->gimage->dirty)
+    {
+    }
+
+  new_fg = fm->fg < l-1 ? fm->fg : fm->fg - 1;
+
+  if (fm->fg == fm->bg)
+    {
+      fm->bg = new_fg;
+      gtk_clist_set_text (GTK_CLIST (fm->store_list), fm->bg, 3, "Bg"); 
+    }
+    
+  
+  gtk_clist_remove (fm->store_list, fm->fg);
+  g_slist_remove (fm->stores, (g_slist_nth (fm->stores, fm->fg)));
+  gtk_clist_select_row (fm->store_list, new_fg, 0);
+
+  for (i=0; i<l-1; i++)
+    {
+      if (((store*) (g_slist_nth (fm->stores, i)))->bg)
+	fm->bg = i;
+    } 
+  
+}
+
 static gint sfm_store_delete (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm;
+  gint l = g_slist_length (fm->stores);
+
+  if (l == 1)
+    {
+      printf ("ERROR: cannot rm last store\n");
+      return 1;
+    }
+  
+   sfm_store_remove ((GDisplay *)data); 
+ 
+  
   return 1; 
 }
 
 static gint sfm_store_raise (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm; 
+  store *item;
+
+  if (!fm->fg)
+    return 1;
+
+  gtk_clist_swap_rows (fm->store_list, fm->fg-1, fm->fg);
+
+  item = (store*) g_slist_nth (fm->stores, fm->fg)->data;
+  fm->stores = g_slist_remove (fm->stores, item);
+ 
+  fm->stores = g_slist_insert (fm->stores, item, fm->fg-1);
+  
+  fm->bg = fm->bg == fm->fg ? fm->fg - 1 : fm->bg == fm->fg - 1 ? fm->fg : fm->bg;
+  fm->fg --;
+  
   return 1; 
 }
 
 static gint sfm_store_lower (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm; 
+  store *item;
+
+  gint l = g_slist_length (fm->stores);
+  
+  if (fm->fg == l-1)
+    return 1;
+
+  
+  gtk_clist_swap_rows (fm->store_list, fm->fg+1, fm->fg);
+
+  item = (store*) g_slist_nth (fm->stores, fm->fg)->data;
+  fm->stores = g_slist_remove (fm->stores, item);
+ 
+  fm->stores = g_slist_insert (fm->stores, item, fm->fg+1);
+  
+  fm->bg = fm->bg == fm->fg ? fm->fg + 1 : fm->bg == fm->fg + 1 ? fm->fg : fm->bg;
+  fm->fg ++;
   return 1; 
 }
 
 static gint sfm_store_save (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm; 
+
+  store *item = (store*) g_slist_nth (fm->stores, fm->fg)->data;
+
+  if (item->readonly)
+    {
+      printf ("ERROR: trying to save a readonly file \n");
+      return 1;
+    }
+
+  file_save (item->gimage, prune_filename (item->gimage->filename),
+      item->gimage->filename);
   return 1; 
 }
 
 static gint sfm_store_save_all (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm;
+  store *item;
+  gint i, l = g_slist_length (fm->stores);
+
+  for (i=0; i<l; i++)
+    {
+      item = (store*) (g_slist_nth (fm->stores, i))->data;
+      if (!item->readonly)
+	file_save (item->gimage, prune_filename (item->gimage->filename),
+	    item->gimage->filename);
+    }
   return 1; 
 }
 
 static gint sfm_store_revert (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay *)data)->bfm->sfm;
+  store *item = (store*) (g_slist_nth (fm->stores, fm->fg))->data;
+
+
   return 1; 
 }
 
 static gint sfm_store_load (GtkWidget *w, gpointer data)
 {
+
   return 1; 
 }
 
@@ -387,6 +614,35 @@ static gint sfm_store_change_frame (GtkWidget *w, gpointer data)
   return 1; 
 }
 
+static gint 
+sfm_store_set_src (GtkWidget *w, gpointer data)
+{
+  return 1; 
+}
+
+static gint 
+sfm_store_recent_src (GtkWidget *w, gpointer data)
+{
+  return 1; 
+}
+
+static gint 
+sfm_store_set_dest (GtkWidget *w, gpointer data)
+{
+  return 1; 
+}
+
+static gint 
+sfm_store_recent_dest (GtkWidget *w, gpointer data)
+{
+  return 1; 
+}
+
+static gint 
+sfm_store_load_smart (GtkWidget *w, gpointer data)
+{
+  return 1; 
+}
 
 static store* 
 sfm_store_create (GDisplay* disp, GImage* img, int active, int num, int readonly)
@@ -401,6 +657,7 @@ sfm_store_create (GDisplay* disp, GImage* img, int active, int num, int readonly
   new_store->bg = 0;
   new_store->gimage = img;
 
+
   if (readonly)
   gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 0, "RO");
   else
@@ -408,11 +665,14 @@ sfm_store_create (GDisplay* disp, GImage* img, int active, int num, int readonly
   gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 1, "A");
   gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 2, "F");
   gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 3, "");
-  if (img->dirty)
+  if (img && img->dirty)
     gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 4, "*");
   else
     gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 4, "");
-  gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 5, prune_filename (img->filename));
+  if (!new_store->gimage)
+    gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 5, "Empty");
+  else
+    gtk_clist_set_text (GTK_CLIST (fm->store_list), num, 5, prune_filename (img->filename));
 
   if (active)
     gtk_clist_select_row (GTK_CLIST (fm->store_list), num, 0);
@@ -420,18 +680,47 @@ sfm_store_create (GDisplay* disp, GImage* img, int active, int num, int readonly
   return new_store;
 }
 
+static void
+sfm_store_make_cur (GDisplay *gdisplay, int row)
+{
+  store *item;
+  store_frame_manager *fm;
+
+  if (row == -1)
+    return;
+
+  fm = gdisplay->bfm->sfm;
+  fm->fg = row;
+
+  if (g_slist_length (fm->stores) <= row)
+    return;
+
+  item = (store*)(g_slist_nth (fm->stores, row)->data);
+
+  /* display the new store */
+  gdisplay->gimage = item->gimage;
+  gdisplay->ID = item->gimage->ID;
+  gdisplays_update_title (gdisplay->gimage->ID);
+  gdisplay_add_update_area (gdisplay, fm->s_x, fm->s_y, fm->e_x, fm->e_y);
+#if 0
+  if (active_tool->type == CLONE)
+    clone_flip_image ();
+#endif
+  bfm_onionskin_set_fg (gdisplay, 
+      ((store*)(g_slist_nth (fm->stores, fm->fg)->data))->gimage); 
+  gdisplays_flush ();
+}
+
 static void 
 sfm_store_select (GtkCList *w, gint row, gint col, 
     GdkEventButton *event, gpointer client_pointer) 
 {
   GDisplay *gdisplay = (GDisplay*) client_pointer;
-  store_frame_manager *fm;
- 
-  if (!gdisplay)
-    return;
   
-  fm = gdisplay->bfm->sfm;
-  fm->selected = row;
+  if (!gdisplay || row == -1)
+    return;
+
+  sfm_store_make_cur (gdisplay, row);
 
 }
 
@@ -447,10 +736,20 @@ sfm_store_unselect (GtkCList *w, gint row, gint col,
   
   fm = gdisplay->bfm->sfm;
 
-  fm->selected = -1;
+  fm->fg = -1;
 
 }
 
+void
+sfm_dirty (GDisplay* disp)
+{
+
+  if (disp->gimage->dirty)
+    gtk_clist_set_text (GTK_CLIST (disp->bfm->sfm->store_list), disp->bfm->sfm->fg, 4, "*");
+  else
+    gtk_clist_set_text (GTK_CLIST (disp->bfm->sfm->store_list), disp->bfm->sfm->fg, 4, "");
+
+}
 static void 
 sfm_store_set_option (GtkCList *w, gint col, gpointer client_pointer)
 {
@@ -464,7 +763,7 @@ sfm_store_set_option (GtkCList *w, gint col, gpointer client_pointer)
   
   fm = gdisplay->bfm->sfm;
 
-  if(-1 == (row = gdisplay->bfm->sfm->selected))
+  if(-1 == (row = gdisplay->bfm->sfm->fg))
     return;
   
   item = (store*) g_slist_nth (fm->stores, row)->data;
@@ -493,11 +792,31 @@ sfm_store_set_option (GtkCList *w, gint col, gpointer client_pointer)
       gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 2, "");  
       break;
     case 3:
-     item->bg = item->bg ? 0 : 1; 
-     if (item->bg)
-      gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 3, "Bg"); 
-     else
-      gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 3, "");  
+      if (fm->bg != -1 && fm->bg != fm->fg)
+	{
+	  ((store*) g_slist_nth (fm->stores, fm->bg)->data)->bg = 0;
+	  gtk_clist_set_text (GTK_CLIST (fm->store_list), fm->bg, 3, "");
+	  fm->bg = -1;
+	  bfm_onionskin_set_bg (((GDisplay*)client_pointer), 
+	      0); 
+	}
+      item->bg = item->bg ? 0 : 1; 
+      if (item->bg)
+	{
+	  gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 3, "Bg"); 
+	  fm->bg = row;
+      
+	  bfm_onionskin_set_bg (((GDisplay*)client_pointer), 
+	      ((store*)(g_slist_nth (fm->stores, fm->bg)->data))->gimage); 
+	  
+	}
+      else
+	{
+	  gtk_clist_set_text (GTK_CLIST (fm->store_list), row, 3, "");  
+	  fm->bg = -1;
+	  bfm_onionskin_set_bg (((GDisplay*)client_pointer), 
+	      0); 
+	}
       break;
     default:
       break;
@@ -506,17 +825,17 @@ sfm_store_set_option (GtkCList *w, gint col, gpointer client_pointer)
 }
 
 void
-sfm_store_add_image (GImage *gimage, GDisplay *disp, int row, int selected, int readonly)
+sfm_store_add_image (GImage *gimage, GDisplay *disp, int row, int fg, int readonly)
 {
   store_frame_manager *fm = disp->bfm->sfm; 
   char *text[6]={NULL, NULL, NULL, NULL, NULL, NULL}; 
   store *new_store;
 
-  if (!gimage || row<0)
+  if (row<0)
     return;
 
   gtk_clist_insert (GTK_CLIST (fm->store_list), row, text);
-  new_store = sfm_store_create (disp, gimage, selected, row, readonly);
+  new_store = sfm_store_create (disp, gimage, fg, row, readonly);
   fm->stores = g_slist_insert (fm->stores, new_store, row);
 }
 
@@ -530,16 +849,110 @@ sfm_auto_save (GtkWidget *w, gpointer data)
   return 1;
 }
 
+static ToolType tool=-1;
+
 static gint 
 sfm_set_aofi (GtkWidget *w, gpointer data)
 {
-  return 1;
+
+  GDisplay *disp;
+      
+  disp = (GDisplay*)data;
+
+  if (tool == -1)
+    {
+     if (disp->select) 
+      disp->select->hidden = FALSE;
+      tool = active_tool->type;
+      tools_select (RECT_SELECT);
+      gtk_toggle_button_set_active (((GDisplay*)data)->bfm->sfm->aofi, TRUE);
+    }
+  else
+    {
+      tools_select (tool);
+
+      tool = -1; 
+
+      selection_invis (disp->select);
+      selection_layer_invis (disp->select);
+      disp->select->hidden = disp->select->hidden ? FALSE : TRUE;
+      
+      selection_start (disp->select, TRUE);
+
+      gdisplays_flush ();
+    }
+  return 1; 
+}
+
+void
+sfm_setting_aofi(GDisplay *disp)
+{
+  RectSelect * rect_sel;
+  double scale;
+  gint s_x, s_y, e_x, e_y;
+  store_frame_manager *fm;
+
+  if (tool == -1)
+    return;
+
+  if (active_tool->type == RECT_SELECT)
+    {
+      /* get position */
+      rect_sel = (RectSelect *) active_tool->private;
+      s_x = MIN (rect_sel->x, rect_sel->x + rect_sel->w);
+      s_y = MIN (rect_sel->y, rect_sel->y + rect_sel->h);
+      e_x = MAX (rect_sel->x, rect_sel->x + rect_sel->w) - s_x;
+      e_y = MAX (rect_sel->y, rect_sel->y + rect_sel->h) - s_y;
+
+      if ((!s_x && !s_y && !e_x && !e_y) ||
+	  (!rect_sel->w && !rect_sel->h))
+	{
+	  scale = ((double) SCALESRC (disp) / (double)SCALEDEST (disp));
+	  s_x = 0;
+	  s_y = 0;
+	  e_x = disp->disp_width*scale;
+	  e_y = disp->disp_height*scale;
+	}
+      fm = disp->bfm->sfm;
+
+      fm->s_x = fm->sx = s_x;
+      fm->s_y = fm->sy = s_y;
+      fm->e_x = fm->ex = e_x;
+      fm->e_y = fm->ey = e_y;
+    }
+
 }
 
 static gint 
 sfm_aofi (GtkWidget *w, gpointer data)
 {
+  store_frame_manager *fm = ((GDisplay*)data)->bfm->sfm;
+
+  if (gtk_toggle_button_get_active (fm->aofi))
+    {
+      fm->s_x = fm->sx;
+      fm->s_y = fm->sy;
+      fm->e_x = fm->ex;
+      fm->e_y = fm->ey;
+    }
+  else
+    {
+    sfm_unset_aofi ((GDisplay*)data);
+    }
   return 1;
+}
+
+static void
+sfm_unset_aofi (GDisplay *disp)
+{
+  store_frame_manager *fm = disp->bfm->sfm;
+  double scale;
+
+  scale = ((double) SCALESRC (disp) / (double)SCALEDEST (disp));
+  fm->s_x = 0;
+  fm->s_y = 0;
+  fm->e_x = disp->disp_width*scale;
+  fm->e_y = disp->disp_height*scale;
 }
 
 /*
@@ -556,7 +969,7 @@ sfm_store_add_stores (GDisplay* disp)
   gint num_to_add = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(fm->num_to_add));
   store *item;
 
-  row = fm->selected;
+  row = fm->fg;
   item = (store*) g_slist_nth (fm->stores, row)->data;
 
   switch (TYPE_TO_ADD)

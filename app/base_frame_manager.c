@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "general.h"
 #include <string.h>
+#include "layer_pvt.h"
 
 static char
 bfm_check (GDisplay *disp)
@@ -14,6 +15,7 @@ bfm_check (GDisplay *disp)
   if (!disp)
     return 0;
 
+  return 1;
   if (disp->frame_manager)
     return 1;
   return 0;
@@ -26,6 +28,8 @@ bfm_check_disp (GDisplay *disp)
     return 0;
   if (!disp->gimage)
     return 0;
+  return 1;
+
   if (!disp->gimage->filename)
     return 0;
   return 1;
@@ -57,7 +61,8 @@ bfm_create_sfm (GDisplay *disp)
  bfm_init_varibles (disp);
 
  disp->bfm->sfm->stores = 0;
- disp->bfm->sfm->selected = -1;
+ disp->bfm->sfm->bg = -1;
+ disp->bfm->sfm->fg = -1;
  disp->bfm->sfm->add_dialog = 0;
  disp->bfm->sfm->readonly = 0; 
  /* GUI */
@@ -102,10 +107,17 @@ bfm_get_bg (GDisplay *disp)
 }
   
 void 
-bfm_set_dirty_flag (GDisplay *disp, int flag)
+bfm_dirty (GDisplay *disp)
 {
   if (!bfm_check (disp))
     return;
+  if(disp->bfm->cfm)
+    {
+      /*cfm_onionskin_set_offset (disp->bfm->cfm, x, y);*/
+    }
+  else
+    if(disp->bfm->sfm)
+      sfm_dirty (disp);
 }
 
 /*
@@ -148,6 +160,67 @@ bfm_onionskin_rm (GDisplay *disp)
   else
     if(disp->bfm->sfm)
       sfm_onionskin_rm (disp);
+
+  disp->bfm->fg->active_layer->opacity = 1;
+  gimage_remove_layer (disp->bfm->fg, (disp->bfm->bg->active_layer));
+
+  GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_x = 0;
+  GIMP_DRAWABLE (disp->bfm->bg->active_layer)->offset_y = 0;
+  GIMP_DRAWABLE(disp->bfm->bg->active_layer)->gimage_ID = disp->bfm->bg->ID;
+
+  disp->bfm->onionskin = 0;
+
+}
+
+void
+bfm_onionskin_set_fg (GDisplay *disp, GImage *fg)
+{
+  if (!bfm_check (disp))
+        return;
+
+  disp->bfm->fg = fg;
+
+}
+
+void
+bfm_onionskin_set_bg (GDisplay *disp, GImage *bg)
+{
+  if (!bfm_check (disp))
+        return;
+
+  disp->bfm->bg = bg;
+
+}
+
+void
+bfm_onionskin_unset (GDisplay *disp)
+{
+  disp->bfm->onionskin = 0; 
+}
+
+void 
+bfm_onionskin_display (GDisplay *disp, double val, int sx, int sy, int ex, int ey)
+{
+  Layer *layer;
+
+  if (!disp->bfm->fg || !disp->bfm->bg)
+    return;
+
+  disp->bfm->fg->active_layer->opacity = val;
+
+  if (!disp->bfm->onionskin)
+    {
+      layer = disp->bfm->fg->active_layer;
+      gimage_add_layer2 (disp->bfm->fg, disp->bfm->bg->active_layer,
+	  1, sx, sy, ex, ey);
+      gimage_set_active_layer (disp->bfm->fg, layer);
+      disp->bfm->onionskin = 1;
+    }
+
+  drawable_update (GIMP_DRAWABLE(disp->bfm->fg->active_layer),
+      sx, sy, ex, ey);
+  gdisplays_flush ();
+
 }
 
 /*

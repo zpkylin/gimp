@@ -3022,6 +3022,7 @@ gimage_dirty (GImage *gimage)
         tools_initialize (active_tool->type, NULL);
     }
   }
+  bfm_dirty (gdisplay_get_from_gimage (gimage));
   return gimage->dirty;
 }
 
@@ -3034,6 +3035,7 @@ gimage_clean (GImage *gimage)
   else
 #endif
     gimage->dirty --;
+  bfm_dirty (gdisplay_get_from_gimage (gimage));
   return gimage->dirty;
 }
 
@@ -3041,6 +3043,7 @@ void
 gimage_clean_all (GImage *gimage)
 {
   gimage->dirty = 0;
+  bfm_dirty (gdisplay_get_from_gimage (gimage));
 }
 
 Layer *
