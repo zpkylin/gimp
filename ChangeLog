@@ -1,3 +1,50 @@
+Sat Apr  4 22:37:01 EEST 1998  Lauri Alanko  <nether@gimp.org>
+
+	* app/Makefile.am
+	* app/app_procs.c
+	* app/boundary.h
+	* app/boundary_decl.h
+	* app/brushes.c
+	* app/equalize.c
+	* app/gimage.c
+	* app/gimage.h
+	* app/gimpimage.c
+	* app/gimpimage.h
+	* app/gimpimage_decl.h
+	* app/gimpimage_pvt.h
+	* app/gimpobject.c
+	* app/gimpobject_pvt.h
+	* app/gimpset.c
+	* app/gimpset.h
+	* app/gimpset_decl.h
+	* app/gimpset_pvt.h
+	* app/gimpsignal.c
+	* app/gimpsignal.h
+	* app/globals.c
+	* app/globals.h
+	* app/invert.c
+	* app/layer_select.c
+	* app/layers_dialog.c
+	* docs/gtkob.txt
+
+	Continued work on GimpImage. Made the global image repository an
+	explicit GimpSet object. Experimented with converting
+	layers_dialog to use signals. Seems fine.
+
+	Added globals.[hc] These are global objects that are specific to
+	the application. They have to be gotten rid of in the class
+	implementations, which should be completely independent of the
+	application. 
+
+	Made some changes in headers to get things to compile.
+
+	Added gimpsignal.[hc] This is intended for general signal
+	utilities that gtk lacks, such as more signal marshallers.
+
+	Currently all the GImage code is in gimpimage*. The intention is
+	to make gimpimage.c a pure class module, and put all application
+	dependent stuff in gimage.c, for compatibility.
+	
 Fri Apr  3 20:14:18 1998  Lauri Alanko  <la@iki.fi>
 
 	* app/channel.h

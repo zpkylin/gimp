@@ -33,7 +33,7 @@
 #include "general.h"
 #include "gimprc.h"
 #include "menus.h"
-
+#include "paint_funcs.h"
 
 /*  global variables  */
 GBrushP             active_brush = NULL;

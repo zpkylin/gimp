@@ -19,8 +19,7 @@
 #define  __BOUNDARY_H__
 
 #include "paint_funcs.h"
-
-typedef struct _BoundSeg BoundSeg;
+#include "boundary_decl.h"
 
 struct _BoundSeg
 {

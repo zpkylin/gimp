@@ -1,3 +1,5 @@
+#ifndef __LAYERS_DIALOG_C__
+#define __LAYERS_DIALOG_C__
 /* The GIMP -- an image manipulation program
  * Copyright (C) 1995 Spencer Kimball and Peter Mattis
  *
@@ -46,7 +48,8 @@
 #include "tools/mask.xbm"
 
 #include "layer_pvt.h"
-
+#include "globals.h"
+#include "gimpset.h"
 
 #define PREVIEW_EVENT_MASK GDK_EXPOSURE_MASK | GDK_BUTTON_PRESS_MASK | GDK_ENTER_NOTIFY_MASK
 #define BUTTON_EVENT_MASK  GDK_EXPOSURE_MASK | GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK | \
@@ -151,6 +154,7 @@ static void layers_dialog_alpha_select_callback (GtkWidget *, gpointer);
 static void layers_dialog_mask_select_callback (GtkWidget *, gpointer);
 static void layers_dialog_add_alpha_channel_callback (GtkWidget *, gpointer);
 static gint lc_dialog_close_callback (GtkWidget *, gpointer);
+static void lc_dialog_init_handlers (void);
 
 /*  layer widget function prototypes  */
 static LayerWidget *layer_widget_get_ID (Layer *);
@@ -349,6 +353,8 @@ lc_dialog_create (int gimage_id)
       gtk_notebook_set_page (GTK_NOTEBOOK (notebook), 1);
       gtk_notebook_set_page (GTK_NOTEBOOK (notebook), 0);
 
+      lc_dialog_init_handlers ();
+      
       layers_dialog_update (gimage_id);
       channels_dialog_update (gimage_id);
       gdisplays_flush ();
@@ -366,6 +372,49 @@ lc_dialog_create (int gimage_id)
       gdisplays_flush ();
     }
 }
+
+
+static void
+lc_dialog_update_handler (void)
+{
+  lc_dialog_update_image_list ();
+}
+
+
+static void
+lc_dialog_init_handler_cb (gpointer key, gpointer image,
+			   gpointer data)
+{
+  gtk_signal_connect(GTK_OBJECT (image), "rename",
+		     (GtkSignalFunc)lc_dialog_update_handler,
+		     NULL);
+}
+
+
+static void
+lc_dialog_image_set_cb (GtkObject* set, GImage* image,
+			gpointer added)
+{
+  lc_dialog_update_handler ();
+  if (added)
+    gtk_signal_connect(GTK_OBJECT (image), "rename",
+		       (GtkSignalFunc)lc_dialog_update_handler,
+		       NULL);
+}
+
+
+static void
+lc_dialog_init_handlers (void)
+{
+  gimp_set_foreach (image_set, lc_dialog_init_handler_cb, NULL);
+  gtk_signal_connect (GTK_OBJECT (image_set), "add",
+		      GTK_SIGNAL_FUNC (lc_dialog_image_set_cb),
+		      image_set);
+  gtk_signal_connect (GTK_OBJECT (image_set), "remove",
+		      GTK_SIGNAL_FUNC (lc_dialog_image_set_cb),
+		      NULL);
+}
+
 
 void
 lc_dialog_update_image_list ()
@@ -691,70 +740,81 @@ layers_dialog_create ()
 }
 
 
+typedef struct
+{
+  int* default_id;
+  int* default_index;
+  MenuItemCallback callback;
+  GtkWidget* menu;
+  int num_items;
+  int id;
+}IMCBData;
+
+
+static void
+create_image_menu_cb (gpointer key, gpointer im, gpointer d)
+{
+  GImage* gimage = GIMAGE (im);
+  IMCBData* data = (IMCBData*)d;
+  char* image_name;
+  char *menu_item_label;
+  GtkWidget *menu_item;
+  
+  /*  make sure the default index gets set to _something_, if possible  */
+  if (*data->default_index == -1)
+    {
+      data->id = gimage->ID;
+      *data->default_index = data->num_items;
+    }
+
+  if (gimage->ID == *data->default_id)
+    {
+      data->id = *data->default_id;
+      *data->default_index = data->num_items;
+    }
+
+  image_name = prune_filename (gimage_filename (gimage));
+  menu_item_label = (char *) g_malloc (strlen (image_name) + 15);
+  sprintf (menu_item_label, "%s-%d", image_name, gimage->ID);
+  menu_item = gtk_menu_item_new_with_label (menu_item_label);
+  gtk_signal_connect (GTK_OBJECT (menu_item), "activate",
+		      (GtkSignalFunc) data->callback,
+		      (gpointer) ((long) gimage->ID));
+  gtk_container_add (GTK_CONTAINER (data->menu), menu_item);
+  gtk_widget_show (menu_item);
+
+  g_free (menu_item_label);
+  data->num_items ++;  
+}
+
 GtkWidget *
 create_image_menu (int              *default_id,
 		   int              *default_index,
 		   MenuItemCallback  callback)
 {
-  extern GSList *image_list;
-
-  GImage *gimage;
-  GtkWidget *menu_item;
-  GtkWidget *menu;
-  char *menu_item_label;
-  char *image_name;
-  GSList *tmp;
-  int num_items = 0;
-  int id;
-
-  id = -1;
-
+  IMCBData data = {
+    default_id,
+    default_index,
+    callback,
+    gtk_menu_new (),
+    0,
+    -1};
+  
   *default_index = -1;
-  menu = gtk_menu_new ();
 
-  tmp = image_list;
-  while (tmp)
+  gimp_set_foreach (image_set, create_image_menu_cb, &data);
+  
+  if (!data.num_items)
     {
-      gimage = tmp->data;
-      tmp = g_slist_next (tmp);
-
-      /*  make sure the default index gets set to _something_, if possible  */
-      if (*default_index == -1)
-	{
-	  id = gimage->ID;
-	  *default_index = num_items;
-	}
-
-      if (gimage->ID == *default_id)
-	{
-	  id = *default_id;
-	  *default_index = num_items;
-	}
-
-      image_name = prune_filename (gimage_filename (gimage));
-      menu_item_label = (char *) g_malloc (strlen (image_name) + 15);
-      sprintf (menu_item_label, "%s-%d", image_name, gimage->ID);
-      menu_item = gtk_menu_item_new_with_label (menu_item_label);
-      gtk_signal_connect (GTK_OBJECT (menu_item), "activate",
-			  (GtkSignalFunc) callback,
-			  (gpointer) ((long) gimage->ID));
-      gtk_container_add (GTK_CONTAINER (menu), menu_item);
-      gtk_widget_show (menu_item);
-
-      g_free (menu_item_label);
-      num_items ++;
-    }
-
-  if (!num_items)
-    {
+      GtkWidget* menu_item;
       menu_item = gtk_menu_item_new_with_label ("none");
-      gtk_container_add (GTK_CONTAINER (menu), menu_item);
+      gtk_container_add (GTK_CONTAINER (data.menu), menu_item);
       gtk_widget_show (menu_item);
     }
 
-  *default_id = id;
+  *default_id = data.id;
 
-  return menu;
+  return data.menu;
 }
 
 
@@ -3887,3 +3947,5 @@ layers_dialog_layer_merge_query (GImage *gimage,
   gtk_widget_show (vbox);
   gtk_widget_show (options->query_box);
 }
+
+#endif

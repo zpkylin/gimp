@@ -54,6 +54,7 @@
 #include "undo.h"
 #include "xcf.h"
 #include <gtk/gtk.h>
+#include "globals.h"
 
 #define LOGO_WIDTH_MIN 350
 #define LOGO_HEIGHT_MIN 110 
@@ -423,7 +424,8 @@ app_init ()
   if (no_interface == FALSE && no_splash == FALSE && win_initstatus) {
     splash_text_draw (logo_area);
   }
-    
+  globals_init ();
+  
   /*
    *  Initialize the procedural database
    *    We need to do this first because any of the init

@@ -1,7 +1,7 @@
 #ifndef __GIMP_OBJECT_PVT_H__
 #define __GIMP_OBJECT_PVT_H__
-#include "gimpobject.h"
 #include <gtk/gtkobject.h>
+#include "gimpobject.h"
 
 struct _GimpObject
 {

@@ -23,6 +23,7 @@
 #include "equalize.h"
 #include "interface.h"
 #include "gimage.h"
+#include "pixel_region.h"
 
 static void       equalize (GImage *, GimpDrawable *, int);
 static void       eq_histogram (double [3][256], unsigned char [3][256], int, double);

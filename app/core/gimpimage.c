@@ -1,3 +1,5 @@
+#ifndef __GIMAGE_C__
+#define __GIMAGE_C__
 /* The GIMP -- an image manipulation program
  * Copyright (C) 1995 Spencer Kimball and Peter Mattis
  *
@@ -42,31 +44,31 @@
 #include "layer_pvt.h"
 #include "drawable_pvt.h"		/* ick ick. */
 
-#include "gimpimage.h"
 #include "gimpimage_pvt.h"
+#include "globals.h"
+#include "gimpset.h"
 
 /*  Local function declarations  */
 static void     gimage_free_projection       (GImage *);
 static void     gimage_allocate_shadow       (GImage *, int, int, int);
-static GImage * gimage_create                (void);
 static void     gimage_allocate_projection   (GImage *);
 static void     gimage_free_layers           (GImage *);
 static void     gimage_free_channels         (GImage *);
 static void     gimage_construct_layers      (GImage *, int, int, int, int);
 static void     gimage_construct_channels    (GImage *, int, int, int, int);
-static void     gimage_initialize_projection (GimpImage *, int, int, int, int);
-static void     gimage_get_active_channels   (GimpImage *, GimpDrawable *, int *);
+static void     gimage_initialize_projection (GImage *, int, int, int, int);
+static void     gimage_get_active_channels   (GImage *, GimpDrawable *, int *);
  
 /*  projection functions  */
-static void     project_intensity            (GimpImage *, Layer *, PixelRegion *,
+static void     project_intensity            (GImage *, Layer *, PixelRegion *,
 					      PixelRegion *, PixelRegion *);
-static void     project_intensity_alpha      (GimpImage *, Layer *, PixelRegion *,
+static void     project_intensity_alpha      (GImage *, Layer *, PixelRegion *,
 					      PixelRegion *, PixelRegion *);
-static void     project_indexed              (GimpImage *, Layer *, PixelRegion *,
+static void     project_indexed              (GImage *, Layer *, PixelRegion *,
 					      PixelRegion *);
-static void     project_channel              (GimpImage *, Channel *, PixelRegion *,
+static void     project_channel              (GImage *, Channel *, PixelRegion *,
 					      PixelRegion *);
-static void gimp_image_destroy(GtkObject *object);
+static void gimage_destroy(GtkObject *object);
 
 /*
  *  Global variables
@@ -88,15 +90,51 @@ int valid_combinations[][MAX_CHANNELS + 1] =
 };
 
 
+enum
+{
+  DIRTY,
+  REPAINT,
+  RENAME,
+  LAST_SIGNAL
+};
+
+static guint gimage_signals[LAST_SIGNAL];
+static GimpObjectClass* parent_class;
 
 static void
-gimp_image_class_init (GimpImageClass *class)
+gimage_class_init (GImageClass *klass)
 {
   GtkObjectClass *object_class;
 
-  object_class = GTK_OBJECT_CLASS(class);
+  object_class = GTK_OBJECT_CLASS(klass);
+  parent_class = gtk_type_class (gimp_object_get_type ());
 
-  object_class->destroy = gimp_image_destroy;
+  object_class->destroy = gimage_destroy;
+
+  gimage_signals[DIRTY] =
+    gtk_signal_new ("dirty",
+		    GTK_RUN_LAST,
+		    object_class->type,
+		    0,
+		    gtk_signal_default_marshaller,
+		    GTK_TYPE_NONE, 0);
+  gimage_signals[REPAINT] =
+    gtk_signal_new ("repaint",
+		    GTK_RUN_LAST,
+		    object_class->type,
+		    0,
+		    gtk_signal_default_marshaller,
+		    GTK_TYPE_NONE, 0);
+  gimage_signals[RENAME] =
+    gtk_signal_new ("rename",
+		    GTK_RUN_LAST,
+		    object_class->type,
+		    0,
+		    gtk_signal_default_marshaller,
+		    GTK_TYPE_NONE, 0);
+  
+  
+  gtk_object_class_add_signals (object_class, gimage_signals, LAST_SIGNAL);
 }
 
 /*
@@ -109,7 +147,7 @@ GSList *image_list = NULL;
 /* static functions */
 
 
-static void gimp_image_init (GimpImage *gimage)
+static void gimage_init (GImage *gimage)
 {
   gimage->has_filename = 0;
   gimage->num_cols = 0;
@@ -136,14 +174,12 @@ static void gimp_image_init (GimpImage *gimage)
   gimage->comp_preview_valid[1] = FALSE;
   gimage->comp_preview_valid[2] = FALSE;
   gimage->comp_preview = NULL;
-
-  image_list = g_slist_append (image_list, (void *) gimage);
 }
 
-DEF_GET_TYPE(GimpImage, gimp_image, gimp_object)
+DEF_GET_TYPE(GImage, gimage, gimp_object)
 
 static void
-gimage_allocate_projection (GimpImage *gimage)
+gimage_allocate_projection (GImage *gimage)
 {
   if (gimage->projection)
     gimage_free_projection (gimage);
@@ -175,7 +211,7 @@ gimage_allocate_projection (GimpImage *gimage)
 }
 
 static void
-gimage_free_projection (GimpImage *gimage)
+gimage_free_projection (GImage *gimage)
 {
   if (gimage->projection)
     tile_manager_destroy (gimage->projection);
@@ -184,7 +220,7 @@ gimage_free_projection (GimpImage *gimage)
 }
 
 static void
-gimage_allocate_shadow (GimpImage *gimage, int width, int height, int bpp)
+gimage_allocate_shadow (GImage *gimage, int width, int height, int bpp)
 {
   /*  allocate the new projection  */
   gimage->shadow = tile_manager_new (width, height, bpp);
@@ -193,10 +229,10 @@ gimage_allocate_shadow (GimpImage *gimage, int width, int height, int bpp)
 
 /* function definitions */
 
-GimpImage *
-gimp_image_new (int width, int height, GimpImageBaseType base_type)
+GImage *
+gimage_new (int width, int height, GImageBaseType base_type)
 {
-  GimpImage *gimage=GIMP_IMAGE(gtk_type_new(gimp_image_get_type ()));
+  GImage *gimage=GIMAGE(gtk_type_new(gimage_get_type ()));
   int i;
 
   gimage->filename = NULL;
@@ -235,15 +271,17 @@ gimp_image_new (int width, int height, GimpImageBaseType base_type)
   /* create the selection mask */
   gimage->selection_mask = channel_new_mask (gimage->ID, gimage->width, gimage->height);
 
-  lc_dialog_update_image_list ();
+  gimp_set_add (image_set, gimage->ID, gimage);
+  /* lc_dialog_update_image_list (); */
   indexed_palette_update_image_list ();
+
 
   return gimage;
 }
 
 
 void
-gimage_set_filename (GimpImage *gimage, char *filename)
+gimage_set_filename (GImage *gimage, char *filename)
 {
   char *new_filename;
 
@@ -263,13 +301,14 @@ gimage_set_filename (GimpImage *gimage, char *filename)
     }
 
   gdisplays_update_title (gimage->ID);
-  lc_dialog_update_image_list ();
+  /* lc_dialog_update_image_list (); */
   indexed_palette_update_image_list ();
+  gtk_signal_emit (GTK_OBJECT (gimage), gimage_signals[RENAME]);
 }
 
 
 void
-gimage_resize (GimpImage *gimage, int new_width, int new_height,
+gimage_resize (GImage *gimage, int new_width, int new_height,
 	       int offset_x, int offset_y)
 {
   Channel *channel;
@@ -340,7 +379,7 @@ gimage_resize (GimpImage *gimage, int new_width, int new_height,
 
 
 void
-gimage_scale (GimpImage *gimage, int new_width, int new_height)
+gimage_scale (GImage *gimage, int new_width, int new_height)
 {
   Channel *channel;
   Layer *layer;
@@ -410,48 +449,19 @@ gimage_scale (GimpImage *gimage, int new_width, int new_height)
 }
 
 
-GimpImage *
-gimage_get_named (char *name)
-{
-  GSList *tmp = image_list;
-  GimpImage *gimage;
-  char *str;
-
-  while (tmp)
-    {
-      gimage = tmp->data;
-      str = prune_filename (gimage_filename (gimage));
-      if (strcmp (str, name) == 0)
-	return gimage;
-
-      tmp = g_slist_next (tmp);
-    }
-
-  return NULL;
-}
-
-
-GimpImage *
+GImage *
 gimage_get_ID (int ID)
 {
-  GSList *tmp = image_list;
-  GimpImage *gimage;
-
-  while (tmp)
-    {
-      gimage = (GimpImage *) tmp->data;
-      if (gimage->ID == ID)
-	return gimage;
-
-      tmp = g_slist_next (tmp);
-    }
-
-  return NULL;
+  gpointer p = gimp_set_lookup (image_set, ID);
+  if (p)
+    return GIMAGE(p);
+  else
+    return NULL;
 }
 
 
 TileManager *
-gimage_shadow (GimpImage *gimage, int width, int height, int bpp)
+gimage_shadow (GImage *gimage, int width, int height, int bpp)
 {
   if (gimage->shadow &&
       ((width != gimage->shadow->levels[0].width) ||
@@ -468,7 +478,7 @@ gimage_shadow (GimpImage *gimage, int width, int height, int bpp)
 
 
 void
-gimage_free_shadow (GimpImage *gimage)
+gimage_free_shadow (GImage *gimage)
 {
   /*  Free the shadow buffer from the specified gimage if it exists  */
   if (gimage->shadow)
@@ -477,11 +487,18 @@ gimage_free_shadow (GimpImage *gimage)
   gimage->shadow = NULL;
 }
 
+void
+gimage_delete (GImage *gimage)
+{
+  gtk_object_destroy(GTK_OBJECT(gimage));
+};
+
+
 
 static void
-gimp_image_destroy (GtkObject *object)
+gimage_destroy (GtkObject *object)
 {
-  GimpImage* gimage=GIMP_IMAGE(object);
+  GImage* gimage = GIMAGE (object);
 	
   gimage->ref_count--;
 
@@ -490,9 +507,8 @@ gimp_image_destroy (GtkObject *object)
       /*  free the undo list  */
       undo_free (gimage);
 
-      /*  remove this image from the global list  */
-      image_list = g_slist_remove (image_list, (void *) gimage);
-
+      /*  remove this image from the global hash  */
+      gimp_set_remove (image_set, gimage->ID);
       gimage_free_projection (gimage);
       gimage_free_shadow (gimage);
 
@@ -506,16 +522,15 @@ gimp_image_destroy (GtkObject *object)
       gimage_free_channels (gimage);
       channel_delete (gimage->selection_mask);
 
-      g_free (gimage);
-
-      lc_dialog_update_image_list ();
+      /* lc_dialog_update_image_list (); */
 
       indexed_palette_update_image_list ();
     }
+  GTK_OBJECT_CLASS (parent_class)->destroy (object);
 }
 
 void
-gimage_apply_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
+gimage_apply_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
 		    int undo, int opacity, int mode,
 		    /*  alternative to using drawable tiles as src1: */
 		    TileManager *src1_tiles,
@@ -608,7 +623,7 @@ gimage_apply_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion *src2
 
 */
 void
-gimage_replace_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
+gimage_replace_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
 		      int undo, int opacity,
 		      PixelRegion *maskPR,
 		      int x, int y)
@@ -722,7 +737,7 @@ gimage_replace_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion *sr
 
 
 void
-gimage_get_foreground (GimpImage *gimage, GimpDrawable *drawable, unsigned char *fg)
+gimage_get_foreground (GImage *gimage, GimpDrawable *drawable, unsigned char *fg)
 {
   unsigned char pfg[3];
 
@@ -734,7 +749,7 @@ gimage_get_foreground (GimpImage *gimage, GimpDrawable *drawable, unsigned char 
 
 
 void
-gimage_get_background (GimpImage *gimage, GimpDrawable *drawable, unsigned char *bg)
+gimage_get_background (GImage *gimage, GimpDrawable *drawable, unsigned char *bg)
 {
   unsigned char pbg[3];
 
@@ -746,7 +761,7 @@ gimage_get_background (GimpImage *gimage, GimpDrawable *drawable, unsigned char 
 
 
 void
-gimage_get_color (GimpImage *gimage, int d_type,
+gimage_get_color (GImage *gimage, int d_type,
 		  unsigned char *rgb, unsigned char *src)
 {
   switch (d_type)
@@ -765,7 +780,7 @@ gimage_get_color (GimpImage *gimage, int d_type,
 
 
 void
-gimage_transform_color (GimpImage *gimage, GimpDrawable *drawable,
+gimage_transform_color (GImage *gimage, GimpDrawable *drawable,
 			unsigned char *src, unsigned char *dest, int type)
 {
 #define INTENSITY(r,g,b) (r * 0.30 + g * 0.59 + b * 0.11 + 0.001)
@@ -832,7 +847,7 @@ gimage_transform_color (GimpImage *gimage, GimpDrawable *drawable,
 }
 
 Guide*
-gimage_add_hguide (GimpImage *gimage)
+gimage_add_hguide (GImage *gimage)
 {
   Guide *guide;
 
@@ -847,7 +862,7 @@ gimage_add_hguide (GimpImage *gimage)
 }
 
 Guide*
-gimage_add_vguide (GimpImage *gimage)
+gimage_add_vguide (GImage *gimage)
 {
   Guide *guide;
 
@@ -862,21 +877,21 @@ gimage_add_vguide (GimpImage *gimage)
 }
 
 void
-gimage_add_guide (GimpImage *gimage,
+gimage_add_guide (GImage *gimage,
 		  Guide  *guide)
 {
   gimage->guides = g_list_prepend (gimage->guides, guide);
 }
 
 void
-gimage_remove_guide (GimpImage *gimage,
+gimage_remove_guide (GImage *gimage,
 		     Guide  *guide)
 {
   gimage->guides = g_list_remove (gimage->guides, guide);
 }
 
 void
-gimage_delete_guide (GimpImage *gimage,
+gimage_delete_guide (GImage *gimage,
 		     Guide  *guide)
 {
   gimage->guides = g_list_remove (gimage->guides, guide);
@@ -889,7 +904,7 @@ gimage_delete_guide (GimpImage *gimage,
 /************************************************************/
 
 static void
-project_intensity (GimpImage *gimage, Layer *layer,
+project_intensity (GImage *gimage, Layer *layer,
 		   PixelRegion *src, PixelRegion *dest, PixelRegion *mask)
 {
   if (! gimage->construct_flag)
@@ -902,7 +917,7 @@ project_intensity (GimpImage *gimage, Layer *layer,
 
 
 static void
-project_intensity_alpha (GimpImage *gimage, Layer *layer,
+project_intensity_alpha (GImage *gimage, Layer *layer,
 			 PixelRegion *src, PixelRegion *dest,
 			 PixelRegion *mask)
 {
@@ -916,7 +931,7 @@ project_intensity_alpha (GimpImage *gimage, Layer *layer,
 
 
 static void
-project_indexed (GimpImage *gimage, Layer *layer,
+project_indexed (GImage *gimage, Layer *layer,
 		 PixelRegion *src, PixelRegion *dest)
 {
   if (! gimage->construct_flag)
@@ -928,7 +943,7 @@ project_indexed (GimpImage *gimage, Layer *layer,
 
 
 static void
-project_indexed_alpha (GimpImage *gimage, Layer *layer,
+project_indexed_alpha (GImage *gimage, Layer *layer,
 		       PixelRegion *src, PixelRegion *dest,
 		       PixelRegion *mask)
 {
@@ -942,7 +957,7 @@ project_indexed_alpha (GimpImage *gimage, Layer *layer,
 
 
 static void
-project_channel (GimpImage *gimage, Channel *channel,
+project_channel (GImage *gimage, Channel *channel,
 		 PixelRegion *src, PixelRegion *src2)
 {
   int type;
@@ -970,7 +985,7 @@ project_channel (GimpImage *gimage, Channel *channel,
 
 
 static void
-gimage_free_layers (GimpImage *gimage)
+gimage_free_layers (GImage *gimage)
 {
   GSList *list = gimage->layers;
   Layer * layer;
@@ -987,7 +1002,7 @@ gimage_free_layers (GimpImage *gimage)
 
 
 static void
-gimage_free_channels (GimpImage *gimage)
+gimage_free_channels (GImage *gimage)
 {
   GSList *list = gimage->channels;
   Channel * channel;
@@ -1003,7 +1018,7 @@ gimage_free_channels (GimpImage *gimage)
 
 
 static void
-gimage_construct_layers (GimpImage *gimage, int x, int y, int w, int h)
+gimage_construct_layers (GImage *gimage, int x, int y, int w, int h)
 {
   Layer * layer;
   int x1, y1, x2, y2;
@@ -1131,7 +1146,7 @@ gimage_construct_layers (GimpImage *gimage, int x, int y, int w, int h)
 
 
 static void
-gimage_construct_channels (GimpImage *gimage, int x, int y, int w, int h)
+gimage_construct_channels (GImage *gimage, int x, int y, int w, int h)
 {
   Channel * channel;
   PixelRegion src1PR, src2PR;
@@ -1168,7 +1183,7 @@ gimage_construct_channels (GimpImage *gimage, int x, int y, int w, int h)
 
 
 static void
-gimage_initialize_projection (GimpImage *gimage, int x, int y, int w, int h)
+gimage_initialize_projection (GImage *gimage, int x, int y, int w, int h)
 {
   GSList *list;
   Layer *layer;
@@ -1206,7 +1221,7 @@ gimage_initialize_projection (GimpImage *gimage, int x, int y, int w, int h)
 
 
 static void
-gimage_get_active_channels (GimpImage *gimage, GimpDrawable *drawable, int *active)
+gimage_get_active_channels (GImage *gimage, GimpDrawable *drawable, int *active)
 {
   Layer * layer;
   int i;
@@ -1233,7 +1248,7 @@ gimage_get_active_channels (GimpImage *gimage, GimpDrawable *drawable, int *acti
 
 
 void
-gimage_inflate (GimpImage *gimage)
+gimage_inflate (GImage *gimage)
 {
   /*  Make sure the projection image is allocated  */
   gimage_allocate_projection (gimage);
@@ -1246,7 +1261,7 @@ gimage_inflate (GimpImage *gimage)
 
 
 void
-gimage_deflate (GimpImage *gimage)
+gimage_deflate (GImage *gimage)
 {
   /*  Make sure the projection image is deallocated  */
   gimage_free_projection (gimage);
@@ -1259,7 +1274,7 @@ gimage_deflate (GimpImage *gimage)
 
 
 void
-gimage_construct (GimpImage *gimage, int x, int y, int w, int h)
+gimage_construct (GImage *gimage, int x, int y, int w, int h)
 {
   /*  if the gimage is not flat, construction is necessary.  */
   if (! gimage_is_flat (gimage))
@@ -1285,7 +1300,7 @@ gimage_construct (GimpImage *gimage, int x, int y, int w, int h)
 }
 
 void
-gimage_invalidate (GimpImage *gimage, int x, int y, int w, int h, int x1, int y1,
+gimage_invalidate (GImage *gimage, int x, int y, int w, int h, int x1, int y1,
 		   int x2, int y2)
 {
   Tile *tile;
@@ -1362,12 +1377,12 @@ gimage_invalidate (GimpImage *gimage, int x, int y, int w, int h, int x1, int y1
 void
 gimage_validate (TileManager *tm, Tile *tile, int level)
 {
-  GimpImage *gimage;
+  GImage *gimage;
   int x, y;
   int w, h;
 
   /*  Get the gimage from the tilemanager  */
-  gimage = (GimpImage *) tm->user_data;
+  gimage = (GImage *) tm->user_data;
 
   /*  Find the coordinates of this tile  */
   x = TILE_WIDTH * (tile->tile_num % tm->levels[0].ntile_cols);
@@ -1379,7 +1394,7 @@ gimage_validate (TileManager *tm, Tile *tile, int level)
 }
 
 int
-gimage_get_layer_index (GimpImage *gimage, Layer *layer_arg)
+gimage_get_layer_index (GImage *gimage, Layer *layer_arg)
 {
   Layer *layer;
   GSList *layers = gimage->layers;
@@ -1399,7 +1414,7 @@ gimage_get_layer_index (GimpImage *gimage, Layer *layer_arg)
 }
 
 int
-gimage_get_channel_index (GimpImage *gimage, Channel *channel_ID)
+gimage_get_channel_index (GImage *gimage, Channel *channel_ID)
 {
   Channel *channel;
   GSList *channels = gimage->channels;
@@ -1420,21 +1435,21 @@ gimage_get_channel_index (GimpImage *gimage, Channel *channel_ID)
 
 
 Layer *
-gimage_get_active_layer (GimpImage *gimage)
+gimage_get_active_layer (GImage *gimage)
 {
   return gimage->active_layer;
 }
 
 
 Channel *
-gimage_get_active_channel (GimpImage *gimage)
+gimage_get_active_channel (GImage *gimage)
 {
   return gimage->active_channel;
 }
 
 
 int
-gimage_get_component_active (GimpImage *gimage, ChannelType type)
+gimage_get_component_active (GImage *gimage, ChannelType type)
 {
   /*  No sanity checking here...  */
   switch (type)
@@ -1450,7 +1465,7 @@ gimage_get_component_active (GimpImage *gimage, ChannelType type)
 
 
 int
-gimage_get_component_visible (GimpImage *gimage, ChannelType type)
+gimage_get_component_visible (GImage *gimage, ChannelType type)
 {
   /*  No sanity checking here...  */
   switch (type)
@@ -1467,14 +1482,14 @@ gimage_get_component_visible (GimpImage *gimage, ChannelType type)
 
 
 Channel *
-gimage_get_mask (GimpImage *gimage)
+gimage_get_mask (GImage *gimage)
 {
   return gimage->selection_mask;
 }
 
 
 int
-gimage_layer_boundary (GimpImage *gimage, BoundSeg **segs, int *num_segs)
+gimage_layer_boundary (GImage *gimage, BoundSeg **segs, int *num_segs)
 {
   Layer *layer;
 
@@ -1496,7 +1511,7 @@ gimage_layer_boundary (GimpImage *gimage, BoundSeg **segs, int *num_segs)
 
 
 Layer *
-gimage_set_active_layer (GimpImage *gimage, Layer * layer)
+gimage_set_active_layer (GImage *gimage, Layer * layer)
 {
 
   /*  First, find the layer in the gimage
@@ -1529,7 +1544,7 @@ gimage_set_active_layer (GimpImage *gimage, Layer * layer)
 
 
 Channel *
-gimage_set_active_channel (GimpImage *gimage, Channel * channel)
+gimage_set_active_channel (GImage *gimage, Channel * channel)
 {
 
   /*  Not if there is a floating selection  */
@@ -1558,7 +1573,7 @@ gimage_set_active_channel (GimpImage *gimage, Channel * channel)
 
 
 Channel *
-gimage_unset_active_channel (GimpImage *gimage)
+gimage_unset_active_channel (GImage *gimage)
 {
   Channel *channel;
 
@@ -1574,7 +1589,7 @@ gimage_unset_active_channel (GimpImage *gimage)
 
 
 void
-gimage_set_component_active (GimpImage *gimage, ChannelType type, int value)
+gimage_set_component_active (GImage *gimage, ChannelType type, int value)
 {
   /*  No sanity checking here...  */
   switch (type)
@@ -1596,7 +1611,7 @@ gimage_set_component_active (GimpImage *gimage, ChannelType type, int value)
 
 
 void
-gimage_set_component_visible (GimpImage *gimage, ChannelType type, int value)
+gimage_set_component_visible (GImage *gimage, ChannelType type, int value)
 {
   /*  No sanity checking here...  */
   switch (type)
@@ -1612,7 +1627,7 @@ gimage_set_component_visible (GimpImage *gimage, ChannelType type, int value)
 
 
 Layer *
-gimage_pick_correlate_layer (GimpImage *gimage, int x, int y)
+gimage_pick_correlate_layer (GImage *gimage, int x, int y)
 {
   Layer *layer;
   GSList *list;
@@ -1632,7 +1647,7 @@ gimage_pick_correlate_layer (GimpImage *gimage, int x, int y)
 
 
 void
-gimage_set_layer_mask_apply (GimpImage *gimage, int layer_id)
+gimage_set_layer_mask_apply (GImage *gimage, int layer_id)
 {
   Layer *layer;
   int off_x, off_y;
@@ -1652,7 +1667,7 @@ gimage_set_layer_mask_apply (GimpImage *gimage, int layer_id)
 
 
 void
-gimage_set_layer_mask_edit (GimpImage *gimage, Layer * layer, int edit)
+gimage_set_layer_mask_edit (GImage *gimage, Layer * layer, int edit)
 {
   /*  find the layer  */
   if (!layer)
@@ -1664,7 +1679,7 @@ gimage_set_layer_mask_edit (GimpImage *gimage, Layer * layer, int edit)
 
 
 void
-gimage_set_layer_mask_show (GimpImage *gimage, int layer_id)
+gimage_set_layer_mask_show (GImage *gimage, int layer_id)
 {
   Layer *layer;
   int off_x, off_y;
@@ -1683,7 +1698,7 @@ gimage_set_layer_mask_show (GimpImage *gimage, int layer_id)
 
 
 Layer *
-gimage_raise_layer (GimpImage *gimage, Layer *layer_arg)
+gimage_raise_layer (GImage *gimage, Layer *layer_arg)
 {
   Layer *layer;
   Layer *prev_layer;
@@ -1747,7 +1762,7 @@ gimage_raise_layer (GimpImage *gimage, Layer *layer_arg)
 
 
 Layer *
-gimage_lower_layer (GimpImage *gimage, Layer *layer_arg)
+gimage_lower_layer (GImage *gimage, Layer *layer_arg)
 {
   Layer *layer;
   Layer *next_layer;
@@ -1814,7 +1829,7 @@ gimage_lower_layer (GimpImage *gimage, Layer *layer_arg)
 
 
 Layer *
-gimage_merge_visible_layers (GimpImage *gimage, MergeType merge_type)
+gimage_merge_visible_layers (GImage *gimage, MergeType merge_type)
 {
   GSList *layer_list;
   GSList *merge_list = NULL;
@@ -1847,7 +1862,7 @@ gimage_merge_visible_layers (GimpImage *gimage, MergeType merge_type)
 
 
 Layer *
-gimage_flatten (GimpImage *gimage)
+gimage_flatten (GImage *gimage)
 {
   GSList *layer_list;
   GSList *merge_list = NULL;
@@ -1870,7 +1885,7 @@ gimage_flatten (GimpImage *gimage)
 
 
 Layer *
-gimage_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_type)
+gimage_merge_layers (GImage *gimage, GSList *merge_list, MergeType merge_type)
 {
   GSList *reverse_list = NULL;
   PixelRegion src1PR, src2PR, maskPR;
@@ -2113,7 +2128,7 @@ gimage_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_type
 
 
 Layer *
-gimage_add_layer (GimpImage *gimage, Layer *float_layer, int position)
+gimage_add_layer (GImage *gimage, Layer *float_layer, int position)
 {
   LayerUndo * lu;
 
@@ -2182,7 +2197,7 @@ gimage_add_layer (GimpImage *gimage, Layer *float_layer, int position)
 
 
 Layer *
-gimage_remove_layer (GimpImage *gimage, Layer * layer)
+gimage_remove_layer (GImage *gimage, Layer * layer)
 {
   LayerUndo *lu;
   int off_x, off_y;
@@ -2234,7 +2249,7 @@ gimage_remove_layer (GimpImage *gimage, Layer * layer)
 
 
 LayerMask *
-gimage_add_layer_mask (GimpImage *gimage, Layer *layer, LayerMask *mask)
+gimage_add_layer_mask (GImage *gimage, Layer *layer, LayerMask *mask)
 {
   LayerMaskUndo *lmu;
   char *error = NULL;;
@@ -2273,7 +2288,7 @@ gimage_add_layer_mask (GimpImage *gimage, Layer *layer, LayerMask *mask)
 
 
 Channel *
-gimage_remove_layer_mask (GimpImage *gimage, Layer *layer, int mode)
+gimage_remove_layer_mask (GImage *gimage, Layer *layer, int mode)
 {
   LayerMaskUndo *lmu;
   int off_x, off_y;
@@ -2323,7 +2338,7 @@ gimage_remove_layer_mask (GimpImage *gimage, Layer *layer, int mode)
 
 
 Channel *
-gimage_raise_channel (GimpImage *gimage, Channel * channel_arg)
+gimage_raise_channel (GImage *gimage, Channel * channel_arg)
 {
   Channel *channel;
   Channel *prev_channel;
@@ -2367,7 +2382,7 @@ gimage_raise_channel (GimpImage *gimage, Channel * channel_arg)
 
 
 Channel *
-gimage_lower_channel (GimpImage *gimage, Channel *channel_arg)
+gimage_lower_channel (GImage *gimage, Channel *channel_arg)
 {
   Channel *channel;
   Channel *next_channel;
@@ -2412,7 +2427,7 @@ gimage_lower_channel (GimpImage *gimage, Channel *channel_arg)
 
 
 Channel *
-gimage_add_channel (GimpImage *gimage, Channel *channel, int position)
+gimage_add_channel (GImage *gimage, Channel *channel, int position)
 {
   ChannelUndo * cu;
 
@@ -2460,7 +2475,7 @@ gimage_add_channel (GimpImage *gimage, Channel *channel, int position)
 
 
 Channel *
-gimage_remove_channel (GimpImage *gimage, Channel *channel)
+gimage_remove_channel (GImage *gimage, Channel *channel)
 {
   ChannelUndo * cu;
 
@@ -2501,7 +2516,7 @@ gimage_remove_channel (GimpImage *gimage, Channel *channel)
 /************************************************************/
 
 int
-gimage_is_flat (GimpImage *gimage)
+gimage_is_flat (GImage *gimage)
 {
   Layer *layer;
   int ac_visible = TRUE;
@@ -2558,13 +2573,13 @@ gimage_is_flat (GimpImage *gimage)
 }
 
 int
-gimage_is_empty (GimpImage *gimage)
+gimage_is_empty (GImage *gimage)
 {
   return (! gimage->layers);
 }
 
 GimpDrawable *
-gimage_active_drawable (GimpImage *gimage)
+gimage_active_drawable (GImage *gimage)
 {
   Layer *layer;
 
@@ -2586,13 +2601,13 @@ gimage_active_drawable (GimpImage *gimage)
 }
 
 int
-gimage_base_type (GimpImage *gimage)
+gimage_base_type (GImage *gimage)
 {
   return gimage->base_type;
 }
 
 int
-gimage_base_type_with_alpha (GimpImage *gimage)
+gimage_base_type_with_alpha (GImage *gimage)
 {
   switch (gimage->base_type)
     {
@@ -2607,7 +2622,7 @@ gimage_base_type_with_alpha (GimpImage *gimage)
 }
 
 char *
-gimage_filename (GimpImage *gimage)
+gimage_filename (GImage *gimage)
 {
   if (gimage->has_filename)
     return gimage->filename;
@@ -2616,7 +2631,7 @@ gimage_filename (GimpImage *gimage)
 }
 
 int
-gimage_enable_undo (GimpImage *gimage)
+gimage_enable_undo (GImage *gimage)
 {
   /*  Free all undo steps as they are now invalidated  */
   undo_free (gimage);
@@ -2627,14 +2642,14 @@ gimage_enable_undo (GimpImage *gimage)
 }
 
 int
-gimage_disable_undo (GimpImage *gimage)
+gimage_disable_undo (GImage *gimage)
 {
   gimage->undo_on = FALSE;
   return TRUE;
 }
 
 int
-gimage_dirty (GimpImage *gimage)
+gimage_dirty (GImage *gimage)
 {
   GDisplay *gdisp;
   
@@ -2652,11 +2667,12 @@ gimage_dirty (GimpImage *gimage)
     else
       active_tool_control(DESTROY, gdisp);
   }
+  gtk_signal_emit (GTK_OBJECT (gimage), gimage_signals[DIRTY]);
   return gimage->dirty;
 }
 
 int
-gimage_clean (GimpImage *gimage)
+gimage_clean (GImage *gimage)
 {
   if (gimage->dirty <= 0)
     gimage->dirty = 0;
@@ -2666,13 +2682,13 @@ gimage_clean (GimpImage *gimage)
 }
 
 void
-gimage_clean_all (GimpImage *gimage)
+gimage_clean_all (GImage *gimage)
 {
   gimage->dirty = 0;
 }
 
 Layer *
-gimage_floating_sel (GimpImage *gimage)
+gimage_floating_sel (GImage *gimage)
 {
   if (gimage->floating_sel == NULL)
     return NULL;
@@ -2680,7 +2696,7 @@ gimage_floating_sel (GimpImage *gimage)
 }
 
 unsigned char *
-gimage_cmap (GimpImage *gimage)
+gimage_cmap (GImage *gimage)
 {
   return drawable_cmap (gimage_active_drawable (gimage));
 }
@@ -2691,7 +2707,7 @@ gimage_cmap (GimpImage *gimage)
 /************************************************************/
 
 TileManager *
-gimage_projection (GimpImage *gimage)
+gimage_projection (GImage *gimage)
 {
   Layer * layer;
 
@@ -2716,7 +2732,7 @@ gimage_projection (GimpImage *gimage)
 }
 
 int
-gimage_projection_type (GimpImage *gimage)
+gimage_projection_type (GImage *gimage)
 {
   Layer * layer;
 
@@ -2735,7 +2751,7 @@ gimage_projection_type (GimpImage *gimage)
 }
 
 int
-gimage_projection_bytes (GimpImage *gimage)
+gimage_projection_bytes (GImage *gimage)
 {
   Layer * layer;
 
@@ -2754,7 +2770,7 @@ gimage_projection_bytes (GimpImage *gimage)
 }
 
 int
-gimage_projection_opacity (GimpImage *gimage)
+gimage_projection_opacity (GImage *gimage)
 {
   Layer * layer;
 
@@ -2773,7 +2789,7 @@ gimage_projection_opacity (GimpImage *gimage)
 }
 
 void
-gimage_projection_realloc (GimpImage *gimage)
+gimage_projection_realloc (GImage *gimage)
 {
   if (! gimage_is_flat (gimage))
     gimage_allocate_projection (gimage);
@@ -2784,25 +2800,25 @@ gimage_projection_realloc (GimpImage *gimage)
 /************************************************************/
 
 TileManager *
-gimage_composite (GimpImage *gimage)
+gimage_composite (GImage *gimage)
 {
   return gimage_projection (gimage);
 }
 
 int
-gimage_composite_type (GimpImage *gimage)
+gimage_composite_type (GImage *gimage)
 {
   return gimage_projection_type (gimage);
 }
 
 int
-gimage_composite_bytes (GimpImage *gimage)
+gimage_composite_bytes (GImage *gimage)
 {
   return gimage_projection_bytes (gimage);
 }
 
 static TempBuf *
-gimage_construct_composite_preview (GimpImage *gimage, int width, int height)
+gimage_construct_composite_preview (GImage *gimage, int width, int height)
 {
   Layer * layer;
   PixelRegion src1PR, src2PR, maskPR;
@@ -2936,7 +2952,7 @@ gimage_construct_composite_preview (GimpImage *gimage, int width, int height)
 }
 
 TempBuf *
-gimage_composite_preview (GimpImage *gimage, ChannelType type,
+gimage_composite_preview (GImage *gimage, ChannelType type,
 			  int width, int height)
 {
   int channel;
@@ -2975,7 +2991,7 @@ gimage_composite_preview (GimpImage *gimage, ChannelType type,
 
 int
 gimage_preview_valid (gimage, type)
-     GimpImage *gimage;
+     GImage *gimage;
      ChannelType type;
 {
   switch (type)
@@ -2990,7 +3006,7 @@ gimage_preview_valid (gimage, type)
 }
 
 void
-gimage_invalidate_preview (GimpImage *gimage)
+gimage_invalidate_preview (GImage *gimage)
 {
   Layer *layer;
   /*  Invalidate the floating sel if it exists  */
@@ -3002,17 +3018,20 @@ gimage_invalidate_preview (GimpImage *gimage)
   gimage->comp_preview_valid[2] = FALSE;
 }
 
+
+static void
+invalidate_cb (gpointer key, gpointer value, gpointer user_data)
+{
+  gimage_invalidate_preview (GIMAGE (value));
+}
+
+
 void
 gimage_invalidate_previews (void)
 {
-  GSList *tmp = image_list;
-  GimpImage *gimage;
-
-  while (tmp)
-    {
-      gimage = (GimpImage *) tmp->data;
-      gimage_invalidate_preview (gimage);
-      tmp = g_slist_next (tmp);
-    }
+  /* Bad cast! Calling with too many args! */
+  gimp_set_foreach (image_set, invalidate_cb, NULL);
 }
 
+
+#endif

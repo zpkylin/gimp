@@ -9,14 +9,14 @@
 #include "channel_decl.h"
 #include "temp_buf_decl.h"
 
-struct _GimpImage
+struct _GImage
 {
   GimpObject gobject;
   char *filename;		      /*  original filename            */
   int has_filename;                   /*  has a valid filename         */
 
   int width, height;		      /*  width and height attributes  */
-  GimpImageBaseType base_type;                      /*  base gimage type             */
+  GImageBaseType base_type;                      /*  base gimage type             */
 
   unsigned char * cmap;               /*  colormap--for indexed        */
   int num_cols;                       /*  number of cols--for indexed  */
@@ -70,11 +70,14 @@ struct _GimpImage
   int comp_preview_valid[3];          /*  preview valid-1/channel      */
 };
 
-struct _GimpImageClass
+struct _GImageClass
 {
   GimpObjectClass parent_class;
+  void (*dirty) (GtkObject*);
+  void (*repaint) (GtkObject*);
+  void (*rename) (GtkObject*);
 };
 
-typedef struct _GimpImageClass GimpImageClass;
+typedef struct _GImageClass GImageClass;
 
 #endif

@@ -23,6 +23,7 @@
 #include "interface.h"
 #include "invert.h"
 #include "gimage.h"
+#include "pixel_region.h"
 
 static void       invert (GimpDrawable *);
 static Argument * invert_invoker (Argument *);

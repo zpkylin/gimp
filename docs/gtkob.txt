@@ -39,8 +39,22 @@ As for the classes involved, here's a very preliminary listing..
 
 Images
 
+
  Signals:
-  modified
+  dirty
+  rename
+  repaint
+
+
+GimpSet
+
+GimpSet is a new type, though it will probably be temporary. It is
+basically a frontend to GHashTable, to work with the currently used id 
+system. Also, it is needed to connect to signals when something gets created.
+
+ Signals:
+  add (gpointer)
+  remove (gpointer)
 
 
 Displays

@@ -1,4 +1,4 @@
-#ifndef __GIMP_IMAGE_DECL_H__
-#define __GIMP_IMAGE_DECL_H__
-typedef struct _GimpImage GimpImage;
+#ifndef __GIMAGE_DECL_H__
+#define __GIMAGE_DECL_H__
+typedef struct _GImage GImage;
 #endif

@@ -1,5 +1,5 @@
-#ifndef __GIMP_IMAGE_H__
-#define __GIMP_IMAGE_H__
+#ifndef __GIMAGE_H__
+#define __GIMAGE_H__
 
 #include "gimpimage_decl.h"
 #include "tile_manager_decl.h"
@@ -8,16 +8,19 @@
 #include "pixel_region_decl.h"
 #include "channel_decl.h"
 #include "tile_decl.h"
+#include "boundary_decl.h"
+#include "temp_buf_decl.h"
 
 
 
-#define GIMP_IMAGE(obj) GTK_CHECK_CAST (obj, gimp_image_get_type (), GimpImage)
+
+#define GIMAGE(obj) GTK_CHECK_CAST (obj, gimage_get_type (), GImage)
 
 
-#define GIMP_IMAGE_CLASS(klass) GTK_CHECK_CLASS_CAST (klass, gimp_image_get_type(), GimpImageClass)
+#define GIMAGE_CLASS(klass) GTK_CHECK_CLASS_CAST (klass, gimage_get_type(), GImageClass)
      
      
-#define GIMP_IS_IMAGE(obj) GTK_CHECK_TYPE (obj, gimp_image_get_type())
+#define IS_GIMAGE(obj) GTK_CHECK_TYPE (obj, gimage_get_type())
      
 
 /* the image types */
@@ -29,7 +32,7 @@ typedef enum
 	GRAYA_GIMAGE,  
 	INDEXED_GIMAGE,
 	INDEXEDA_GIMAGE
-} GimpImageType;
+} GImageType;
 
 
 
@@ -49,7 +52,7 @@ typedef enum
 	RGB,
 	GRAY,
 	INDEXED
-} GimpImageBaseType;
+} GImageBaseType;
 
 
 
@@ -94,110 +97,116 @@ struct _Guide
 typedef struct _Guide Guide;
 
 
-guint gimp_image_get_type(void);
+guint gimage_get_type(void);
 
-GimpImage* gimp_image_new(int width, int height, GimpImageBaseType base_type);
-void            gimage_set_filename           (GimpImage*, char*);
-void            gimage_resize                 (GimpImage*, int, int, int, int);
-void            gimage_scale                  (GimpImage*, int, int);
-GimpImage*        gimage_get_named              (char*);
-GimpImage*        gimage_get_ID                 (int);
-TileManager*   gimage_shadow                 (GimpImage*, int, int, int);
-void            gimage_free_shadow            (GimpImage*);
-void            gimage_delete                 (GimpImage*);
-void            gimage_apply_image            (GimpImage*, GimpDrawable*, PixelRegion*, int, int, int,
+GImage* gimage_new(int width, int height, GImageBaseType base_type);
+void            gimage_set_filename           (GImage*, char*);
+void            gimage_resize                 (GImage*, int, int, int, int);
+void            gimage_scale                  (GImage*, int, int);
+GImage*        gimage_get_ID                 (int);
+TileManager*   gimage_shadow                 (GImage*, int, int, int);
+void            gimage_free_shadow            (GImage*);
+void            gimage_delete                 (GImage*);
+void            gimage_apply_image            (GImage*, GimpDrawable*, PixelRegion*, int, int, int,
 					       TileManager*, int, int);
-void            gimage_replace_image          (GimpImage*, GimpDrawable*, PixelRegion*, int, int,
+void            gimage_replace_image          (GImage*, GimpDrawable*, PixelRegion*, int, int,
 					       PixelRegion*, int, int);
-void            gimage_get_foreground         (GimpImage*, GimpDrawable*, unsigned char*);
-void            gimage_get_background         (GimpImage*, GimpDrawable*, unsigned char*);
-void            gimage_get_color              (GimpImage*, int, unsigned char*,
+void            gimage_get_foreground         (GImage*, GimpDrawable*, unsigned char*);
+void            gimage_get_background         (GImage*, GimpDrawable*, unsigned char*);
+void            gimage_get_color              (GImage*, int, unsigned char*,
 					       unsigned char*);
-void            gimage_transform_color        (GimpImage*, GimpDrawable*, unsigned char*,
+void            gimage_transform_color        (GImage*, GimpDrawable*, unsigned char*,
 					       unsigned char*, int);
-Guide*          gimage_add_hguide             (GimpImage*);
-Guide*          gimage_add_vguide             (GimpImage*);
-void            gimage_add_guide              (GimpImage*, Guide*);
-void            gimage_remove_guide           (GimpImage*, Guide*);
-void            gimage_delete_guide           (GimpImage*, Guide*);
+Guide*          gimage_add_hguide             (GImage*);
+Guide*          gimage_add_vguide             (GImage*);
+void            gimage_add_guide              (GImage*, Guide*);
+void            gimage_remove_guide           (GImage*, Guide*);
+void            gimage_delete_guide           (GImage*, Guide*);
 
 
 /*  layer/channel functions */
 
-int             gimage_get_layer_index        (GimpImage*, Layer*);
-int             gimage_get_channel_index      (GimpImage*, Channel*);
-Layer*         gimage_get_active_layer       (GimpImage*);
-Channel*       gimage_get_active_channel     (GimpImage*);
-Channel*       gimage_get_mask               (GimpImage*);
-int             gimage_get_component_active   (GimpImage*, ChannelType);
-int             gimage_get_component_visible  (GimpImage*, ChannelType);
-int             gimage_layer_boundary         (GimpImage*, BoundSeg**, int*);
-Layer*         gimage_set_active_layer       (GimpImage*, Layer*);
-Channel*       gimage_set_active_channel     (GimpImage*, Channel*);
-Channel*       gimage_unset_active_channel   (GimpImage*);
-void            gimage_set_component_active   (GimpImage*, ChannelType, int);
-void            gimage_set_component_visible  (GimpImage*, ChannelType, int);
-Layer*         gimage_pick_correlate_layer   (GimpImage*, int, int);
-void            gimage_set_layer_mask_apply   (GimpImage*, int);
-void            gimage_set_layer_mask_edit    (GimpImage*, Layer*, int);
-void            gimage_set_layer_mask_show    (GimpImage*, int);
-Layer*         gimage_raise_layer            (GimpImage*, Layer*);
-Layer*         gimage_lower_layer            (GimpImage*, Layer*);
-Layer*         gimage_merge_visible_layers   (GimpImage*, MergeType);
-Layer*         gimage_flatten                (GimpImage*);
-Layer*         gimage_merge_layers           (GimpImage*, GSList*, MergeType);
-Layer*         gimage_add_layer              (GimpImage*, Layer*, int);
-Layer*         gimage_remove_layer           (GimpImage*, Layer*);
-LayerMask*     gimage_add_layer_mask         (GimpImage*, Layer*, LayerMask*);
-Channel*       gimage_remove_layer_mask      (GimpImage*, Layer*, int);
-Channel*       gimage_raise_channel          (GimpImage*, Channel*);
-Channel*       gimage_lower_channel          (GimpImage*, Channel*);
-Channel*       gimage_add_channel            (GimpImage*, Channel*, int);
-Channel*       gimage_remove_channel         (GimpImage*, Channel*);
-void            gimage_construct              (GimpImage*, int, int, int, int);
-void            gimage_invalidate             (GimpImage*, int, int, int, int, int, int, int, int);
+int             gimage_get_layer_index        (GImage*, Layer*);
+int             gimage_get_channel_index      (GImage*, Channel*);
+Layer*         gimage_get_active_layer       (GImage*);
+Channel*       gimage_get_active_channel     (GImage*);
+Channel*       gimage_get_mask               (GImage*);
+int             gimage_get_component_active   (GImage*, ChannelType);
+int             gimage_get_component_visible  (GImage*, ChannelType);
+int             gimage_layer_boundary         (GImage*, BoundSeg**, int*);
+Layer*         gimage_set_active_layer       (GImage*, Layer*);
+Channel*       gimage_set_active_channel     (GImage*, Channel*);
+Channel*       gimage_unset_active_channel   (GImage*);
+void            gimage_set_component_active   (GImage*, ChannelType, int);
+void            gimage_set_component_visible  (GImage*, ChannelType, int);
+Layer*         gimage_pick_correlate_layer   (GImage*, int, int);
+void            gimage_set_layer_mask_apply   (GImage*, int);
+void            gimage_set_layer_mask_edit    (GImage*, Layer*, int);
+void            gimage_set_layer_mask_show    (GImage*, int);
+Layer*         gimage_raise_layer            (GImage*, Layer*);
+Layer*         gimage_lower_layer            (GImage*, Layer*);
+Layer*         gimage_merge_visible_layers   (GImage*, MergeType);
+Layer*         gimage_flatten                (GImage*);
+Layer*         gimage_merge_layers           (GImage*, GSList*, MergeType);
+Layer*         gimage_add_layer              (GImage*, Layer*, int);
+Layer*         gimage_remove_layer           (GImage*, Layer*);
+LayerMask*     gimage_add_layer_mask         (GImage*, Layer*, LayerMask*);
+Channel*       gimage_remove_layer_mask      (GImage*, Layer*, int);
+Channel*       gimage_raise_channel          (GImage*, Channel*);
+Channel*       gimage_lower_channel          (GImage*, Channel*);
+Channel*       gimage_add_channel            (GImage*, Channel*, int);
+Channel*       gimage_remove_channel         (GImage*, Channel*);
+void            gimage_construct              (GImage*, int, int, int, int);
+void            gimage_invalidate             (GImage*, int, int, int, int, int, int, int, int);
 void            gimage_validate               (TileManager*, Tile*, int);
-void            gimage_inflate                (GimpImage*);
-void            gimage_deflate                (GimpImage*);
+void            gimage_inflate                (GImage*);
+void            gimage_deflate                (GImage*);
 
 
 /*  Access functions */
 
-int             gimage_is_flat                (GimpImage*);
-int             gimage_is_empty               (GimpImage*);
-GimpDrawable*  gimage_active_drawable        (GimpImage*);
-int             gimage_base_type              (GimpImage*);
-int             gimage_base_type_with_alpha   (GimpImage*);
-char*          gimage_filename               (GimpImage*);
-int             gimage_enable_undo            (GimpImage*);
-int             gimage_disable_undo           (GimpImage*);
-int             gimage_dirty                  (GimpImage*);
-int             gimage_clean                  (GimpImage*);
-void            gimage_clean_all              (GimpImage*);
-Layer*         gimage_floating_sel           (GimpImage*);
-unsigned char* gimage_cmap                   (GimpImage*);
+int             gimage_is_flat                (GImage*);
+int             gimage_is_empty               (GImage*);
+GimpDrawable*  gimage_active_drawable        (GImage*);
+int             gimage_base_type              (GImage*);
+int             gimage_base_type_with_alpha   (GImage*);
+char*          gimage_filename               (GImage*);
+int             gimage_enable_undo            (GImage*);
+int             gimage_disable_undo           (GImage*);
+int             gimage_dirty                  (GImage*);
+int             gimage_clean                  (GImage*);
+void            gimage_clean_all              (GImage*);
+Layer*         gimage_floating_sel           (GImage*);
+unsigned char* gimage_cmap                   (GImage*);
 
 
 /*  projection access functions */
 
-TileManager*   gimage_projection             (GimpImage*);
-int             gimage_projection_type        (GimpImage*);
-int             gimage_projection_bytes       (GimpImage*);
-int             gimage_projection_opacity     (GimpImage*);
-void            gimage_projection_realloc     (GimpImage*);
+TileManager*   gimage_projection             (GImage*);
+int             gimage_projection_type        (GImage*);
+int             gimage_projection_bytes       (GImage*);
+int             gimage_projection_opacity     (GImage*);
+void            gimage_projection_realloc     (GImage*);
 
 
 /*  composite access functions */
 
-TileManager*   gimage_composite              (GimpImage*);
-int             gimage_composite_type         (GimpImage*);
-int             gimage_composite_bytes        (GimpImage*);
-TempBuf*       gimage_composite_preview      (GimpImage*, ChannelType, int, int);
-int             gimage_preview_valid          (GimpImage*, ChannelType);
-void            gimage_invalidate_preview     (GimpImage*);
+TileManager*   gimage_composite              (GImage*);
+int             gimage_composite_type         (GImage*);
+int             gimage_composite_bytes        (GImage*);
+TempBuf*       gimage_composite_preview      (GImage*, ChannelType, int, int);
+int             gimage_preview_valid          (GImage*, ChannelType);
+void            gimage_invalidate_preview     (GImage*);
 
 void            gimage_invalidate_previews    (void);
 
 /* from drawable.c*/
-GimpImage*        drawable_gimage               (GimpDrawable*);
+GImage*        drawable_gimage               (GimpDrawable*);
+
+/* Bad hack, but there are hundreds of accesses to gimage members in
+   the code currently */
+
+#include "gimpimage_pvt.h"
+
+
 #endif

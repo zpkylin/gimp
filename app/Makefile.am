@@ -25,6 +25,7 @@ gimp_SOURCES = \
 	blend.h			\
 	boundary.c		\
 	boundary.h		\
+	boundary_decl.h		\
 	brightness_contrast.c	\
 	brightness_contrast.h	\
 	brush_header.h		\
@@ -40,6 +41,7 @@ gimp_SOURCES = \
 	by_color_select.h	\
 	channel.c		\
 	channel.h		\
+	channel_decl.h		\
 	channel_pvt.h		\
 	channel_cmds.c		\
 	channel_cmds.h		\
@@ -86,6 +88,7 @@ gimp_SOURCES = \
 	draw_core.h		\
 	drawable.c		\
 	drawable.h		\
+	drawable_decl.h		\
 	drawable_pvt.h		\
 	drawable_cmds.c		\
 	drawable_cmds.h		\
@@ -133,10 +136,26 @@ gimp_SOURCES = \
 	gimage_mask.h		\
 	gimage_mask_cmds.c	\
 	gimage_mask_cmds.h	\
+	gimpimage.c		\
+	gimpimage.h		\
+	gimpimage_decl.h	\
+	gimpimage_pvt.h		\
+	gimpobject.c		\
+	gimpobject.h		\
+	gimpobject_decl.h	\
+	gimpobject_pvt.h	\
 	gimprc.c		\
 	gimprc.h		\
+	gimpset.c		\
+	gimpset.h		\
+	gimpset_decl.h		\
+	gimpset_pvt.h		\
+	gimpsignal.c		\
+	gimpsignal.h		\
 	global_edit.c		\
 	global_edit.h		\
+	globals.c		\
+	globals.h		\
 	gradient.c		\
 	gradient.h		\
 	gximage.c		\
@@ -169,6 +188,7 @@ gimp_SOURCES = \
 	iscissors.h		\
 	layer.c			\
 	layer.h			\
+	layer_decl.h		\
 	layer_pvt.h		\
 	layer_cmds.c		\
 	layer_cmds.h		\
@@ -206,6 +226,7 @@ gimp_SOURCES = \
 	perspective_tool.h	\
 	pixel_region.c		\
 	pixel_region.h		\
+	pixel_region_decl.h	\
 	pixmaps.h		\
 	plug_in.c		\
 	plug_in.h		\
@@ -232,16 +253,19 @@ gimp_SOURCES = \
 	shear_tool.h		\
 	temp_buf.c		\
 	temp_buf.h		\
+	temp_buf_decl.h		\
 	text_tool.c		\
 	text_tool.h		\
 	threshold.c		\
 	threshold.h		\
 	tile.c			\
 	tile.h			\
+	tile_decl.h		\
 	tile_cache.c		\
 	tile_cache.h		\
 	tile_manager.c		\
 	tile_manager.h		\
+	tile_manager_decl.h	\
 	tile_manager_pvt.h	\
 	tile_swap.c		\
 	tile_swap.h		\

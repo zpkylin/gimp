@@ -25,7 +25,7 @@
 #include "interface.h"
 #include "layer_select.h"
 #include "layers_dialogP.h"
-
+#include "drawable.h"
 
 #define PREVIEW_EVENT_MASK GDK_EXPOSURE_MASK | GDK_ENTER_NOTIFY_MASK
 
