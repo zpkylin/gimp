@@ -301,7 +301,7 @@ static PlugInProcDef *save_file_proc = NULL;
 static PlugInProcDef *last_load_file_proc = NULL;
 static PlugInProcDef *last_save_file_proc = NULL;
 
-static int image_ID = 0;
+static GimpImage* the_image = NULL;
 
 
 void
@@ -544,7 +544,7 @@ file_save_callback (GtkWidget *w,
 	  file_save_as_callback (w, client_data);
 	}
       else
-	file_save (gdisplay->gimage->ID, gimage_filename (gdisplay->gimage),
+	file_save (gdisplay->gimage, gimage_filename (gdisplay->gimage),
 		   prune_filename (gimage_filename(gdisplay->gimage)));
     }
 }
@@ -585,7 +585,7 @@ file_save_as_callback (GtkWidget *w,
     }
 
   gdisplay = gdisplay_active ();
-  image_ID = gdisplay->gimage->ID;
+  the_image = gdisplay->gimage;
 
   if (!save_options)
     {
@@ -751,7 +751,7 @@ file_open (char *filename, char* raw_filename)
 }
 
 int
-file_save (int   image_ID,
+file_save (GimpImage* gimage,
 	   char *filename,
 	   char *raw_filename)
 {
@@ -760,14 +760,11 @@ file_save (int   image_ID,
   Argument *args;
   Argument *return_vals;
   int return_val;
-  GImage *gimage;
   int i;
 
-  if ((gimage = gimage_get_ID (image_ID)) == NULL)
-    return FALSE;
-  if (gimage_active_drawable (gimage) == NULL)
-    return FALSE;
-
+  g_return_val_if_fail (gimage, FALSE);
+  g_return_val_if_fail (gimage_active_drawable (gimage), FALSE);
+  
   file_proc = save_file_proc;
   if (!file_proc)
     file_proc = file_proc_find (save_procs, raw_filename);
@@ -784,7 +781,7 @@ file_save (int   image_ID,
     args[i].arg_type = proc->args[i].arg_type;
 
   args[0].value.pdb_int = 0;
-  args[1].value.pdb_int = image_ID;
+  args[1].value.pdb_int = the_image->ID;
   args[2].value.pdb_int = drawable_ID (gimage_active_drawable (gimage));
   args[3].value.pdb_pointer = filename;
   args[4].value.pdb_pointer = raw_filename;
@@ -894,7 +891,7 @@ file_save_ok_callback (GtkWidget *w,
 	  g_string_sprintf (s, "%s is an irregular file (%s)", raw_filename, g_strerror(errno));
 	}
     }
-  else if (file_save (image_ID, filename, raw_filename))
+  else if (file_save (the_image, filename, raw_filename))
     {
       file_dialog_hide (client_data);
       return;
@@ -989,14 +986,15 @@ file_overwrite_yes_callback (GtkWidget *w,
 			     gpointer   client_data)
 {
   OverwriteBox *overwrite_box;
-  GImage *gimage;
 
+  g_return_if_fail (the_image);
+  
   overwrite_box = (OverwriteBox *) client_data;
 
-  if (((gimage = gimage_get_ID (image_ID)) != NULL) &&
-      file_save (image_ID, overwrite_box->full_filename, overwrite_box->raw_filename))
+  if (file_save (the_image, overwrite_box->full_filename,
+		 overwrite_box->raw_filename))
     {
-      image_ID = 0;
+      the_image = NULL;
       file_dialog_hide (filesave);
     }
   else

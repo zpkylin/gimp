@@ -1,3 +1,31 @@
+Wed Apr  8 12:45:17 EEST 1998  Lauri Alanko  <nether@gimp.org>
+
+	* app/channel.c
+	* app/channel_ops.c
+	* app/channels_dialog.c
+	* app/commands.c
+	* app/convert.c
+	* app/convert.h
+	* app/drawable.c
+	* app/fileops.c
+	* app/fileops.h
+	* app/free_select.c
+	* app/gimpimage.c
+	* app/gimpimage_pvt.h
+	* app/indexed_palette.c
+	* app/indexed_palette.h
+	* app/layers_dialog.c
+	* app/layers_dialog.h
+	* app/layers_dialogP.h
+
+	Continued getting rid of the ids. The ids were there to prevent
+	accessing invalid images. We'll use gtk object system from now on, 
+	but until that is done, there may be some invalid pointer
+	references somewhere, so things are a bit unstable right now.
+
+	Added lotsa glib warnings everywhere. There's probably too many of 
+	them now, but that's better than having too few.
+	
 Wed Apr  8 04:25:27 EEST 1998  Lauri Alanko  <nether@gimp.org>
 
 	* app/bezier_select.c

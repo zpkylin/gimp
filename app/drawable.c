@@ -35,6 +35,7 @@
 
 enum {
   INVALIDATE_PREVIEW,
+  UPDATE,
   LAST_SIGNAL
 };
 
@@ -82,6 +83,14 @@ gimp_drawable_class_init (GimpDrawableClass *class)
 
   drawable_signals[INVALIDATE_PREVIEW] =
     gtk_signal_new ("invalidate_preview",
+		    GTK_RUN_LAST,
+		    object_class->type,
+		    GTK_SIGNAL_OFFSET (GimpDrawableClass, invalidate_preview),
+		    gtk_signal_default_marshaller,
+		    GTK_TYPE_NONE, 0);
+
+    drawable_signals[INVALIDATE_PREVIEW] =
+    gtk_signal_new ("update",
 		    GTK_RUN_LAST,
 		    object_class->type,
 		    GTK_SIGNAL_OFFSET (GimpDrawableClass, invalidate_preview),
@@ -256,11 +265,10 @@ drawable_update (GimpDrawable *drawable, int x, int y, int w, int h)
   GImage *gimage;
   int offset_x, offset_y;
 
-  if (! drawable)
-    return;
-
-  if (! (gimage = drawable_gimage (drawable)))
-    return;
+  g_return_if_fail (drawable);
+  g_return_if_fail (drawable_gimage (drawable));
+  
+  gimage = drawable_gimage (drawable);
 
   drawable_offsets (drawable, &offset_x, &offset_y);
   x += offset_x;
@@ -306,10 +314,9 @@ drawable_mask_bounds (GimpDrawable *drawable,
 void
 drawable_invalidate_preview (GimpDrawable *drawable)
 {
-  GImage *gimage;
+  GimpImage *gimage;
 
-  if (! drawable)
-    return;
+  g_return_if_fail (drawable);
 
   drawable->preview_valid = FALSE;
 

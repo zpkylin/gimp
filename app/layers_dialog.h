@@ -18,7 +18,7 @@
 #ifndef  __LAYERS_DIALOG_H__
 #define  __LAYERS_DIALOG_H__
 
-void   lc_dialog_create             (int);
+void   lc_dialog_create             (GimpImage*);
 void   lc_dialog_update_image_list  (void);
 void   lc_dialog_free               (void);
 void   lc_dialog_rebuild            (int);

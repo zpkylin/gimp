@@ -20,7 +20,7 @@
 
 
 #include "gtk/gtk.h"
-
+#include "gimpimage_decl.h"
 
 void file_ops_pre_init               (void);
 void file_ops_post_init              (void);
@@ -36,7 +36,7 @@ void file_save_by_extension_callback (GtkWidget *w,
 				      gpointer   client_data);
 int  file_open                       (char      *filename,
 				      char      *raw_filename);
-int  file_save                       (int        image_ID,
+int  file_save                       (GimpImage* gimage,
 				      char      *filename,
 				      char      *raw_filename);
 

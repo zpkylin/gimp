@@ -67,6 +67,7 @@
 #include "undo.h"
 #include "palette.h"
 
+#include "gimpimage_decl.h"
 #include "layer_pvt.h"			/* ick. */
 #include "drawable_pvt.h"		/* ick ick. */
 #include "tile_manager_pvt.h"		/* ick ick ick. */
@@ -193,9 +194,7 @@ typedef struct
 typedef struct
 {
   GtkWidget *  shell;
-  void *       gimage_ptr;
-
-  int          gimage_ID;
+  GimpImage*   gimage;
   int          dither;
   int          num_cols;
   int          palette;
@@ -238,21 +237,19 @@ static void palette_entries_callback(GtkWidget *w, gpointer client_data);
 static PaletteEntriesP theCustomPalette = NULL;
 
 void
-convert_to_rgb (void *gimage_ptr)
+convert_to_rgb (GimpImage* gimage)
 {
-  GImage *gimage;
-
-  gimage = (GImage *) gimage_ptr;
+  g_return_if_fail (gimage);
+  
   convert_image (gimage, RGB, 0, 0, 0);
   gdisplays_flush ();
 }
 
 void
-convert_to_grayscale (void *gimage_ptr)
+convert_to_grayscale (GimpImage* gimage)
 {
-  GImage *gimage;
+  g_return_if_fail (gimage);
 
-  gimage = (GImage *) gimage_ptr;
   convert_image (gimage, GRAY, 0, 0, 0);
   gdisplays_flush ();
 }
@@ -265,9 +262,8 @@ static ActionAreaItem action_items[] =
 };
 
 void
-convert_to_indexed (void *gimage_ptr)
+convert_to_indexed (GimpImage* gimage)
 {
-  GImage *gimage;
   IndexedDialog *dialog;
   GtkWidget *vbox;
   GtkWidget *hbox;
@@ -278,10 +274,10 @@ convert_to_indexed (void *gimage_ptr)
   GSList *group = NULL;
   static gboolean shown_message_already = False;
 
-  gimage = (GImage *) gimage_ptr;
+  g_return_if_fail (gimage);
+  
   dialog = (IndexedDialog *) g_malloc (sizeof (IndexedDialog));
-  dialog->gimage_ptr = gimage_ptr;
-  dialog->gimage_ID = gimage->ID;
+  dialog->gimage = gimage;
   dialog->num_cols = 256;
   dialog->dither = TRUE;
 
@@ -527,9 +523,9 @@ indexed_ok_callback (GtkWidget *widget,
         else
           palette_type = REUSE_PALETTE;
   /*  Convert the image to indexed color  */
-  if (gimage_get_ID (dialog->gimage_ID))
+  if (dialog->gimage)
     {
-      convert_image ((GImage *) dialog->gimage_ptr, INDEXED, dialog->num_cols,
+      convert_image (dialog->gimage, INDEXED, dialog->num_cols,
 		     dialog->dither, palette_type);
       gdisplays_flush ();
     }

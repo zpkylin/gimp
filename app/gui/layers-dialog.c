@@ -264,15 +264,16 @@ static MenuItem option_items[] =
 /************************************/
 
 void
-lc_dialog_create (int gimage_id)
+lc_dialog_create (GimpImage* gimage)
 {
   GtkWidget *util_box;
   GtkWidget *button;
   GtkWidget *label;
   GtkWidget *notebook;
   GtkWidget *separator;
-  GImage* gimage = gimage_get_ID (gimage_id);
   int default_index;
+
+  g_return_if_fail (gimage);
 
   if (lc_shell == NULL)
     {
@@ -357,7 +358,7 @@ lc_dialog_create (int gimage_id)
       lc_dialog_init_handlers ();
       
       layers_dialog_update (gimage);
-      channels_dialog_update (gimage->ID);
+      channels_dialog_update (gimage);
       gdisplays_flush ();
     }
   else
@@ -368,7 +369,7 @@ lc_dialog_create (int gimage_id)
 	gdk_window_raise (lc_shell->window);
 
       layers_dialog_update (gimage);
-      channels_dialog_update (gimage->ID);
+      channels_dialog_update (gimage);
       lc_dialog_update_image_list ();
       gdisplays_flush ();
     }
@@ -440,7 +441,7 @@ lc_dialog_update_image_list ()
       if (def != layersD->gimage)
 	{
 	  layers_dialog_update (def);
-	  channels_dialog_update (def->ID);
+	  channels_dialog_update (def);
 	  gdisplays_flush ();
 	}
     }
@@ -485,7 +486,7 @@ lc_dialog_rebuild (int new_preview_size)
   preview_size = new_preview_size;
   render_setup (transparency_type, transparency_size);
   if (flag)
-    lc_dialog_create (gimage->ID);
+    lc_dialog_create (gimage);
 }
 
 
@@ -1426,7 +1427,7 @@ image_menu_callback (GtkWidget *w,
   if (client_data != NULL)
     {
       layers_dialog_update (GIMAGE (client_data));
-      channels_dialog_update (GIMAGE (client_data)->ID);
+      channels_dialog_update (GIMAGE (client_data));
       gdisplays_flush ();
     }
 }
@@ -3140,7 +3141,7 @@ typedef struct _EditLayerOptions EditLayerOptions;
 struct _EditLayerOptions {
   GtkWidget *query_box;
   GtkWidget *name_entry;
-  int        layer_ID;
+  GimpLayer* layer;
 };
 
 static void
@@ -3152,7 +3153,9 @@ edit_layer_query_ok_callback (GtkWidget *w,
 
   options = (EditLayerOptions *) client_data;
 
-  if ((layer = layer_get_ID (options->layer_ID)))
+  layer = options->layer;
+  
+  if (layer)
     {
       /*  Set the new layer name  */
       if (GIMP_DRAWABLE(layer)->name)
@@ -3211,7 +3214,7 @@ layers_dialog_edit_layer_query (LayerWidget *layer_widget)
 
   /*  the new options structure  */
   options = (EditLayerOptions *) g_malloc (sizeof (EditLayerOptions));
-  options->layer_ID = drawable_ID (GIMP_DRAWABLE (layer_widget->layer));
+  options->layer = layer_widget->layer;
   /*  the dialog  */
   options->query_box = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "edit_layer_attrributes", "Gimp");

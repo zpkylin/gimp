@@ -18,8 +18,10 @@
 #ifndef __INDEXED_COLOR_H__
 #define __INDEXED_COLOR_H__
 
+#include "gimpimage_decl.h"
+
 /*  indexed color palette functions  */
-void  indexed_palette_create            (int);
+void  indexed_palette_create            (GimpImage*);
 void  indexed_palette_update_image_list (void);
 void  indexed_palette_free              (void);
 

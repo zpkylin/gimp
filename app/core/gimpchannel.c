@@ -73,11 +73,11 @@ gimp_channel_get_type ()
 }
 
 static void
-gimp_channel_class_init (GimpChannelClass *class)
+gimp_channel_class_init (GimpChannelClass *klass)
 {
   GtkObjectClass *object_class;
 
-  object_class = (GtkObjectClass*) class;
+  object_class = GTK_OBJECT_CLASS (klass);
   parent_class = gtk_type_class (gimp_drawable_get_type ());
 
   /*

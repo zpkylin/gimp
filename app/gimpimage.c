@@ -21,11 +21,6 @@
 #include "floating_sel.h"
 #include "gimage_mask.h"
 
-/* TODO: Add some sort of exception system.. gimage code must not call 
-   messagebox, or output to stderr */
-/*#include "interface.h"*/
-/*#include "errors.h"*/
-
 #include "palette.h"
 #include "undo.h"
 
@@ -202,7 +197,7 @@ gimp_image_allocate_projection (GimpImage *gimage)
       gimage->proj_type = GRAYA_GIMAGE;
       break;
     default:
-      /* warning ("gimage type unsupported.\n"); */
+      g_warning ("gimage type unsupported.\n");
       break;
     }
 
@@ -271,9 +266,6 @@ gimp_image_new (int width, int height, GimpImageBaseType base_type)
     }
 
   /* create the selection mask */
-  /* Augh! Our legacy ID is still undefined here! Have to convert
-     drawables to use straight pointers.. For now, this is handled in
-     gimage.c */
   
   gimage->selection_mask = channel_new_mask (gimage, gimage->width, gimage->height);
 
@@ -315,11 +307,7 @@ gimp_image_resize (GimpImage *gimage, int new_width, int new_height,
   Layer *floating_layer;
   GSList *list;
 
-  if (new_width <= 0 || new_height <= 0) 
-    {
-      /*warning("gimp_image_resize: width and height must be positive");*/
-      return;
-    }
+  g_return_if_fail (new_width > 0 && new_height > 0);
 
   /*  Get the floating layer if one exists  */
   floating_layer = gimp_image_floating_sel (gimage);
@@ -507,12 +495,9 @@ gimp_image_apply_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion *
    *  if it's actually legal...
    */
   operation = valid_combinations [drawable_type (drawable)][src2PR->bytes];
-  if (operation == -1)
-    {
-      /*warning ("gimp_image_apply_image sent illegal parameters\n");*/
-      return;
-    }
 
+  g_return_if_fail (operation != -1);
+  
   /*  get the layer offsets  */
   drawable_offsets (drawable, &offset_x, &offset_y);
 
@@ -601,11 +586,8 @@ gimp_image_replace_image (GimpImage *gimage, GimpDrawable *drawable, PixelRegion
    *  if it's actually legal...
    */
   operation = valid_combinations [drawable_type (drawable)][src2PR->bytes];
-  if (operation == -1)
-    {
-      /*warning ("gimp_image_apply_image sent illegal parameters\n");*/
-      return;
-    }
+
+  g_return_if_fail (operation != -1);
 
   /*  get the layer offsets  */
   drawable_offsets (drawable, &offset_x, &offset_y);
@@ -887,11 +869,10 @@ static void
 project_indexed (GimpImage *gimage, Layer *layer,
 		 PixelRegion *src, PixelRegion *dest)
 {
-  if (! gimage->construct_flag)
-    initial_region (src, dest, NULL, gimage->cmap, layer->opacity,
-		    layer->mode, gimage->visible, INITIAL_INDEXED);
-  /* else
-    warning ("Unable to project indexed image.");*/
+  g_return_if_fail (! gimage->construct_flag);
+
+  initial_region (src, dest, NULL, gimage->cmap, layer->opacity,
+		  layer->mode, gimage->visible, INITIAL_INDEXED);
 }
 
 
@@ -1896,10 +1877,7 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
       merge_layer = layer_new (gimage, gimage->width, gimage->height,
 			       type, drawable_name (GIMP_DRAWABLE(layer)), OPAQUE_OPACITY, NORMAL_MODE);
 
-      if (!merge_layer) {
-	/*warning("gimp_image_merge_layers: could not allocate merge layer");*/
-	return NULL;
-      }
+      g_return_val_if_fail (merge_layer, NULL);
 
       /*  get the background for compositing  */
       gimp_image_get_background (gimage, GIMP_DRAWABLE(merge_layer), bg);
@@ -1923,10 +1901,7 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
 			       drawable_name (GIMP_DRAWABLE(layer)),
 			       layer->opacity, layer->mode);
       
-      if (!merge_layer) {
-	/*warning("gimp_image_merge_layers: could not allocate merge layer");*/
-	return NULL;
-      }
+      g_return_val_if_fail (merge_layer, NULL);
 
       GIMP_DRAWABLE(merge_layer)->offset_x = x1;
       GIMP_DRAWABLE(merge_layer)->offset_y = y1;
@@ -1961,11 +1936,8 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
        *  if it's actually legal...
        */
       operation = valid_combinations [drawable_type (GIMP_DRAWABLE(merge_layer))][drawable_bytes (GIMP_DRAWABLE(layer))];
-      if (operation == -1)
-	{
-	  /*warning ("gimp_image_merge_layers attempting to merge incompatible layers\n");*/
-	  return NULL;
-	}
+
+      g_return_val_if_fail (operation != -1, NULL);
 
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
       x3 = CLAMP (off_x, x1, x2);
@@ -2038,22 +2010,15 @@ gimp_image_add_layer (GimpImage *gimage, Layer *float_layer, int position)
 {
   LayerUndo * lu;
 
-  if (GIMP_DRAWABLE(float_layer)->gimage != NULL && 
-      GIMP_DRAWABLE(float_layer)->gimage != gimage) 
-    {
-      /*warning("gimp_image_add_layer: attempt to add layer to wrong image");*/
-      return NULL;
-    }
-
+  g_return_val_if_fail ((GIMP_DRAWABLE(float_layer)->gimage == NULL) ||
+			(GIMP_DRAWABLE(float_layer)->gimage == gimage), NULL);
+  
   {
+    /* Check whether this layer already belongs to the image */
     GSList *ll = gimage->layers;
     while (ll) 
       {
-	if (ll->data == float_layer) 
-	  {
-	    /*warning("gimp_image_add_layer: trying to add layer to image twice");*/
-	    return NULL;
-	  }
+	g_return_val_if_fail (ll->data != float_layer, NULL);
 	ll = g_slist_next(ll);
       }
   }  
@@ -2178,7 +2143,7 @@ gimp_image_add_layer_mask (GimpImage *gimage, Layer *layer, LayerMask *mask)
 
   if (error)
     {
-/*       message_box (error, NULL, NULL); */
+      g_warning (error);
       return NULL;
     }
 
@@ -2349,22 +2314,16 @@ gimp_image_add_channel (GimpImage *gimage, Channel *channel, int position)
 {
   ChannelUndo * cu;
 
-  if (GIMP_DRAWABLE(channel)->gimage != NULL &&
-      GIMP_DRAWABLE(channel)->gimage != gimage)
-    {
-      /* warning("gimp_image_add_channel: attempt to add channel to wrong image");*/
-      return NULL;
-    }
+  g_return_val_if_fail ((GIMP_DRAWABLE(channel)->gimage == NULL) ||
+			(GIMP_DRAWABLE(channel)->gimage == gimage),
+			NULL);
 
+  /* Check whether this channel is already in the image */
   {
     GSList *cc = gimage->channels;
     while (cc) 
       {
-	if (cc->data == channel) 
-	  {
-	    /*    warning("gimp_image_add_channel: trying to add channel to image twice");*/
-	    return NULL;
-	  }
+	g_return_val_if_fail (cc->data != channel, NULL);
 	cc = g_slist_next (cc);
       }
   }  

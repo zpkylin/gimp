@@ -82,7 +82,7 @@ typedef struct
 {
   GtkWidget * shell;
   Resize *    resize;
-  int         gimage_id;
+  GimpImage*  gimage;
 } ImageResize;
 
 /*  new image local functions  */
@@ -1656,7 +1656,7 @@ select_border_cmd_callback (GtkWidget *widget,
 
   sprintf (initial, "%d", gimage_mask_border_radius);
   query_string_box ("Border Selection", "Border selection by:", initial,
-		    gimage_mask_border_callback, (gpointer) gdisp->gimage->ID);
+		    gimage_mask_border_callback, gdisp->gimage);
 }
 
 void
@@ -1670,7 +1670,7 @@ select_feather_cmd_callback (GtkWidget *widget,
 
   sprintf (initial, "%f", gimage_mask_feather_radius);
   query_string_box ("Feather Selection", "Feather selection by:", initial,
-		    gimage_mask_feather_callback, (gpointer) gdisp->gimage->ID);
+		    gimage_mask_feather_callback, gdisp->gimage);
 }
 
 void
@@ -1684,7 +1684,7 @@ select_grow_cmd_callback (GtkWidget *widget,
 
   sprintf (initial, "%d", gimage_mask_grow_pixels);
   query_string_box ("Grow Selection", "Grow selection by:", initial,
-		    gimage_mask_grow_callback, (gpointer) gdisp->gimage->ID);
+		    gimage_mask_grow_callback, gdisp->gimage);
 }
 
 void
@@ -1698,7 +1698,7 @@ select_shrink_cmd_callback (GtkWidget *widget,
 
   sprintf (initial, "%d", gimage_mask_shrink_pixels);
   query_string_box ("Shrink Selection", "Shrink selection by:", initial,
-		    gimage_mask_shrink_callback, (gpointer) gdisp->gimage->ID);
+		    gimage_mask_shrink_callback, gdisp->gimage);
 }
 
 void
@@ -1996,7 +1996,7 @@ image_brightness_contrast_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) BRIGHTNESS_CONTRAST].toolbar_position]);
-  brightness_contrast_initialize ((void *) gdisp);
+  brightness_contrast_initialize (gdisp);
 }
 
 void
@@ -2007,7 +2007,7 @@ image_hue_saturation_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) HUE_SATURATION].toolbar_position]);
-  hue_saturation_initialize ((void *) gdisp);
+  hue_saturation_initialize (gdisp);
 }
 
 void
@@ -2018,7 +2018,7 @@ image_curves_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) CURVES].toolbar_position]);
-  curves_initialize ((void *) gdisp);
+  curves_initialize (gdisp);
 }
 
 void
@@ -2029,7 +2029,7 @@ image_levels_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) LEVELS].toolbar_position]);
-  levels_initialize ((void *) gdisp);
+  levels_initialize (gdisp);
 }
 
 void
@@ -2039,7 +2039,7 @@ image_desaturate_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  image_desaturate ((void *) gdisp->gimage);
+  image_desaturate (gdisp->gimage);
   gdisplays_flush ();
 }
 
@@ -2050,7 +2050,7 @@ channel_ops_duplicate_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  channel_ops_duplicate ((void *) gdisp->gimage);
+  channel_ops_duplicate (gdisp->gimage);
 }
 
 void
@@ -2060,7 +2060,7 @@ channel_ops_offset_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  channel_ops_offset ((void *) gdisp->gimage);
+  channel_ops_offset (gdisp->gimage);
 }
 
 void
@@ -2070,7 +2070,7 @@ image_convert_rgb_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  convert_to_rgb ((void *) gdisp->gimage);
+  convert_to_rgb (gdisp->gimage);
 }
 
 void
@@ -2080,7 +2080,7 @@ image_convert_grayscale_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  convert_to_grayscale ((void *) gdisp->gimage);
+  convert_to_grayscale (gdisp->gimage);
 }
 
 void
@@ -2090,7 +2090,7 @@ image_convert_indexed_cmd_callback (GtkWidget *widget,
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
-  convert_to_indexed ((void *) gdisp->gimage);
+  convert_to_indexed (gdisp->gimage);
 }
 
 void
@@ -2110,7 +2110,7 @@ image_resize_cmd_callback (GtkWidget *widget,
 
   /*  the ImageResize structure  */
   image_resize = (ImageResize *) g_malloc (sizeof (ImageResize));
-  image_resize->gimage_id = gdisp->gimage->ID;
+  image_resize->gimage = gdisp->gimage;
   image_resize->resize = resize_widget_new (ResizeWidget, gdisp->gimage->width, gdisp->gimage->height);
 
   /*  the dialog  */
@@ -2157,7 +2157,7 @@ image_scale_cmd_callback (GtkWidget *widget,
 
   /*  the ImageResize structure  */
   image_scale = (ImageResize *) g_malloc (sizeof (ImageResize));
-  image_scale->gimage_id = gdisp->gimage->ID;
+  image_scale->gimage = gdisp->gimage;
   image_scale->resize = resize_widget_new (ScaleWidget, gdisp->gimage->width, gdisp->gimage->height);
 
   /*  the dialog  */
@@ -2347,7 +2347,7 @@ dialogs_lc_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
 
-  lc_dialog_create (gdisp->gimage->ID);
+  lc_dialog_create (gdisp->gimage);
 }
 
 void
@@ -2358,7 +2358,7 @@ dialogs_indexed_palette_cmd_callback (GtkWidget *widget,
 
   gdisp = gdisplay_active ();
 
-  indexed_palette_create (gdisp->gimage->ID);
+  indexed_palette_create (gdisp->gimage);
 }
 
 void
@@ -2400,7 +2400,7 @@ image_resize_callback (GtkWidget *w,
   GImage *gimage;
 
   image_resize = (ImageResize *) client_data;
-  if ((gimage = gimage_get_ID (image_resize->gimage_id)) != NULL)
+  if ((gimage = image_resize->gimage) != NULL)
     {
       if (image_resize->resize->width > 0 &&
 	  image_resize->resize->height > 0) 
@@ -2432,7 +2432,7 @@ image_scale_callback (GtkWidget *w,
   GImage *gimage;
 
   image_scale = (ImageResize *) client_data;
-  if ((gimage = gimage_get_ID (image_scale->gimage_id)) != NULL)
+  if ((gimage = image_scale->gimage) != NULL)
     {
       if (image_scale->resize->width > 0 &&
 	  image_scale->resize->height > 0) 
@@ -2483,12 +2483,13 @@ gimage_mask_feather_callback (GtkWidget *w,
 			      gpointer   client_data,
 			      gpointer   call_data)
 {
-  GImage *gimage;
+  GimpImage *gimage;
   double feather_radius;
 
-  if (!(gimage = gimage_get_ID ((int)client_data)))
-    return;
+  g_return_if_fail (client_data);
 
+  gimage = GIMP_IMAGE (client_data);
+  
   feather_radius = atof (call_data);
 
   gimage_mask_feather (gimage, feather_radius);
@@ -2501,11 +2502,12 @@ gimage_mask_border_callback (GtkWidget *w,
 			     gpointer   client_data,
 			     gpointer   call_data)
 {
-  GImage *gimage;
+  GimpImage *gimage;
   int border_radius;
 
-  if (!(gimage = gimage_get_ID ((int)client_data)))
-    return;
+  g_return_if_fail (client_data);
+
+  gimage = GIMP_IMAGE (client_data);
 
   border_radius = atoi (call_data);
 
@@ -2519,11 +2521,12 @@ gimage_mask_grow_callback (GtkWidget *w,
 			   gpointer   client_data,
 			   gpointer   call_data)
 {
-  GImage *gimage;
+  GimpImage *gimage;
   int grow_pixels;
 
-  if (!(gimage = gimage_get_ID ((int)client_data)))
-    return;
+  g_return_if_fail (client_data);
+
+  gimage = GIMP_IMAGE (client_data);
 
   grow_pixels = atoi (call_data);
 
@@ -2537,11 +2540,12 @@ gimage_mask_shrink_callback (GtkWidget *w,
 			     gpointer   client_data,
 			     gpointer   call_data)
 {
-  GImage *gimage;
+  GimpImage *gimage;
   int shrink_pixels;
 
-  if (!(gimage = gimage_get_ID ((int)client_data)))
-    return;
+  g_return_if_fail (client_data);
+
+  gimage = GIMP_IMAGE (client_data);
 
   shrink_pixels = atoi (call_data);
 

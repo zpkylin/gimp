@@ -27,7 +27,7 @@ GtkWidget *  channels_dialog_create  (void);
 GtkWidget *  create_image_menu       (GImage **, int *, MenuItemCallback);
 
 void         layers_dialog_update    (GImage*);
-void         channels_dialog_update  (int);
+void         channels_dialog_update  (GimpImage*);
 
 void         layers_dialog_clear     (void);
 void         channels_dialog_clear   (void);

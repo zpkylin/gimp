@@ -1,5 +1,5 @@
-#ifndef __GIMP_IMAGE_PVT_H__
-#define __GIMP_IMAGE_PVT_H__
+#ifndef __GIMPIMAGE_PVT_H__
+#define __GIMPIMAGE_PVT_H__
 
 #include "gimpobject_pvt.h"
 #include "gimpimage.h"
