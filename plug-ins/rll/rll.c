@@ -363,7 +363,8 @@ static gint32 load_image (char *filename)
   }                
   matteChans = filehandle->header->matteChans;
   auxChans  += filehandle->header->auxChans;
- 
+
+
   if (auxChans && strcmp("fur", filehandle->header->program) && 
       strcmp("voodoo", filehandle->header->program))
     {
@@ -390,7 +391,6 @@ static gint32 load_image (char *filename)
 	    case 3:
 	      if (!strcmp("red", result[i+1]))
 		{
-
 		  i += 2;
 		  nlayers ++;
 		}
@@ -406,6 +406,9 @@ static gint32 load_image (char *filename)
 	}
     }
   auxChans -= (nlayers-1) * imageChans;
+  if (alpha)
+    auxChans -= (nlayers-1);
+
 
 #ifndef FLOAT16_AUX
 #define FLOAT16_AUX FLOAT16_GRAY
@@ -483,7 +486,7 @@ static gint32 load_image (char *filename)
       pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn) * nlayers); 
       layer_ID = gimp_layer_new(image_ID, "Background", width, height,
 	  layer_type, 100, NORMAL_MODE);
-      gimp_image_add_layer(image_ID, layer_ID, nlayers-1);
+      gimp_image_add_layer(image_ID, layer_ID, 0 /*nlayers-1*/);
       if (alpha)
 	gimp_layer_add_alpha (layer_ID); 
       drawable = gimp_drawable_get(layer_ID);
@@ -496,7 +499,7 @@ static gint32 load_image (char *filename)
 	      layer_type, 100, NORMAL_MODE);
 	  gimp_layer_add_alpha (layer_ID); 
 	  if (alpha)
-	    gimp_image_add_layer(image_ID, layer_ID, nlayers-1-i);
+	    gimp_image_add_layer(image_ID, layer_ID, 0 /*nlayers-1-i*/);
 	  drawable = gimp_drawable_get(layer_ID);
 	  gimp_pixel_rgn_init(&(pixel_rgn[i]), drawable, 
 	      0, 0, drawable->width, drawable->height, 
@@ -647,7 +650,7 @@ static gint32 load_image (char *filename)
 				    floatVal = 1;
 				    sptr = &(((short *)&floatVal)[1]);
 				    *((guint16 *)(bptr[0])) = sptr[0];
-				    bptr[0] += sizeof(guint16);
+				    bptr[k] += sizeof(guint16);
 				  }
 			  } 
 			  for(i=0; i<matteChans; i++){
@@ -658,15 +661,10 @@ static gint32 load_image (char *filename)
 			  }
 			  for (k=1; k<nlayers; k++) {
 			  for(i=0; i<imageChans+alpha; i++){
-				/*
-				   if (i != imageChans)
-				*/
-				   {	  
-				floatVal = filehandle->rBufPtr[i+(k*imageChans)+matteChans][j];
-				sptr = &(((short *)&floatVal)[1]);
-				*((guint16 *)(bptr[k])) = sptr[0];
-				bptr[k] += sizeof(guint16);
-			  }
+				    floatVal = filehandle->rBufPtr[i+(3+(k-1)*(imageChans+alpha))+matteChans][j];
+				    sptr = &(((short *)&floatVal)[1]);
+				    *((guint16 *)(bptr[k])) = sptr[0];
+				    bptr[k] += sizeof(guint16);
 			  }
 			  }
 
@@ -767,12 +765,13 @@ static gint save_image (
   char            *bg_name=NULL;
   gint		  fg_bpp=0, bg_bpp=0;
   gint            fg_cpp=0, bg_cpp=0;
-
+  gint	          offset;
   /* Rhythm and Hues file stuff */
   WF_I_HEAD       header;
   WF_I_FILE*      filehandle;
   char            *a_n=NULL, **aux_name=NULL; 
   int		  aux_name_tsize=300, aux_name_size=30; 
+  gint		  type;
 
 #ifdef _DOFILM_
   int   filmMode = isFilmMode();
@@ -857,7 +856,7 @@ static gint save_image (
 
   /* Figure out some header info and 
      channel depth from gimp drawable type */	
-  switch (gimp_drawable_type(drawable_ID))
+  switch ((type=gimp_drawable_type(drawable_ID)))
     {
       /* 8bit gimp types */
     case GRAY_IMAGE:
@@ -1561,7 +1560,8 @@ static gint save_image (
 
 
   /* Get strips from gimp image moving from bottom to top */
-  for(y=0; y<height; y=yend){
+  for(y=0; y<height; y=yend)
+    {
 	yend = y + strip_height;
 	yend = MIN (yend, height);
 
@@ -1637,8 +1637,8 @@ static gint save_image (
 			      case 2:
 				/*filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j] = 
 				  FLTT(*(aux_sptr[i])++);*/
-				  ((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[0] = 0; 
-				  ((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[1] = *(aux_sptr[i])++; 
+				((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[0] = 0; 
+				((short*)&(filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j]))[1] = *(aux_sptr[i])++; 
 				break;
 			      case 1:
 				filehandle->rBufPtr[i+bg_nlayers*header.imageChans][j] = 
@@ -1652,8 +1652,10 @@ static gint save_image (
 			  }
 		    }
 		    /* save the rest of the layers in the aux channels */
+		    offset = (bg_nlayers*header.imageChans)+header.matteChans;
 		    for(k=0; k<fg_nlayers; k++)
 		      {
+			int tmp = k*(fg_cpp);
 			for(i=0; i<fg_cpp; i++){
 			      switch(bytes_per_channel){
 				  case 4:
@@ -1661,10 +1663,8 @@ static gint save_image (
 				      pow (*(fg_fptr[k])++, 2.2);
 				    break;
 				  case 2:
-				    /*filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
-				      FLTT (*(fg_sptr[k])++);*/
-				  ((short*)&(filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[0] = 0; 
-				  ((short*)&(filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[1] = *(fg_sptr[k])++; 
+				    ((short*)&(filehandle->rBufPtr[i+tmp+offset][j]))[0] = 0; 
+				    ((short*)&(filehandle->rBufPtr[i+tmp+offset][j]))[1] = *(fg_sptr[k])++; 
 				    break;
 				  case 1:
 				    filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
@@ -1679,14 +1679,15 @@ static gint save_image (
 				    break;
 
 			      }
-			    if (FLOAT16_GRAYA_IMAGE == gimp_drawable_type(drawable_ID) && (!strcmp("fur", bg_name) ||
-				!strcmp("voodoo", bg_name)))
-			      {
-				(fg_fptr[k])++;
-				(fg_sptr[k])++;
-				(fg_bptr[k])++;
-				i++; 
-			      }
+			      if (FLOAT16_GRAYA_IMAGE == type)
+			      if ( (!strcmp("fur", bg_name) ||
+				    !strcmp("voodoo", bg_name)))
+				{
+				  (fg_fptr[k])++;
+				  (fg_sptr[k])++;
+				  (fg_bptr[k])++;
+				  i++; 
+				}
 			}
 
 
@@ -1700,8 +1701,8 @@ static gint save_image (
 			      case 2:
 				/*filehandle->rBufPtr[i+header.imageChans*nlayers][j] = 
 				  FLTT(*(aux_sptr[i])++);*/
-				  ((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[0] = 0; 
-				  ((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[1] = *(aux_sptr[i])++; 
+				((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[0] = 0; 
+				((short*)&(filehandle->rBufPtr[i+header.imageChans][j]))[1] = *(aux_sptr[i])++; 
 				break;
 			      case 1:
 				filehandle->rBufPtr[i+header.imageChans*nlayers][j] = 
@@ -1717,7 +1718,6 @@ static gint save_image (
 
 		    /* save the aux channels */	
 	      }
-
 
 #ifdef _DOFILM_
 	      /* check for film mode */
@@ -1779,32 +1779,32 @@ static gint save_image (
   if (aux_buffer) g_free (aux_buffer);
 #endif
   return_args = IM_CloseFile(filehandle);
- 
+
   return return_args>0 ? 1 : -1;
 }
 
 
-  static int isFilmMode(
-      void
-		       )
+static int isFilmMode(
+    void
+		     )
+{
+
+  int   filmMode = 0;
+  char *filmEnv;
+
+  /* Determine if we are a film job */
+  if ( (filmEnv = getenv( "FILM" )) )
     {
-
-      int   filmMode = 0;
-      char *filmEnv;
-
-      /* Determine if we are a film job */
-      if ( (filmEnv = getenv( "FILM" )) )
-	{
-	  if ( atoi( filmEnv ) != 0 )
-	    filmMode = 1;
-	  else
-	    filmMode = 0;
-	}
-      return filmMode;
+      if ( atoi( filmEnv ) != 0 )
+	filmMode = 1;
+      else
+	filmMode = 0;
     }
+  return filmMode;
+}
 
-    /*----------------------------------------------------------------------
-      |                         floatToShort
+/*----------------------------------------------------------------------
+  |                         floatToShort
      *----------------------------------------------------------------------
      |
      |  Programmer: Brian J. Green
