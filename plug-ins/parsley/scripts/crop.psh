@@ -1,0 +1,38 @@
+#
+# gimpParsleyCrop 
+# crop an image based on the current selection 
+#
+
+func gimpParsleyCrop(img, drawable)
+
+    set bounds = gimpDrawableMaskBounds ($drawable)
+
+    set x1 = $bounds[1]
+    set y1 = $bounds[2]
+    set x2 = $bounds[3]
+    set y2 = $bounds[4]
+
+    set w = ($x2 - $x1)
+    set h = ($y2 - $y1)
+
+    if (w != 0  && h != 0 )
+      gimpUndoPushGroupStart($img)
+      gimpCrop($img, $w, $h, $x1, $y1)
+      gimpUndoPushGroupEnd($img)
+      gimpDisplaysFlush()
+    endif
+
+endfunc
+
+# this registers gimpQuarter with gimp
+
+gimpRegister(  \
+                    "gimpParsleyCrop",  \
+                    "<Image>/Parsley/Crop",  \
+                    "Crop an image",  \
+                    "Calvin Williamson",  \
+                    "Rhythm & Hues",  \
+                    "2-22-98",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Drawable", 0)

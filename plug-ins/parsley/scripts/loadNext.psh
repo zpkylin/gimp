@@ -1,0 +1,197 @@
+#  loadNext.psh
+#  
+#  Installs these scripts in gimp:
+#  
+#  These all load next (or prev) frames  
+#  gimpLoadNext   -- 
+#  gimpSaveAndLoadNext -- 
+#  gimpLoadPrev --  
+#  gimpSaveAndLoadPrev -- 
+#
+
+#
+#  Set the saveAsBasename to the basename of the frames to save if this is
+#  different from the current basename.  eg saveAsBasename = /something/blah
+#  will allow to save frames with names like /something/blah.0034.rll 
+#
+#  Set the increment as well   
+#
+
+set saveAsBasename = "" 
+set increment = 1
+
+#
+#  gimpLoadNext - loads next frame in frame range. 
+#
+func gimpLoadNext ( imageId, drawId )
+    loadFrame ( $imageId, $drawId , 0, $increment)
+endfunc
+
+#
+#  gimpSaveAndLoadNext - saves current, loads next
+#
+func gimpSaveAndLoadNext ( imageId, drawId )
+    loadFrame ( $imageId, $drawId , 1, $increment)
+endfunc
+
+#
+#  gimpLoadPrev - loads previous frame in frame range. 
+#
+func gimpLoadPrev ( imageId, drawId )
+    loadFrame ( $imageId, $drawId , 0, (-1 * $increment))
+endfunc
+
+#
+#  gimpSaveAndLoadPrev - saves current, loads previous. 
+#
+func gimpSaveAndLoadPrev ( imageId, drawId )
+    loadFrame ( $imageId, $drawId , 1, (-1 * $increment))
+endfunc
+
+#
+# getNextFileName - eg Converts blah.0103.rll to blah.0104.rll  
+# if incr is 1.
+#
+func getNextFileName( file, incr )
+  set list = splitstring( $file, . ) 
+  return $list[0].wfnum( $list[1] + $incr ).$list[2]
+endfunc 
+
+#
+# getSaveFileName -   
+#
+func getSaveFileName( file , newBase)
+  set list = splitstring( $file, . ) 
+  return $newBase.$list[1].$list[2]
+endfunc 
+
+#
+#  loadFrame - loads a new frame, specifed by the name
+#  of this frame and the increment.
+#	
+func loadFrame( imageId, drawId, save, incr)
+
+
+  # Get the filename for this frame.
+  #
+  set name = gimpImageGetFilename( $imageId )
+
+  # Do a save of this frame if requested.
+  #
+  if ($save != 0) then
+      # Check for saving with different name. 
+      #
+      if ( strcmp ($saveAsBasename, "" ) == "0" ) then
+	set $saveName = $name 
+      else
+	set $saveName = getSaveFileName ($name, $saveAsBasename)
+      endif
+    gimpFileSave (1, $imageId, $drawId, $saveName, $saveName) 
+  endif
+
+  # Get the new frame name and check for existence.
+  # 
+  set nextName = getNextFileName( $name, $incr)      
+  set exists = statmode ( $nextName )
+
+  # If it exists load it into this window.
+  #
+  if ($exists != 0) then
+
+    # Disable undo since we're loading a new image.  
+    #
+    gimpImageDisableUndo ($imageId )
+
+    # Delete all the layers and channels from the old image.  
+    #
+    set layers = gimpImageGetLayers ( $imageId )	
+    set channels = gimpImageGetChannels ( $imageId )	
+
+    loop i from 1 to $channels[0]
+      gimpImageRemoveChannel ( $imageId, $channels[$i]) 
+    endloop
+      
+    loop i from 1 to $layers[0]
+      gimpImageRemoveLayer ( $imageId, $layers[$i]) 
+    endloop
+
+    # Load the next frame into a temp image.
+    #
+    set tempImageId = gimpFileLoad (1, $nextName, $nextName) 
+
+    # Add in the layers and channels from the temp image.
+    #
+    set layers = gimpImageGetLayers ($tempImageId)	
+    set channels = gimpImageGetChannels ($tempImageId)	
+    
+    loop i from 1 to $channels[0]
+      gimpImageAddChannel ( $imageId, $channels[$i], ($i - 1) ) 
+    endloop
+    
+    loop i from 1 to $layers[0]
+      gimpImageAddLayer ( $imageId, $layers[$i], ($i - 1) ) 
+    endloop
+
+    # Set the new file name and enable undo again. 
+    #
+    gimpImageSetFilename ( $imageId, $nextName )
+    gimpDisplaysFlush () 
+    gimpImageEnableUndo ($imageId )
+
+    # Delete the temp image. 
+    #
+    gimpImageDelete ( $tempImageId ) 
+
+  else
+    echo File basename ( $nextName ) doesnt exist     
+  endif
+
+endfunc
+
+#  Register the functions above with gimp, and give
+#  them menus.
+#
+gimpRegister(  \
+                    "gimpLoadNext",  \
+                    "<Image>/Frame Manager/Load Next",  \
+                    "Load next in a frame range",  \
+                    "Calvin Williamson",  \
+                    "Rhythm & Hues",  \
+                    "1999",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Drawable", 0)
+
+gimpRegister(  \
+                    "gimpSaveAndLoadNext",  \
+                    "<Image>/Frame Manager/Save and Load Next",  \
+                    "Save and load next in a frame range",  \
+                    "Calvin Williamson",  \
+                    "Rhythm & Hues",  \
+                    "1999",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Drawable", 0)
+
+gimpRegister(  \
+                    "gimpLoadPrev",  \
+                    "<Image>/Frame Manager/Load Prev",  \
+                    "Load prev in a frame range",  \
+                    "Calvin Williamson",  \
+                    "Rhythm & Hues",  \
+                    "1999",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Drawable", 0)
+
+gimpRegister(  \
+                    "gimpSaveAndLoadPrev",  \
+                    "<Image>/Frame Manager/Save and Load Prev",  \
+                    "Save and load prev in a frame range",  \
+                    "Calvin Williamson",  \
+                    "Rhythm & Hues",  \
+                    "1999",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Drawable", 0)
+

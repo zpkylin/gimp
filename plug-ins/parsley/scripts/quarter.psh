@@ -1,0 +1,31 @@
+#
+# gimp quarter 
+# Parsley version
+# quarters an image 
+#
+
+func gimpQuarter(img, layer)
+    set width = gimpImageWidth($img)
+    set height = gimpImageHeight($img)
+    set cx = ($width / 2)
+    set cy = ($height / 2)
+
+    gimpUndoPushGroupStart($img)
+    gimpChannelOpsOffset($img, $layer, 1, 0, $cx, $cy)
+    gimpUndoPushGroupEnd($img)
+    gimpDisplaysFlush()
+
+endfunc
+
+# this registers gimpQuarter with gimp
+
+gimpRegister(  \
+                    "gimpQuarter",  \
+                    "<Image>/Parsley/Quarter",  \
+                    "Quarter an image",  \
+                    "Author",  \
+                    "Copyright",  \
+                    "Script date",  \
+                    "",  \
+                    $PARSLEY_IMAGE, "Image", 0,  \
+                    $PARSLEY_DRAWABLE, "Layer", 0)

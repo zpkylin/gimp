@@ -1,0 +1,353 @@
+rll.o: rll.c /software/thalia/h/stdtypes.h /usr/include/math.h \
+ /usr/include/features.h /usr/include/sys/cdefs.h \
+ /usr/include/gnu/stubs.h /usr/include/bits/huge_val.h \
+ /usr/include/bits/mathdef.h /usr/include/bits/mathcalls.h \
+ /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/float.h \
+ /usr/include/bits/mathinline.h /usr/include/stdlib.h \
+ /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h \
+ /usr/include/sys/types.h /usr/include/bits/types.h \
+ /usr/include/time.h /usr/include/endian.h /usr/include/bits/endian.h \
+ /usr/include/sys/select.h /usr/include/bits/select.h \
+ /usr/include/bits/sigset.h /usr/include/sys/sysmacros.h \
+ /usr/include/alloca.h /usr/include/string.h /usr/include/strings.h \
+ /usr/include/stdio.h \
+ /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h \
+ /usr/include/libio.h /usr/include/_G_config.h \
+ /usr/include/bits/stdio_lim.h /usr/include/bits/stdio.h \
+ /software/thalia/h/sysprotos.p /usr/include/sys/time.h \
+ /usr/include/bits/time.h /usr/include/unistd.h \
+ /usr/include/bits/posix_opt.h /usr/include/bits/confname.h \
+ /usr/include/getopt.h /software/thalia/h/stdmacros.h \
+ /usr/include/ctype.h /software/thalia/h/stddefs.h \
+ /software/thalia/h/buf.h /usr/include/errno.h \
+ /usr/include/bits/errno.h /usr/include/linux/errno.h \
+ /usr/include/asm/errno.h /software/thalia/h/util.h \
+ /software/thalia/h/machine.h /software/thalia/h/memm.h \
+ /software/thalia/h/diskc.h /software/thalia/h/parse.h \
+ /software/thalia/h/netfile.h /software/thalia/h/netfile.p \
+ /software/thalia/h/util.e /usr/include/netinet/in.h \
+ /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/limits.h \
+ /usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/syslimits.h \
+ /usr/include/limits.h /usr/include/bits/posix1_lim.h \
+ /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
+ /usr/include/bits/posix2_lim.h /usr/include/stdint.h \
+ /usr/include/bits/wordsize.h /usr/include/bits/socket.h \
+ /usr/include/bits/sockaddr.h /usr/include/asm/socket.h \
+ /usr/include/asm/sockios.h /usr/include/bits/in.h \
+ /usr/include/bits/byteswap.h /software/thalia/h/util.p \
+ /software/thalia/h/buf.p /usr/include/sys/stat.h \
+ /usr/include/bits/stat.h /usr/include/malloc.h \
+ /software/thalia/gnu/include/gtk/gtk.h \
+ /software/thalia/gnu/include/gdk/gdk.h \
+ /software/thalia/gnu/include/gdk/gdktypes.h \
+ /software/thalia/gnu/include/glib.h \
+ /software/thalia/gnu/linux6-i386-std/lib/glib/include/glibconfig.h \
+ /software/thalia/gnu/include/gdk/gdkcursors.h \
+ /software/thalia/gnu/include/gdk/gdkrgb.h \
+ /software/thalia/gnu/include/gtk/gtkaccelgroup.h \
+ /software/thalia/gnu/include/gtk/gtkobject.h \
+ /software/thalia/gnu/include/gtk/gtkarg.h \
+ /software/thalia/gnu/include/gtk/gtktypeutils.h \
+ /software/thalia/gnu/include/gtk/gtktypebuiltins.h \
+ /software/thalia/gnu/include/gtk/gtkenums.h \
+ /software/thalia/gnu/include/gtk/gtkdebug.h \
+ /software/thalia/gnu/include/gtk/gtkaccellabel.h \
+ /software/thalia/gnu/include/gtk/gtklabel.h \
+ /software/thalia/gnu/include/gtk/gtkmisc.h \
+ /software/thalia/gnu/include/gtk/gtkwidget.h \
+ /software/thalia/gnu/include/gtk/gtkadjustment.h \
+ /software/thalia/gnu/include/gtk/gtkdata.h \
+ /software/thalia/gnu/include/gtk/gtkstyle.h \
+ /software/thalia/gnu/include/gtk/gtkalignment.h \
+ /software/thalia/gnu/include/gtk/gtkbin.h \
+ /software/thalia/gnu/include/gtk/gtkcontainer.h \
+ /software/thalia/gnu/include/gtk/gtkaspectframe.h \
+ /software/thalia/gnu/include/gtk/gtkframe.h \
+ /software/thalia/gnu/include/gtk/gtkarrow.h \
+ /software/thalia/gnu/include/gtk/gtkbindings.h \
+ /software/thalia/gnu/include/gtk/gtkbox.h \
+ /software/thalia/gnu/include/gtk/gtkbbox.h \
+ /software/thalia/gnu/include/gtk/gtkbutton.h \
+ /software/thalia/gnu/include/gtk/gtkcalendar.h \
+ /software/thalia/gnu/include/gtk/gtksignal.h \
+ /software/thalia/gnu/include/gtk/gtkmarshal.h \
+ /software/thalia/gnu/include/gtk/gtkcheckbutton.h \
+ /software/thalia/gnu/include/gtk/gtktogglebutton.h \
+ /software/thalia/gnu/include/gtk/gtkcheckmenuitem.h \
+ /software/thalia/gnu/include/gtk/gtkmenuitem.h \
+ /software/thalia/gnu/include/gtk/gtkitem.h \
+ /software/thalia/gnu/include/gtk/gtkclist.h \
+ /software/thalia/gnu/include/gtk/gtkhscrollbar.h \
+ /software/thalia/gnu/include/gtk/gtkscrollbar.h \
+ /software/thalia/gnu/include/gtk/gtkrange.h \
+ /software/thalia/gnu/include/gtk/gtkvscrollbar.h \
+ /software/thalia/gnu/include/gtk/gtkcolorsel.h \
+ /software/thalia/gnu/include/gtk/gtkwindow.h \
+ /software/thalia/gnu/include/gtk/gtkvbox.h \
+ /software/thalia/gnu/include/gtk/gtkpreview.h \
+ /software/thalia/gnu/include/gtk/gtkentry.h \
+ /software/thalia/gnu/include/gtk/gtkeditable.h \
+ /software/thalia/gnu/include/gtk/gtkhbox.h \
+ /software/thalia/gnu/include/gtk/gtkmain.h \
+ /software/thalia/gnu/include/gtk/gtkscale.h \
+ /software/thalia/gnu/include/gtk/gtkhscale.h \
+ /software/thalia/gnu/include/gtk/gtktable.h \
+ /software/thalia/gnu/include/gtk/gtkeventbox.h \
+ /software/thalia/gnu/include/gtk/gtkcombo.h \
+ /software/thalia/gnu/include/gtk/gtkcompat.h \
+ /software/thalia/gnu/include/gtk/gtkctree.h \
+ /software/thalia/gnu/include/gtk/gtkcurve.h \
+ /software/thalia/gnu/include/gtk/gtkdrawingarea.h \
+ /software/thalia/gnu/include/gtk/gtkdialog.h \
+ /software/thalia/gnu/include/gtk/gtkdnd.h \
+ /software/thalia/gnu/include/gtk/gtkselection.h \
+ /software/thalia/gnu/include/gtk/gtkfeatures.h \
+ /software/thalia/gnu/include/gtk/gtkfilesel.h \
+ /software/thalia/gnu/include/gtk/gtkfixed.h \
+ /software/thalia/gnu/include/gtk/gtkfontsel.h \
+ /software/thalia/gnu/include/gtk/gtknotebook.h \
+ /software/thalia/gnu/include/gtk/gtkgamma.h \
+ /software/thalia/gnu/include/gtk/gtkgc.h \
+ /software/thalia/gnu/include/gtk/gtkhandlebox.h \
+ /software/thalia/gnu/include/gtk/gtkhbbox.h \
+ /software/thalia/gnu/include/gtk/gtkhpaned.h \
+ /software/thalia/gnu/include/gtk/gtkpaned.h \
+ /software/thalia/gnu/include/gtk/gtkhruler.h \
+ /software/thalia/gnu/include/gtk/gtkruler.h \
+ /software/thalia/gnu/include/gtk/gtkhseparator.h \
+ /software/thalia/gnu/include/gtk/gtkseparator.h \
+ /software/thalia/gnu/include/gtk/gtkimage.h \
+ /software/thalia/gnu/include/gtk/gtkinputdialog.h \
+ /software/thalia/gnu/include/gtk/gtkitemfactory.h \
+ /software/thalia/gnu/include/gtk/gtkmenufactory.h \
+ /software/thalia/gnu/include/gtk/gtklayout.h \
+ /software/thalia/gnu/include/gtk/gtklist.h \
+ /software/thalia/gnu/include/gtk/gtklistitem.h \
+ /software/thalia/gnu/include/gtk/gtkmenu.h \
+ /software/thalia/gnu/include/gtk/gtkmenushell.h \
+ /software/thalia/gnu/include/gtk/gtkmenubar.h \
+ /software/thalia/gnu/include/gtk/gtkoptionmenu.h \
+ /software/thalia/gnu/include/gtk/gtkpacker.h \
+ /software/thalia/gnu/include/gtk/gtkpixmap.h \
+ /software/thalia/gnu/include/gtk/gtkplug.h \
+ /software/thalia/gnu/include/gtk/gtkprogress.h \
+ /software/thalia/gnu/include/gtk/gtkprogressbar.h \
+ /software/thalia/gnu/include/gtk/gtkradiobutton.h \
+ /software/thalia/gnu/include/gtk/gtkradiomenuitem.h \
+ /software/thalia/gnu/include/gtk/gtkrc.h \
+ /software/thalia/gnu/include/gtk/gtkscrolledwindow.h \
+ /software/thalia/gnu/include/gtk/gtkviewport.h \
+ /software/thalia/gnu/include/gtk/gtksocket.h \
+ /software/thalia/gnu/include/gtk/gtkspinbutton.h \
+ /software/thalia/gnu/include/gtk/gtkstatusbar.h \
+ /software/thalia/gnu/include/gtk/gtktearoffmenuitem.h \
+ /software/thalia/gnu/include/gtk/gtktext.h \
+ /software/thalia/gnu/include/gtk/gtkthemes.h \
+ /software/thalia/gnu/include/gtk/gtktipsquery.h \
+ /software/thalia/gnu/include/gtk/gtktoolbar.h \
+ /software/thalia/gnu/include/gtk/gtktooltips.h \
+ /software/thalia/gnu/include/gtk/gtktree.h \
+ /software/thalia/gnu/include/gtk/gtktreeitem.h \
+ /software/thalia/gnu/include/gtk/gtkvbbox.h \
+ /software/thalia/gnu/include/gtk/gtkvpaned.h \
+ /software/thalia/gnu/include/gtk/gtkvruler.h \
+ /software/thalia/gnu/include/gtk/gtkvscale.h \
+ /software/thalia/gnu/include/gtk/gtkvseparator.h ../../libgimp/gimp.h \
+ ../../libgimp/gimpfeatures.h ../../libgimp/gimpenums.h \
+ ../../libgimp/gimpfloat16.h ../../config.h
+rll.c :
+/software/thalia/h/stdtypes.h :
+/usr/include/math.h :
+/usr/include/features.h :
+/usr/include/sys/cdefs.h :
+/usr/include/gnu/stubs.h :
+/usr/include/bits/huge_val.h :
+/usr/include/bits/mathdef.h :
+/usr/include/bits/mathcalls.h :
+/usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/float.h :
+/usr/include/bits/mathinline.h :
+/usr/include/stdlib.h :
+/usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stddef.h :
+/usr/include/sys/types.h :
+/usr/include/bits/types.h :
+/usr/include/time.h :
+/usr/include/endian.h :
+/usr/include/bits/endian.h :
+/usr/include/sys/select.h :
+/usr/include/bits/select.h :
+/usr/include/bits/sigset.h :
+/usr/include/sys/sysmacros.h :
+/usr/include/alloca.h :
+/usr/include/string.h :
+/usr/include/strings.h :
+/usr/include/stdio.h :
+/usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/stdarg.h :
+/usr/include/libio.h :
+/usr/include/_G_config.h :
+/usr/include/bits/stdio_lim.h :
+/usr/include/bits/stdio.h :
+/software/thalia/h/sysprotos.p :
+/usr/include/sys/time.h :
+/usr/include/bits/time.h :
+/usr/include/unistd.h :
+/usr/include/bits/posix_opt.h :
+/usr/include/bits/confname.h :
+/usr/include/getopt.h :
+/software/thalia/h/stdmacros.h :
+/usr/include/ctype.h :
+/software/thalia/h/stddefs.h :
+/software/thalia/h/buf.h :
+/usr/include/errno.h :
+/usr/include/bits/errno.h :
+/usr/include/linux/errno.h :
+/usr/include/asm/errno.h :
+/software/thalia/h/util.h :
+/software/thalia/h/machine.h :
+/software/thalia/h/memm.h :
+/software/thalia/h/diskc.h :
+/software/thalia/h/parse.h :
+/software/thalia/h/netfile.h :
+/software/thalia/h/netfile.p :
+/software/thalia/h/util.e :
+/usr/include/netinet/in.h :
+/usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/limits.h :
+/usr/lib/gcc-lib/i386-redhat-linux/egcs-2.91.66/include/syslimits.h :
+/usr/include/limits.h :
+/usr/include/bits/posix1_lim.h :
+/usr/include/bits/local_lim.h :
+/usr/include/linux/limits.h :
+/usr/include/bits/posix2_lim.h :
+/usr/include/stdint.h :
+/usr/include/bits/wordsize.h :
+/usr/include/bits/socket.h :
+/usr/include/bits/sockaddr.h :
+/usr/include/asm/socket.h :
+/usr/include/asm/sockios.h :
+/usr/include/bits/in.h :
+/usr/include/bits/byteswap.h :
+/software/thalia/h/util.p :
+/software/thalia/h/buf.p :
+/usr/include/sys/stat.h :
+/usr/include/bits/stat.h :
+/usr/include/malloc.h :
+/software/thalia/gnu/include/gtk/gtk.h :
+/software/thalia/gnu/include/gdk/gdk.h :
+/software/thalia/gnu/include/gdk/gdktypes.h :
+/software/thalia/gnu/include/glib.h :
+/software/thalia/gnu/linux6-i386-std/lib/glib/include/glibconfig.h :
+/software/thalia/gnu/include/gdk/gdkcursors.h :
+/software/thalia/gnu/include/gdk/gdkrgb.h :
+/software/thalia/gnu/include/gtk/gtkaccelgroup.h :
+/software/thalia/gnu/include/gtk/gtkobject.h :
+/software/thalia/gnu/include/gtk/gtkarg.h :
+/software/thalia/gnu/include/gtk/gtktypeutils.h :
+/software/thalia/gnu/include/gtk/gtktypebuiltins.h :
+/software/thalia/gnu/include/gtk/gtkenums.h :
+/software/thalia/gnu/include/gtk/gtkdebug.h :
+/software/thalia/gnu/include/gtk/gtkaccellabel.h :
+/software/thalia/gnu/include/gtk/gtklabel.h :
+/software/thalia/gnu/include/gtk/gtkmisc.h :
+/software/thalia/gnu/include/gtk/gtkwidget.h :
+/software/thalia/gnu/include/gtk/gtkadjustment.h :
+/software/thalia/gnu/include/gtk/gtkdata.h :
+/software/thalia/gnu/include/gtk/gtkstyle.h :
+/software/thalia/gnu/include/gtk/gtkalignment.h :
+/software/thalia/gnu/include/gtk/gtkbin.h :
+/software/thalia/gnu/include/gtk/gtkcontainer.h :
+/software/thalia/gnu/include/gtk/gtkaspectframe.h :
+/software/thalia/gnu/include/gtk/gtkframe.h :
+/software/thalia/gnu/include/gtk/gtkarrow.h :
+/software/thalia/gnu/include/gtk/gtkbindings.h :
+/software/thalia/gnu/include/gtk/gtkbox.h :
+/software/thalia/gnu/include/gtk/gtkbbox.h :
+/software/thalia/gnu/include/gtk/gtkbutton.h :
+/software/thalia/gnu/include/gtk/gtkcalendar.h :
+/software/thalia/gnu/include/gtk/gtksignal.h :
+/software/thalia/gnu/include/gtk/gtkmarshal.h :
+/software/thalia/gnu/include/gtk/gtkcheckbutton.h :
+/software/thalia/gnu/include/gtk/gtktogglebutton.h :
+/software/thalia/gnu/include/gtk/gtkcheckmenuitem.h :
+/software/thalia/gnu/include/gtk/gtkmenuitem.h :
+/software/thalia/gnu/include/gtk/gtkitem.h :
+/software/thalia/gnu/include/gtk/gtkclist.h :
+/software/thalia/gnu/include/gtk/gtkhscrollbar.h :
+/software/thalia/gnu/include/gtk/gtkscrollbar.h :
+/software/thalia/gnu/include/gtk/gtkrange.h :
+/software/thalia/gnu/include/gtk/gtkvscrollbar.h :
+/software/thalia/gnu/include/gtk/gtkcolorsel.h :
+/software/thalia/gnu/include/gtk/gtkwindow.h :
+/software/thalia/gnu/include/gtk/gtkvbox.h :
+/software/thalia/gnu/include/gtk/gtkpreview.h :
+/software/thalia/gnu/include/gtk/gtkentry.h :
+/software/thalia/gnu/include/gtk/gtkeditable.h :
+/software/thalia/gnu/include/gtk/gtkhbox.h :
+/software/thalia/gnu/include/gtk/gtkmain.h :
+/software/thalia/gnu/include/gtk/gtkscale.h :
+/software/thalia/gnu/include/gtk/gtkhscale.h :
+/software/thalia/gnu/include/gtk/gtktable.h :
+/software/thalia/gnu/include/gtk/gtkeventbox.h :
+/software/thalia/gnu/include/gtk/gtkcombo.h :
+/software/thalia/gnu/include/gtk/gtkcompat.h :
+/software/thalia/gnu/include/gtk/gtkctree.h :
+/software/thalia/gnu/include/gtk/gtkcurve.h :
+/software/thalia/gnu/include/gtk/gtkdrawingarea.h :
+/software/thalia/gnu/include/gtk/gtkdialog.h :
+/software/thalia/gnu/include/gtk/gtkdnd.h :
+/software/thalia/gnu/include/gtk/gtkselection.h :
+/software/thalia/gnu/include/gtk/gtkfeatures.h :
+/software/thalia/gnu/include/gtk/gtkfilesel.h :
+/software/thalia/gnu/include/gtk/gtkfixed.h :
+/software/thalia/gnu/include/gtk/gtkfontsel.h :
+/software/thalia/gnu/include/gtk/gtknotebook.h :
+/software/thalia/gnu/include/gtk/gtkgamma.h :
+/software/thalia/gnu/include/gtk/gtkgc.h :
+/software/thalia/gnu/include/gtk/gtkhandlebox.h :
+/software/thalia/gnu/include/gtk/gtkhbbox.h :
+/software/thalia/gnu/include/gtk/gtkhpaned.h :
+/software/thalia/gnu/include/gtk/gtkpaned.h :
+/software/thalia/gnu/include/gtk/gtkhruler.h :
+/software/thalia/gnu/include/gtk/gtkruler.h :
+/software/thalia/gnu/include/gtk/gtkhseparator.h :
+/software/thalia/gnu/include/gtk/gtkseparator.h :
+/software/thalia/gnu/include/gtk/gtkimage.h :
+/software/thalia/gnu/include/gtk/gtkinputdialog.h :
+/software/thalia/gnu/include/gtk/gtkitemfactory.h :
+/software/thalia/gnu/include/gtk/gtkmenufactory.h :
+/software/thalia/gnu/include/gtk/gtklayout.h :
+/software/thalia/gnu/include/gtk/gtklist.h :
+/software/thalia/gnu/include/gtk/gtklistitem.h :
+/software/thalia/gnu/include/gtk/gtkmenu.h :
+/software/thalia/gnu/include/gtk/gtkmenushell.h :
+/software/thalia/gnu/include/gtk/gtkmenubar.h :
+/software/thalia/gnu/include/gtk/gtkoptionmenu.h :
+/software/thalia/gnu/include/gtk/gtkpacker.h :
+/software/thalia/gnu/include/gtk/gtkpixmap.h :
+/software/thalia/gnu/include/gtk/gtkplug.h :
+/software/thalia/gnu/include/gtk/gtkprogress.h :
+/software/thalia/gnu/include/gtk/gtkprogressbar.h :
+/software/thalia/gnu/include/gtk/gtkradiobutton.h :
+/software/thalia/gnu/include/gtk/gtkradiomenuitem.h :
+/software/thalia/gnu/include/gtk/gtkrc.h :
+/software/thalia/gnu/include/gtk/gtkscrolledwindow.h :
+/software/thalia/gnu/include/gtk/gtkviewport.h :
+/software/thalia/gnu/include/gtk/gtksocket.h :
+/software/thalia/gnu/include/gtk/gtkspinbutton.h :
+/software/thalia/gnu/include/gtk/gtkstatusbar.h :
+/software/thalia/gnu/include/gtk/gtktearoffmenuitem.h :
+/software/thalia/gnu/include/gtk/gtktext.h :
+/software/thalia/gnu/include/gtk/gtkthemes.h :
+/software/thalia/gnu/include/gtk/gtktipsquery.h :
+/software/thalia/gnu/include/gtk/gtktoolbar.h :
+/software/thalia/gnu/include/gtk/gtktooltips.h :
+/software/thalia/gnu/include/gtk/gtktree.h :
+/software/thalia/gnu/include/gtk/gtktreeitem.h :
+/software/thalia/gnu/include/gtk/gtkvbbox.h :
+/software/thalia/gnu/include/gtk/gtkvpaned.h :
+/software/thalia/gnu/include/gtk/gtkvruler.h :
+/software/thalia/gnu/include/gtk/gtkvscale.h :
+/software/thalia/gnu/include/gtk/gtkvseparator.h :
+../../libgimp/gimp.h :
+../../libgimp/gimpfeatures.h :
+../../libgimp/gimpenums.h :
+../../libgimp/gimpfloat16.h :
+../../config.h :
