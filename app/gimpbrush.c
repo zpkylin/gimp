@@ -270,12 +270,17 @@ gimp_brush_load(char *filename)
      if ((fread (data, 1, header.width * header.height * bytes, fp)) 		
 	 < header.width * header.height * bytes)
      	g_message ("GIMP brush file appears to be truncated.");
+#if LINUX 
+   /*  if(strcmp(PLATFORM, "linux6-i386-std"))*/
+  {
      for (i=0; i<header.width * header.height * bytes-1; i+=2)
        {
 	 tmp = data[i];
 	 data[i] = data[i+1];
 	 data[i+1] = tmp; 
        }
+  }
+#endif
      canvas_portion_unref (brushmask, 0, 0); 
      break;
    default:
