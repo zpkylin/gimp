@@ -443,7 +443,7 @@ pull_down_menu_rem_accel_cb(
      return;
   else 
      accel_inside_update = 1;
-  printf("Entering pull_down_menu_rem_accel_cb\n");
+  //printf("Entering pull_down_menu_rem_accel_cb\n");
 
   this_gdisp = (GDisplay *)user_data;
   item = (GtkMenuItem *)widget;
@@ -479,7 +479,7 @@ pull_down_menu_rem_accel_cb(
             related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
   }
  
-  printf("Leaving pull_down_menu_rem_accel_cb\n");
+  //printf("Leaving pull_down_menu_rem_accel_cb\n");
   accel_inside_update = 0;
 }
 
@@ -504,7 +504,7 @@ pop_up_menu_rem_accel_cb(
   else 
      accel_inside_update = 1;
 
-  printf("Entering pop_up_menu_rem_accel_cb\n");
+  //  printf("Entering pop_up_menu_rem_accel_cb\n");
   item = (GtkMenuItem *)widget;
   wid_path = strstr(gtk_widget_get_name(widget), ">/");
 
@@ -529,7 +529,7 @@ pop_up_menu_rem_accel_cb(
 
   // remove from future window pulldown menus
   menu_remove_default_accel(wid_path + 1);
-  printf("Leaving pop_up_menu_rem_accel_cb\n");
+  // printf("Leaving pop_up_menu_rem_accel_cb\n");
 
   accel_inside_update = 0;
 }
