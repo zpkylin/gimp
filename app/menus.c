@@ -766,6 +766,10 @@ menus_strip_extra_entries(const char *tmp_filename, const char *filename)
          fputs(buff, fpw);
       }
    }
+
+   fclose(fpw);
+   fclose(fpr);
+   remove(tmp_filename);
 }
 
 void
