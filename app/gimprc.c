@@ -377,6 +377,8 @@ parse_gimprc_file (char *filename)
   int status;
   char rfilename[512];
 
+  printf ("%s\n", filename);
+
   if (filename[0] != '/')
     {
       if (!home_dir)
