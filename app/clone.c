@@ -688,7 +688,10 @@ clone_draw (Tool *tool)
   PaintCore * paint_core = NULL;
 
   paint_core = (PaintCore *) tool->private;
-  
+
+
+
+
   if (tool && paint_core && clone_point_set && !expose)
     {
       static int radius; 
@@ -748,7 +751,8 @@ clone_draw (Tool *tool)
 void
 clone_clean_up ()
 {
-  if (clone_point_set)
+  if (clone_point_set && !clean_up && active_tool->state == INACTIVE
+      && clone_options->aligned == AlignYes)
     {
       clone_draw (active_tool);
 
@@ -759,11 +763,12 @@ clone_clean_up ()
 void 
 clone_undo_clean_up ()
 {
-  if (clean_up && clone_point_set)
+  if (clean_up && clone_point_set && active_tool->state == INACTIVE 
+      && clone_options->aligned == AlignYes)
     {
       expose = 0;
-      clone_draw (active_tool);
       clean_up = 0;
+      clone_draw (active_tool);
     }
   if (!clone_point_set)
     clean_up = 0;

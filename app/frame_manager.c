@@ -49,6 +49,7 @@
 #include "tools/istep.xbm"
 #include "tools/iflip.xbm"
 #include "tools/ibg.xbm"
+#include "tools/isave.xbm"
 
 #define STORE_LIST_WIDTH  	200
 #define STORE_LIST_HEIGHT	150 
@@ -93,6 +94,7 @@ static gint frame_manager_store_deselect_update (GtkWidget *, gpointer);
 static gint frame_manager_store_step_button (GtkWidget *, GdkEvent *);
 static gint frame_manager_store_flip_button (GtkWidget *, GdkEvent *);
 static gint frame_manager_store_bg_button (GtkWidget *, GdkEvent *);
+static gint frame_manager_store_save_button (GtkWidget *, GdkEvent *);
 static void frame_manager_store_delete (store_t*, frame_manager_t*, char);
 static void frame_manager_store_unselect (frame_manager_t *fm);
 static void frame_manager_store_load (store_t *item, frame_manager_t*);
@@ -102,6 +104,7 @@ static void frame_manager_store_new_option (GtkWidget *, gpointer);
 static void frame_manager_flip_redraw (store_t *item);
 static void frame_manager_step_redraw (store_t *item);
 static void frame_manager_bg_redraw (store_t *item);
+static void frame_manager_save_redraw (store_t *item);
 static void frame_manager_save (GImage *gimage, frame_manager_t *fm);
 
 static gint frame_manager_transparency (GtkAdjustment *, gpointer);
@@ -159,6 +162,7 @@ static store_t store[STORE_MAX_NUM];
 static GdkPixmap *istep_pixmap[3] = { NULL, NULL, NULL };
 static GdkPixmap *iflip_pixmap[3] = { NULL, NULL, NULL };
 static GdkPixmap *ibg_pixmap[3] = { NULL, NULL, NULL };
+static GdkPixmap *isave_pixmap[3] = { NULL, NULL, NULL };
 static int s_x, s_y, e_x, e_y;
 static char onionskin=0;
 static int NEW_OPTION=0;
@@ -634,7 +638,7 @@ step_forward (frame_manager_t *fm)
 		{
 		  fm->gdisplay->gimage = gimage;
 		  fm->gdisplay->ID = fm->gdisplay->gimage->ID;
-		  dont_change_frame = 0; 
+		  dont_change_frame = 0;
 		  frame_manager_store_add (fm->gdisplay->gimage, fm, num);
 		  dont_change_frame = 1; 
 		  frame_manager_link_forward (fm);
@@ -1333,7 +1337,7 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
   store_t *item;
   GList *item_list = NULL; 
   char frame[20];
-  char selected, flip, bg, flag=0;
+  char selected, flip, bg, flag=0, save;
 
   if (!gimage || num<0)
     return;
@@ -1349,6 +1353,7 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
       strcpy (frame, frame_manager_get_frame (gimage));
       frame_manager_store_unselect (fm);
       gtk_list_select_item (GTK_LIST (fm->store_list), num);
+      item->save = item->gimage->dirty;
     }
   else
     if (g_slist_length (fm->stores) <= num)
@@ -1369,6 +1374,7 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
 	selected = item->selected; 
 	flip = item->flip; 
 	bg = item->bg;
+	save = gimage->dirty;
 	if (!item->active)
 	  {
 	    selected = 1;
@@ -1386,9 +1392,11 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
 	item->selected = selected; 
 	item->flip = flip; 
 	item->bg = bg; 
+	item->save = save; 
 	fm->stores = g_slist_insert (fm->stores, item, num);
 	gtk_list_insert_items (GTK_LIST (fm->store_list),
 	    g_list_append(item_list, item->list_item), num);
+	frame_manager_save_redraw (item);
 
 	if (selected)
 	  {
@@ -1421,6 +1429,7 @@ frame_manager_store_new (GImage *gimage, char active)
       item->step = 1;
       item->flip = 1;
       item->bg = 0;
+      item->save = 0;
       item->selected = 0;
       item->active = 1;
     }
@@ -1429,6 +1438,7 @@ frame_manager_store_new (GImage *gimage, char active)
       item->step = 0;
       item->flip = 0;
       item->bg = 0;
+      item->save = 0;
       item->selected = 0;
       item->active = 0;
     }
@@ -1491,6 +1501,20 @@ frame_manager_store_new (GImage *gimage, char active)
   gtk_object_set_user_data (GTK_OBJECT (item->ibg), item);
   gtk_container_add (GTK_CONTAINER (alignment), item->ibg);
   gtk_widget_show (item->ibg);
+  
+  alignment = gtk_alignment_new (0.5, 0.5, 0.0, 0.0);
+  gtk_box_pack_start (GTK_BOX (hbox), alignment, FALSE, TRUE, 2);
+  gtk_widget_show (alignment);
+  
+  item->isave = gtk_drawing_area_new ();
+  gtk_drawing_area_size (GTK_DRAWING_AREA (item->isave), isave_width, isave_height);
+  gtk_widget_set_events (item->isave, BUTTON_EVENT_MASK);
+  gtk_signal_connect (GTK_OBJECT (item->isave), "event",
+      (GtkSignalFunc) frame_manager_store_save_button,
+      item);
+  gtk_object_set_user_data (GTK_OBJECT (item->isave), item);
+  gtk_container_add (GTK_CONTAINER (alignment), item->isave);
+  gtk_widget_show (item->isave);
   
   /*  the channel name label */
   if (active)
@@ -2049,6 +2073,26 @@ frame_manager_store_bg_button (GtkWidget *w, GdkEvent *event)
   return 0;
 }
 
+static gint 
+frame_manager_store_save_button (GtkWidget *w, GdkEvent *event)
+{
+  store_t *item, *i;
+  GList *list=frame_manager->stores;
+  
+  item = (store_t*) gtk_object_get_user_data (GTK_OBJECT (w));
+
+  switch (event->type)
+    {
+    case GDK_EXPOSE:
+      frame_manager_save_redraw (item);
+      return 1;
+    default:
+      break;
+    }
+  return 0;
+}
+
+
 static void 
 frame_manager_step_redraw (store_t *item)
 {
@@ -2178,6 +2222,7 @@ frame_manager_flip_redraw (store_t *item)
       gdk_window_clear (item->iflip->window);
     }
 }
+
 static void 
 frame_manager_bg_redraw (store_t *item)
 {
@@ -2241,6 +2286,72 @@ frame_manager_bg_redraw (store_t *item)
   else
     {
       gdk_window_clear (item->ibg->window);
+    }
+}
+
+static void 
+frame_manager_save_redraw (store_t *item)
+{
+  GdkPixmap *pixmap;
+  GdkColor *color;
+  GtkStateType state;
+  int visible;
+
+  state = item->list_item->state;
+
+  if (GTK_WIDGET_IS_SENSITIVE (item->list_item))
+    {
+      if (state == GTK_STATE_SELECTED)
+	color = &item->isave->style->bg[GTK_STATE_SELECTED];
+      else
+	color = &item->isave->style->white;
+    }
+  else
+    color = &item->isave->style->bg[GTK_STATE_INSENSITIVE];
+
+  gdk_window_set_background (item->isave->window, color);
+
+
+  if (item->save)
+    {
+      if (!isave_pixmap[NORMAL])
+	{
+	  isave_pixmap[NORMAL] =
+	    gdk_pixmap_create_from_data (item->isave->window,
+		(gchar*) isave_bits, isave_width, isave_height, -1,
+		&item->isave->style->fg[GTK_STATE_NORMAL],
+		&item->isave->style->white);
+	  isave_pixmap[SELECTED] =
+	    gdk_pixmap_create_from_data (item->isave->window,
+		(gchar*) isave_bits, isave_width, isave_height, -1,
+		&item->isave->style->fg[GTK_STATE_SELECTED],
+		&item->isave->style->bg[GTK_STATE_SELECTED]);
+	  isave_pixmap[INSENSITIVE] =
+	    gdk_pixmap_create_from_data (item->isave->window,
+		(gchar*) isave_bits, isave_width, isave_height, -1,
+
+		&item->isave->style->fg[GTK_STATE_INSENSITIVE],
+		&item->isave->style->bg[GTK_STATE_INSENSITIVE]);
+	}
+
+      if (GTK_WIDGET_IS_SENSITIVE (item->list_item))
+	{
+	  if (state == GTK_STATE_SELECTED)
+	    pixmap = isave_pixmap[SELECTED];
+	  else
+	    pixmap = isave_pixmap[NORMAL];
+	}
+      else
+	pixmap = isave_pixmap[INSENSITIVE];
+
+
+      gdk_draw_pixmap (item->isave->window,
+	  item->isave->style->black_gc,
+	  pixmap, 0, 0, 0, 0, isave_width, isave_height);
+    }
+  else
+    {
+      gdk_window_clear (item->isave->window);
     }
 }
 
@@ -3179,5 +3290,31 @@ warning_ok (GtkWidget *w, gpointer client_pointer)
     gtk_widget_hide (frame_manager->warning);
 
   return TRUE;
+}
+
+void
+frame_manager_set_dirty_flag (int flag)
+{
+  store_t *item;
+  int i;
+  GSList *item_list;
+
+
+  if (!frame_manager)
+  return;
+
+  item_list =  (GList*) GTK_LIST(frame_manager->store_list)->selection;
+
+  if (item_list)
+    {
+
+      i = gtk_list_child_position (GTK_LIST (frame_manager->store_list), item_list->data);
+      item = (store_t*) g_slist_nth (frame_manager->stores, i)->data;
+
+
+      item->save = flag ? 0 : item->gimage->dirty; 
+
+      frame_manager_save_redraw (item); 
+    }
 }
 
