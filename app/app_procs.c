@@ -549,7 +549,7 @@ app_init (void)
   paint_funcs_area_setup ();
 
 
-
+  layout_restore();
 }
 
 int
@@ -566,6 +566,10 @@ app_exit_finish (void)
   is_app_exit_finish_done = TRUE;
 
   message_handler = CONSOLE;
+
+  // do this here so calls to destroy windows will be ignored from the layout's 
+  // point of view.
+  layout_freeze_current_layout();
 
   lc_dialog_free ();
   gdisplays_delete ();

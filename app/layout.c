@@ -1,6 +1,25 @@
 #include <gtk/gtk.h>
 #include "layout.h"
 #include "gimprc.h"
+#include "gradient.h"
+#include "palette.h"
+#include "zoom.h"
+#include "tools.h"
+#include "gimpbrushlist.h"
+#include "layers_dialog.h"
+
+
+static int g_ignore_further_updates = 0;
+
+void layout_freeze_current_layout()
+{
+   g_ignore_further_updates = 1;
+}
+
+void layout_unfreeze_current_layout()
+{
+   g_ignore_further_updates = 0;
+}
 
 static void 
 layout_configure_eventx(
@@ -9,6 +28,9 @@ layout_configure_eventx(
    gpointer user_data)
 {
    int dummy;
+   if (g_ignore_further_updates)
+      return;
+
    if (widget->window)
       gdk_window_get_position(widget->window, (int *)user_data, &dummy);
 }
@@ -20,6 +42,8 @@ layout_configure_eventy(
    gpointer user_data)
 {
    int dummy;
+   if (g_ignore_further_updates)
+      return;
    if (widget->window)
       gdk_window_get_position(widget->window, &dummy, (int *)user_data);
 }
@@ -29,6 +53,8 @@ layout_show_event(
    GtkWidget *wid,
    gpointer user_data)
 {
+   if (g_ignore_further_updates)
+      return;
    *((int *)user_data) = 1;
 }
 
@@ -37,6 +63,8 @@ layout_hide_event(
    GtkWidget *wid,
    gpointer user_data)
 {
+   if (g_ignore_further_updates)
+      return;
    *((int *)user_data) = 0;
 }
 
@@ -45,6 +73,12 @@ layout_save()
 {
    GList *save = NULL;
    GList *dummy = NULL;
+
+   // this is kind of a hack.  Since the images are automatically placed 10 units
+   // past the previous, we want to back up when we save so the image doesn't drift
+   // downward everytime we run gimp
+   image_x -= 10;
+   image_y -= 10;
 
    save = g_list_append(save, "toolbox-position");
    save = g_list_append(save, "info-position");
@@ -63,7 +97,6 @@ layout_save()
    save = g_list_append(save, "tooloptions-visible");
    save = g_list_append(save, "zoomwindow-visible");
    save = g_list_append(save, "brushselect-visible");
-   save = g_list_append(save, "brushedit-visible");
    save = g_list_append(save, "layerchannel-visible");
    save = g_list_append(save, "color-visible");
    save = g_list_append(save, "palette-visible");
@@ -86,6 +119,10 @@ layout_connect_window_visible(GtkWidget *widget, int *visible)
    gtk_signal_connect (GTK_OBJECT (widget), "hide",
 		      GTK_SIGNAL_FUNC (layout_hide_event),
 		      visible);
+   gtk_signal_connect (GTK_OBJECT (widget), "unmap",
+		      GTK_SIGNAL_FUNC (layout_hide_event),
+		      visible);
+   gtk_widget_add_events(widget, GDK_VISIBILITY_NOTIFY_MASK);
 }
 
 void 
@@ -97,5 +134,37 @@ layout_connect_window_position(GtkWidget *widget, int *x_var, int *y_var)
    gtk_signal_connect (GTK_OBJECT (widget), "configure-event",
 		      GTK_SIGNAL_FUNC (layout_configure_eventy),
 		      y_var);
+}
+
+void layout_restore()
+{
+   // go to each variable.  If the window should be visible, create it.
+   if (tool_options_visible) {
+      tools_options_dialog_show();
+   }
+
+   if (zoom_window_visible) {
+      zoom_control_open();
+   }
+
+   if (brush_select_visible) {
+      create_brush_dialog ();
+   }
+
+   if (layer_channel_visible) {
+      lc_dialog_create (-1);
+   }
+
+   if (color_visible) {
+   }
+
+   if (palette_visible) {
+      palette_create();
+   }
+
+   if (gradient_visible) {
+      grad_create_gradient_editor();
+   }
+
 }
 
