@@ -1043,7 +1043,7 @@ static gint save_image (
 	  aux_name[i] = &a_n[i*aux_name_size];
 	strcpy(aux_name[0], "fur"); 
 	for(i=0; i<header.auxChans; i++){
-	      strcpy(aux_name[i+1], gimp_layer_get_name(layers[i]));
+	      strcpy(aux_name[i+1], gimp_layer_get_name(layers[header.auxChans-1-i]));
 	} 
 	IM_SetAuxChannelIds(&header, header.auxChans, aux_name); 	
 	free(aux_name);
@@ -1674,8 +1674,7 @@ static gint save_image (
 #endif
   return_args = IM_CloseFile(filehandle);
  
- printf ("---> %d\n",return_args);  
-  return return_args;
+  return return_args>0 ? 1 : -1;
 }
 
 
