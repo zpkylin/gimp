@@ -113,7 +113,7 @@ static GtkItemFactoryEntry image_entries[] =
   { "/View/Zoom Bookmarks/2", "<control>2", view_zoom_bookmark1_cb, 0},
   { "/View/Zoom Bookmarks/3", "<control>3", view_zoom_bookmark2_cb, 0},
   { "/View/Zoom Bookmarks/4", "<control>4", view_zoom_bookmark3_cb, 0},
-//  { "/View/Zoom Bookmarks/5", "<control>5", view_zoom_bookmark4_cb, 0},
+  { "/View/Zoom Bookmarks/5", "<control>5", view_zoom_bookmark4_cb, 0},
   { "/View/Zoom Bookmarks/Load", NULL, view_zoom_bookmark_load_cb, 0},
   { "/View/Zoom Bookmarks/Save", NULL, view_zoom_bookmark_save_cb, 0},
   { "/View/Zoom In", "equal", view_zoomin_cmd_callback, 0 },
