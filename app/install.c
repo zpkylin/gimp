@@ -415,7 +415,7 @@ install_run (InstallCallback callback)
   gtk_text_insert (GTK_TEXT (text), font_strong, NULL, NULL, "User Installation Log\n\n", -1);
 
   /*  Generate output  */
-  sprintf (buffer, "%s/user_install", DATADIR);
+  sprintf (buffer, "%s/user_install", BINDIR);
   if ((err = stat (buffer, &stat_buf)) != 0)
     {
       gtk_text_insert (GTK_TEXT (text), font, NULL, NULL, buffer, -1);
@@ -433,7 +433,7 @@ install_run (InstallCallback callback)
 
   if (executable == TRUE)
     {
-      sprintf (buffer, "%s/user_install %s %s", DATADIR, DATADIR,
+      sprintf (buffer, "%s/user_install %s %s", BINDIR, DATADIR,
 	       gimp_directory ());
       if ((pfp = popen (buffer, "r")) != NULL)
 	{

@@ -162,10 +162,10 @@ query ()
 #endif
 
       gimp_install_procedure (load_routine_str,
-	  load_does_what_str, 
-	  load_does_what_sentence_str,
-	  "Calvin Williamson",
-	  "Calvin Williamson",
+		      load_does_what_str, 
+		      load_does_what_sentence_str,
+		      "Calvin Williamson",
+		      "Calvin Williamson",
 	  "1998",
 	  load_menu_str,
 	  NULL,
@@ -204,7 +204,7 @@ run (char    *name,
     int     *nreturn_vals,
     GParam **return_vals)
 {
-  static GParam values[2];
+      	static GParam values[2];
   GRunModeType run_mode;
   gint32 image_ID;
   GStatusType status = STATUS_SUCCESS;
@@ -712,30 +712,30 @@ static gint save_image (
     gint32 drawable_ID
 		       ) 
 {
-  guchar          *fg_b, **fg_buffer=NULL;
-  guchar          *bg_b, **bg_buffer=NULL;
-  guchar          *aux_buffer1, **aux_buffer=NULL;
-  GDrawable       *fg_drawable;
-  GDrawable       *bg_drawable;
-  GDrawable       *chan_drawable;
+  guchar          *fg_b=NULL, **fg_buffer=NULL;
+  guchar          *bg_b=NULL, **bg_buffer=NULL;
+  guchar          *aux_buffer1=NULL, **aux_buffer=NULL;
+  GDrawable       *fg_drawable=NULL;
+  GDrawable       *bg_drawable=NULL;
+  GDrawable       *chan_drawable=NULL;
   gint            y;
   gint            i;
   gint            j;
   gint            k;
-  GPixelRgn       *fg_pixel_rgn;
-  GPixelRgn       *bg_pixel_rgn;
-  GPixelRgn       *chan_pixel_rgn;
-  char            *temp;
-  guchar          **fg_bptr;
-  guint16         **fg_sptr;
-  gfloat          **fg_fptr;
-  guchar          **bg_bptr;
-  guint16         **bg_sptr;
-  gfloat          **bg_fptr;
-  guchar          **aux_bptr;
-  guint16         **aux_sptr;
-  gfloat          **aux_fptr;
-  STRING          fmtString;
+  GPixelRgn       *fg_pixel_rgn=NULL;
+  GPixelRgn       *bg_pixel_rgn=NULL;
+  GPixelRgn       *chan_pixel_rgn=NULL;
+  char            *temp=NULL;
+  guchar          **fg_bptr=NULL;
+  guint16         **fg_sptr=NULL;
+  gfloat          **fg_fptr=NULL;
+  guchar          **bg_bptr=NULL;
+  guint16         **bg_sptr=NULL;
+  gfloat          **bg_fptr=NULL;
+  guchar          **aux_bptr=NULL;
+  guint16         **aux_sptr=NULL;
+  gfloat          **aux_fptr=NULL;
+  char            fmtString[256];
   int	          bytes_per_channel;
   gint            width;
   gint            height;
@@ -743,20 +743,20 @@ static gint save_image (
   gint            row;
   gint            fg_rowbytes, bg_rowbytes;
   gint            strip_height;
-  gint32          *channels;
-  gint32          *layers;
+  gint32          *channels=NULL;
+  gint32          *layers=NULL;
   gint            fg_nlayers, bg_nlayers, nlayers; 
   gint            nchannels;
   gint            aux_rowbytes;
   gint            channel_size;
-  char            *bg_name;
+  char            *bg_name=NULL;
   gint		  fg_bpp=0, bg_bpp=0;
   gint            fg_cpp=0, bg_cpp=0;
 
   /* Rhythm and Hues file stuff */
   WF_I_HEAD       header;
   WF_I_FILE*      filehandle;
-  char            *a_n, **aux_name; 
+  char            *a_n=NULL, **aux_name=NULL; 
   int		aux_name_tsize=300, aux_name_size=30; 
 
 #ifdef _DOFILM_
@@ -771,6 +771,7 @@ static gint save_image (
 
 
   strip_height = gimp_tile_height();
+
   channels = gimp_image_get_channels (image_ID, &nchannels);
   layers = gimp_image_get_layers (image_ID, &nlayers);
   bg_name = gimp_layer_get_name(layers[nlayers-1]);
@@ -780,13 +781,13 @@ static gint save_image (
 
   /* Get the drawable from gimp and init the region we need */
   bg_pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn) * bg_nlayers);
-  if (!bg_pixel_rgn)
+  if (!bg_pixel_rgn && bg_nlayers)
     {
       g_warning("rll save_image: couldnt allocate\n");
       return -1;
     }
   fg_pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn) * fg_nlayers);
-  if (!fg_pixel_rgn)
+  if (!fg_pixel_rgn && fg_nlayers)
     {
       g_warning("rll save_image: couldnt allocate\n");
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -809,23 +810,27 @@ static gint save_image (
 
   /* Stuff the rll header with information.*/
   sprintf(fmtString, "f%dx%d", bg_drawable->width, bg_drawable->height);
+  printf ("%d %d\n", bg_drawable->width, bg_drawable->height); 
   if (!strcmp(bg_name, "fur")) 
-    if (IM_StuffHeader(&header, fmtString, "fur", "RLL") == -1)
-      {
-	g_warning("rll save_image: couldnt allocate\n");
-	if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
-	if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
-	return -1;
-      }
-    else if (IM_StuffHeader(&header, fmtString, "gimp", "RLL") == -1)
-      {
-	g_warning("rll save_image: couldnt allocate\n");
-	if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
-	if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
-	return -1;
-      }
+  {
+	  if (IM_StuffHeader(&header, fmtString, "fur", "RLL") == -1)
+	  {
+		  g_warning("rll save_image: couldnt allocate\n");
+		  if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+		  if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+		  return -1;
+	  }
+  }
+  else if (IM_StuffHeader(&header, fmtString, "gimp", "RLL") == -1)
+  {
+	  g_warning("rll save_image: couldnt allocate\n");
+	  if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+	  if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+	  return -1;
+  }
 
 
+  scanf ("%d"); 
 
   /* Figure out some header info and 
      channel depth from gimp drawable type */	
@@ -1012,8 +1017,8 @@ static gint save_image (
       return -1;
     } 
 
-#if 0	
-  printf("type is %d\n", gimp_drawable_type(drawable_ID));
+#if 1	
+  printf("type is %d %d %d %d\n", gimp_drawable_type(drawable_ID), fg_cpp, bg_cpp, bytes_per_channel);
   printf("imagechans is %d\n", header.imageChans);
   printf("mattechans is %d\n", header.matteChans);
   printf("mattechans is %d\n", header.auxChans);
@@ -1212,7 +1217,11 @@ static gint save_image (
 	  }
   }
 
+  scanf ("%d");
+
+  printf ("LALA \n"); 
   filehandle = IM_OpenFFile ( filename, &header, "w", FALSE );
+  printf ("LALAL\n"); 
   if(!filehandle)
     {
       g_warning("rll save_image: cant open file %s\n", filename); 	
@@ -1320,7 +1329,7 @@ static gint save_image (
     }
 
   fg_bptr = (guchar**) g_malloc (fg_nlayers * sizeof(guchar*));
-  if(!fg_bptr)
+  if(!fg_bptr && fg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1341,7 +1350,7 @@ static gint save_image (
       return -1;
     }
   fg_sptr = (guint16**) g_malloc (fg_nlayers * sizeof(guint16*));
-  if(!fg_sptr)
+  if(!fg_sptr && fg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1363,7 +1372,7 @@ static gint save_image (
       return -1;
     }
   fg_fptr = (gfloat**) g_malloc (fg_nlayers * sizeof(gfloat*));
-  if(!fg_fptr)
+  if(!fg_fptr && fg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1387,7 +1396,7 @@ static gint save_image (
     }
 
   bg_bptr = (guchar**) g_malloc (bg_nlayers * sizeof(guchar*));
-  if(!bg_bptr)
+  if(!bg_bptr && bg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1411,7 +1420,7 @@ static gint save_image (
       return -1;
     }
   bg_sptr = (guint16**) g_malloc (bg_nlayers * sizeof(guint16*));
-  if(!bg_bptr)
+  if(!bg_sptr && bg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1436,7 +1445,7 @@ static gint save_image (
       return -1;
     }
   bg_fptr = (gfloat**) g_malloc (bg_nlayers * sizeof(gfloat*));
-  if(!bg_fptr)
+  if(!bg_fptr && bg_nlayers)
     {
       g_warning("rll save_image: cant allocate scanline strip buffer\n"); 	
       if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
@@ -1662,7 +1671,6 @@ static gint save_image (
   if (aux_sptr) g_free (aux_sptr);
   if (aux_bptr) g_free (aux_bptr);
   if (aux_fptr) g_free (aux_fptr);
-  IM_CloseFile (filehandle);
   if (fg_b) g_free (fg_b);
   if (fg_buffer) g_free (fg_buffer);
   if (bg_b) g_free (bg_b);

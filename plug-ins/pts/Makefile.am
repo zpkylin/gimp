@@ -28,9 +28,9 @@ LDADD = \
 	-L/software/thalia/lib/$(PLATFORM) \
 	-L/software/thalia/lib \
 	$(X_LIBS) \
-        -lXpm -lUI -lXrh -lvk -lvkmsg -lvkhelp -lXpm -lGLw -lSgm \
-	-lXm -ltt -lGLw -lSgm -lXm -lXt -lGL -lX11 -lgen -lm  -lpts \
-	-lbuf -lclass -ldm -lmi -ltxt -lio -lc -lutil -lm /usr/lib32/libimage.a
+        -lXpm -lUI -lXrh -lvk -lvkhelp -lXpm -lGLw \
+	-lXm -lXmu -lGLw -lXm -lXmu -lXt -lGL -lX11 -lm  -lpts \
+	-lbuf -lclass -ldm -lmi -ltxt -lio -lc -lutil -lm 
 
 DEPS = \
 	$(top_builddir)/libgimp/libgimpui.la	\

@@ -20,9 +20,9 @@ INCLUDES = \
 LDADD = \
 	$(top_builddir)/libgimp/libgimp.la	\
         -L/software/thalia/lib/$(PLATFORM) -L/software/thalia/lib -lhu -lpts -lbuf -lclass -ldm \
-	-ltxt -lio -lutil /usr/lib32/libimage.a \
+	-ltxt -lio -lutil  \
 	$(X_LIBS)						\
-	-lc
+	-lc /usr/lib/libutil.a 
 
 DEPS = \
 	$(top_builddir)/libgimp/libgimpui.la			\

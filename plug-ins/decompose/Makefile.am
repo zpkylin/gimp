@@ -1,6 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 pluginlibdir = $(gimpplugindir)/plug-ins
+ 
 
 pluginlib_PROGRAMS = decompose
 

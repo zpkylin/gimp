@@ -33,7 +33,7 @@
 #include "interface.h"
 #include "menus.h"
 #include "tools.h"
-#include "device.h"
+#include "devices.h"
 
 #include "pixmaps.h"
 

@@ -1048,7 +1048,7 @@ file_open (char *filename, char* raw_filename)
   else if ((gimage = gimage_get_ID (gimage_ID)) != NULL && load_image)
     {
       gimage_add_layer (load_image, gimage->active_layer, -1);
-      gdisplays_update_title (load_image->ID);
+      displays_update_title (load_image->ID);
       gdisplays_flush ();
 
       gimage_delete (gimage); 
@@ -1157,7 +1157,7 @@ file_save (int   image_ID,
   return_vals = procedural_db_execute (proc->name, args);
   return_val = (return_vals[0].value.pdb_int == PDB_SUCCESS);
 
-  if (return_val && !save_layer && !save_copy)
+  if (!return_val && !save_layer && !save_copy)
     {
       /* copy tmp back to real file */
       if (enable_tmp_saving)
@@ -1373,7 +1373,7 @@ file_save_ok_callback (GtkWidget *w,
     {
       gtk_widget_set_sensitive (GTK_WIDGET (fs), FALSE);
 	
-      if (file_save (image_ID, filename, raw_filename))
+      if (!(file_save (image_ID, filename, raw_filename)))
 	{
 	  file_dialog_hide (client_data);
 	  gtk_widget_set_sensitive (GTK_WIDGET (fs), TRUE);
@@ -1481,7 +1481,7 @@ file_overwrite_yes_callback (GtkWidget *w,
   gtk_widget_destroy (overwrite_box->obox);
 
   if (((gimage = gimage_get_ID (image_ID)) != NULL) &&
-      file_save (image_ID, overwrite_box->full_filename, overwrite_box->raw_filename))
+      !(file_save (image_ID, overwrite_box->full_filename, overwrite_box->raw_filename)))
     {
       image_ID = 0;
       file_dialog_hide (filesave);

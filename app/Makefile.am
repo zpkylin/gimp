@@ -357,6 +357,7 @@ EXTRA_DIST = \
 AM_CPPFLAGS = \
 	-DLIBDIR=\""$(gimpplugindir)"\"	\
 	-DDATADIR=\""$(gimpdatadir)"\"	\
+	-DBINDIR=\""$(bindir)"\"	\
 	-DGIMPDIR=\""$(gimpdir)"\"	\
 	-DPRECISION_CONFIG=$(precision)	\
 	-DREGEX_MALLOC

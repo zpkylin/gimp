@@ -5,7 +5,7 @@ CC = $(CCC)
 
 pluginlibdir = $(gimpplugindir)/plug-ins
 
-pluginlib_PROGRAMS = rll 
+pluginlib_PROGRAMS = rll
 
 rll_SOURCES = \
 	rll.c   
@@ -19,7 +19,7 @@ INCLUDES = \
 LDADD = \
 	$(top_builddir)/libgimp/libgimpui.la	\
 	$(top_builddir)/libgimp/libgimp.la	\
-    	-L/software/thalia/lib/$(PLATFORM) -L/software/thalia/lib32  -lbuf -lclass -ltxt -lio -limage -lutil -lm \
+    	-L/software/thalia/lib/$(PLATFORM) -L/software/thalia/lib32  -lbuf -lclass -ltxt -lio -lutil -lm \
 	$(X_LIBS)				\
 	-lc
 
