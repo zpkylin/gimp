@@ -25,11 +25,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <unistd.h>
+
+#ifdef HAVE_IPC_H
+#include <sys/ipc.h>
+#endif
+
+#ifdef HAVE_SHM_H
+#include <sys/shm.h>
+#endif
 
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
@@ -114,7 +120,7 @@ gimp_main (int   argc,
       return 0;
     }
 
-  g_set_message_handler (&gimp_message_func);
+  g_set_message_handler ((GPrintFunc) gimp_message_func);
 
   temp_proc_ht = g_hash_table_new (&g_str_hash, &g_str_equal);
 
@@ -122,14 +128,16 @@ gimp_main (int   argc,
   return 0;
 }
 
-void
+void G_GNUC_NORETURN
 gimp_quit ()
 {
   if (PLUG_IN_INFO.quit_proc)
     (* PLUG_IN_INFO.quit_proc) ();
 
+#ifdef HAVE_SHM_H
   if ((_shm_ID != -1) && _shm_addr)
     shmdt ((char*) _shm_addr);
+#endif
 
   gp_quit_write (_writefd);
   exit (0);
@@ -894,7 +902,7 @@ gimp_signal (int signum)
     case SIGBUS:
     case SIGSEGV:
     case SIGFPE:
-      g_debug (progname);
+      g_on_error_query (progname);
       break;
     default:
       break;
@@ -1034,6 +1042,7 @@ gimp_config (GPConfig *config)
   _color_cube[2] = config->color_cube[2];
   _color_cube[3] = config->color_cube[3];
 
+#ifdef HAVE_SHM_H
   if (_shm_ID != -1)
     {
       _shm_addr = (guchar*) shmat (_shm_ID, 0, 0);
@@ -1041,6 +1050,7 @@ gimp_config (GPConfig *config)
       if (_shm_addr == (guchar*) -1)
 	g_error ("could not attach to gimp shared memory segment\n");
     }
+#endif
 }
 
 static void

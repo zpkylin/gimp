@@ -116,6 +116,9 @@ Precision default_precision = PRECISION_U8;
 int       show_tips = TRUE;
 int       last_tip = -1;
 int       show_tool_tips = TRUE;
+float     monitor_xres = 72.0;
+float     monitor_yres = 72.0;
+int       using_xserver_resolution = FALSE;
 
 static int get_next_token (void);
 static int peek_next_token (void);
@@ -286,6 +289,7 @@ parse_gimprc ()
 {
   char libfilename[512];
   char filename[512];
+  char *gimp_data_dir;
   char *gimp_dir;
 
   parse_info.buffer = g_new (char, 4096);
@@ -296,7 +300,11 @@ parse_gimprc ()
   gimp_dir = gimp_directory ();
   add_gimp_directory_token (gimp_dir);
 
-  sprintf (libfilename, "%s/gimprc", DATADIR);
+  if ((gimp_data_dir = getenv ("GIMP_DATADIR")) != NULL)
+    sprintf (libfilename, "%s/gimprc", gimp_data_dir);
+  else
+    sprintf (libfilename, "%s/gimprc", DATADIR);
+
   app_init_update_status("Resource configuration", libfilename, -1);
   parse_gimprc_file (libfilename);
 
@@ -1334,7 +1342,7 @@ parse_menu_path (gpointer val1p,
     goto error;
   token = get_next_token ();
 
-  menus_add_path (menu_path, accelerator);
+  /* Sort of silly, we do nothing here - same as 1.1 */
 
   return OK;
 

@@ -12,9 +12,7 @@ scriptdata =
 
 pluginlibdir = $(gimpplugindir)/plug-ins
 
-EXTRA_DIST = build.in
-
-CPPFLAGS = \
+AM_CPPFLAGS = \
         -DPRECISION_CONFIG=$(precision)
 
 INCLUDES = \

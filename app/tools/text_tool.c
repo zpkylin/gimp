@@ -449,7 +449,7 @@ text_create_dialog (TextTool *text_tool)
   gtk_widget_set_usize (list_box, FONT_LIST_WIDTH, FONT_LIST_HEIGHT);
   gtk_box_pack_start (GTK_BOX (top_hbox), list_box, TRUE, TRUE, 0);
   text_tool->font_list = gtk_list_new ();
-  gtk_container_add (GTK_CONTAINER (list_box), text_tool->font_list);
+  gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW (list_box), text_tool->font_list);
   gtk_list_set_selection_mode (GTK_LIST (text_tool->font_list), GTK_SELECTION_BROWSE);
   gtk_container_set_focus_vadjustment (GTK_CONTAINER (text_tool->font_list),
 				       gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (list_box)));
@@ -798,7 +798,7 @@ text_foundry_callback (GtkWidget *w,
   the_text_tool->foundry = (long) client_data;
   text_validate_combo (the_text_tool, 0);
 
-  if (text_load_font (the_text_tool))
+  if (!text_load_font (the_text_tool))
     the_text_tool->foundry = old_value;
 }
 

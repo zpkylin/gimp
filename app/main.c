@@ -110,9 +110,6 @@ main (int argc, char **argv)
   gtk_set_locale ();
   setlocale(LC_NUMERIC, "C");  /* must use dot, not comma, as decimal separator */
   gtk_init (&argc, &argv);
-  gtk_accelerator_table_set_mod_mask (NULL, GDK_SHIFT_MASK |
-                                            GDK_CONTROL_MASK |
-                                            GDK_MOD1_MASK);
 
   display_name = gdk_get_display ();
   display_env = g_new (gchar, strlen (display_name) + 9);
@@ -247,7 +244,7 @@ main (int argc, char **argv)
   if (show_version || show_help)
     exit (0);
 
-  g_set_message_handler (&message_func);
+  g_set_message_handler ((GPrintFunc) &message_func);
 
   /* Handle some signals */
   signal (SIGHUP, on_signal);

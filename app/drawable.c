@@ -180,7 +180,10 @@ drawable_merge_shadow  (
   gimage = drawable_gimage (drawable);
   g_return_if_fail (gimage != NULL);
 
-  
+  /*  If no shadow exists, simply return...this call is useless  */
+  if (gimage->shadow == NULL)
+    return;
+
   /*  A useful optimization here is to limit the update to the
    *  extents of the selection mask, as it cannot extend beyond
    *  them.

@@ -314,11 +314,12 @@ EXTRA_DIST = \
 	tools/raise.xpm		\
 	tools/raise_is.xpm
 
-CPPFLAGS = \
+AM_CPPFLAGS = \
 	-DLIBDIR=\""$(gimpplugindir)"\"	\
 	-DDATADIR=\""$(gimpdatadir)"\"	\
 	-DGIMPDIR=\""$(gimpdir)"\"	\
-	-DPRECISION_CONFIG=$(precision)
+	-DPRECISION_CONFIG=$(precision)	\
+	-DREGEX_MALLOC
 
 INCLUDES = \
 	$(X_CFLAGS)			\

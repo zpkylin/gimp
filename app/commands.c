@@ -236,7 +236,7 @@ file_new_ok_callback (GtkWidget *widget,
       drawable_fill (GIMP_DRAWABLE(layer), vals->fill_type);
 
     gimage_clean_all (gimage);
-    
+
     gdisplay = gdisplay_new (gimage, 0x0101);
   }
 
@@ -252,7 +252,7 @@ file_new_delete_callback (GtkWidget *widget,
 
   return TRUE;
 }
-  
+
 
 static void
 file_new_cancel_callback (GtkWidget *widget,
@@ -280,8 +280,9 @@ file_new_toggle_callback (GtkWidget *widget,
 }
 
 void
-file_new_cmd_callback (GtkWidget *widget,
-		       gpointer   client_data)
+file_new_cmd_callback (GtkWidget           *widget,
+		       gpointer             callback_data,
+		       guint                callback_action)
 {
   GDisplay *gdisp;
   NewImageValues *vals;
@@ -305,7 +306,7 @@ file_new_cmd_callback (GtkWidget *widget,
   /*  Before we try to determine the responsible gdisplay,
    *  make sure this wasn't called from the toolbox
    */
-  if ((long) client_data)
+  if ((long) callback_action)
     gdisp = gdisplay_active ();
   else
     gdisp = NULL;
@@ -646,7 +647,7 @@ file_prefs_ok_callback (GtkWidget *widget,
 			GtkWidget *dlg)
 {
 
-  if (levels_of_undo < 0) 
+  if (levels_of_undo < 0)
     {
       g_message ("Error: Levels of undo must be zero or greater.");
       levels_of_undo = old_levels_of_undo;
@@ -669,8 +670,8 @@ file_prefs_ok_callback (GtkWidget *widget,
       g_message ("Error: Default height must be one or greater.");
       default_height = old_default_height;
       return;
-    }  
-      
+    }
+
   gtk_widget_destroy (dlg);
   prefs_dlg = NULL;
 
@@ -835,7 +836,7 @@ file_prefs_save_callback (GtkWidget *widget,
 
   if (restart_notification)
     g_message ("You will need to restart GIMP for these changes to take effect.");
-  
+
   g_list_free (update);
   g_list_free (remove);
 }
@@ -843,7 +844,7 @@ file_prefs_save_callback (GtkWidget *widget,
 static int
 file_prefs_delete_callback (GtkWidget *widget,
 			    GdkEvent *event,
-			    GtkWidget *dlg) 
+			    GtkWidget *dlg)
 {
   file_prefs_cancel_callback (widget, dlg);
 
@@ -1046,11 +1047,11 @@ file_pref_cmd_callback (GtkWidget *widget,
       {"Small",32},
       {"Medium",64},
       {"Large",128}
-    }; 
+    };
   int ntransparencies = sizeof (transparencies) / sizeof (transparencies[0]);
   int nchecks = sizeof (checks) / sizeof (checks[0]);
   int ndirs = sizeof(dirs) / sizeof (dirs[0]);
-  int npreview_sizes = sizeof(preview_sizes) / sizeof (preview_sizes[0]); 
+  int npreview_sizes = sizeof(preview_sizes) / sizeof (preview_sizes[0]);
   int i;
 
   if (!prefs_dlg)
@@ -1059,7 +1060,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 	{
 	  /* first time dialog is opened - copy config vals to edit
              variables. */
-	  edit_temp_path = file_prefs_strdup (temp_path);	
+	  edit_temp_path = file_prefs_strdup (temp_path);
 	  edit_swap_path = file_prefs_strdup (swap_path);
 	  edit_brush_path = file_prefs_strdup (brush_path);
 	  edit_pattern_path = file_prefs_strdup (pattern_path);
@@ -1108,7 +1109,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 			  prefs_dlg);
 
       gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (prefs_dlg)->action_area), 2);
-      
+
       /* Action area */
       button = gtk_button_new_with_label ("OK");
       GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
@@ -1157,7 +1158,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
 
-      frame = gtk_frame_new ("Image size"); 
+      frame = gtk_frame_new ("Image size");
       gtk_box_pack_start (GTK_BOX (hbox), frame, TRUE, TRUE, 0);
       gtk_widget_show (frame);
 
@@ -1171,7 +1172,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_table_set_col_spacings (GTK_TABLE (table), 2);
       gtk_box_pack_start (GTK_BOX (abox), table, TRUE, TRUE, 0);
       gtk_widget_show (table);
-      
+
       label = gtk_label_new ("Width:");
       gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
       gtk_table_attach (GTK_TABLE (table), label, 0, 1, 0, 1,
@@ -1183,7 +1184,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_table_attach (GTK_TABLE (table), label, 0, 1, 1, 2,
 			GTK_FILL, GTK_FILL, 0, 0);
       gtk_widget_show (label);
-      
+
       entry = gtk_entry_new ();
       gtk_widget_set_usize (entry, 25, 0);
       sprintf (buffer, "%d", default_width);
@@ -1198,7 +1199,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       entry = gtk_entry_new ();
       gtk_widget_set_usize (entry, 25, 0);
       sprintf (buffer, "%d", default_height);
-      gtk_entry_set_text (GTK_ENTRY (entry), buffer); 
+      gtk_entry_set_text (GTK_ENTRY (entry), buffer);
       gtk_table_attach (GTK_TABLE (table), entry, 1, 2, 1, 2,
 			GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
       gtk_signal_connect (GTK_OBJECT (entry), "changed",
@@ -1295,7 +1296,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       label = gtk_label_new ("Preview size:");
       gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
       gtk_widget_show (label);
-      
+
       menu = gtk_menu_new ();
       for (i = 0; i < npreview_sizes; i++)
         {
@@ -1313,7 +1314,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       for (i = 0; i < npreview_sizes; i++)
 	if (preview_size==preview_sizes[i].size)
 	  gtk_option_menu_set_history(GTK_OPTION_MENU (optionmenu),i);
-	  
+
       button = gtk_check_button_new_with_label("Cubic interpolation");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
                                    cubic_interpolation);
@@ -1375,7 +1376,7 @@ file_pref_cmd_callback (GtkWidget *widget,
                               &transparency_size);
           gtk_widget_show (button);
         }
-      
+
 
       label = gtk_label_new ("Display");
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
@@ -1389,7 +1390,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);
       gtk_container_add (GTK_CONTAINER (out_frame), vbox);
       gtk_widget_show (vbox);
-      
+
       hbox = gtk_hbox_new (FALSE, 2);
       gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
       gtk_widget_show (hbox);
@@ -1407,7 +1408,7 @@ file_pref_cmd_callback (GtkWidget *widget,
                           (GtkSignalFunc) file_prefs_text_callback,
                           &levels_of_undo);
       gtk_widget_show (entry);
-      
+
       button = gtk_check_button_new_with_label("Resize window on zoom");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
                                    allow_resize_windows);
@@ -1416,10 +1417,10 @@ file_pref_cmd_callback (GtkWidget *widget,
                           (GtkSignalFunc) file_prefs_toggle_callback,
                           &allow_resize_windows);
       gtk_widget_show (button);
-      
-      /* Don't show the Auto-save button until we really 
+
+      /* Don't show the Auto-save button until we really
 	 have auto-saving in the gimp.
-      
+
 	 button = gtk_check_button_new_with_label("Auto save");
 	 gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
                                    auto_save);
@@ -1464,7 +1465,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_signal_connect (GTK_OBJECT (entry), "changed",
                           (GtkSignalFunc) file_prefs_text_callback,
                           &marching_speed);
-      gtk_widget_show (entry);      
+      gtk_widget_show (entry);
 
       label = gtk_label_new ("Interface");
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
@@ -1479,7 +1480,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);
       gtk_container_add (GTK_CONTAINER (out_frame), vbox);
       gtk_widget_show (vbox);
-      
+
       button = gtk_check_button_new_with_label("Conservative memory usage");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
                                    stingy_memory_use);
@@ -1488,7 +1489,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 			  (GtkSignalFunc) file_prefs_toggle_callback,
 			  &edit_stingy_memory_use);
       gtk_widget_show (button);
-      
+
       hbox = gtk_hbox_new (FALSE, 2);
       gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
       gtk_widget_show (hbox);
@@ -1506,7 +1507,7 @@ file_pref_cmd_callback (GtkWidget *widget,
                           (GtkSignalFunc) file_prefs_text_callback,
                           &edit_tile_cache_size);
       gtk_widget_show (entry);
-      
+
       button = gtk_check_button_new_with_label("Install colormap (8-bit only)");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
 				   install_cmap);
@@ -1526,7 +1527,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       if (g_visual->depth != 8)
 	gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
       gtk_widget_show (button);
-      
+
       label = gtk_label_new ("Environment");
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
 
@@ -1554,7 +1555,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 	  gtk_table_attach (GTK_TABLE (table), label, 0, 1, i, i+1,
                             GTK_FILL, GTK_FILL, 0, 0);
 	  gtk_widget_show (label);
- 
+
           entry = gtk_entry_new ();
           gtk_widget_set_usize (entry, 25, 0);
           gtk_entry_set_text (GTK_ENTRY (entry), *(dirs[i].mpath));
@@ -1563,7 +1564,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 			      dirs[i].mpath);
           gtk_table_attach (GTK_TABLE (table), entry, 1, 2, i, i+1,
                             GTK_EXPAND | GTK_FILL, 0, 0, 0);
-          gtk_widget_show (entry); 
+          gtk_widget_show (entry);
 	}
 
       label = gtk_label_new ("Directories");
@@ -2504,13 +2505,14 @@ tools_swap_colors_cmd_callback (GtkWidget *widget,
 }
 
 void
-tools_select_cmd_callback (GtkWidget *widget,
-			   gpointer   client_data)
+tools_select_cmd_callback (GtkWidget           *widget,
+			   gpointer             callback_data,
+			   guint                callback_action)
 {
   GDisplay * gdisp;
 
   /*  Activate the approriate widget  */
-  gtk_widget_activate (tool_widgets[tool_info[(long) client_data].toolbar_position]);
+  gtk_widget_activate (tool_widgets[tool_info[(long) callback_action].toolbar_position]);
 
   gdisp = gdisplay_active ();
 
@@ -2518,10 +2520,11 @@ tools_select_cmd_callback (GtkWidget *widget,
 }
 
 void
-filters_repeat_cmd_callback (GtkWidget *widget,
-			     gpointer   client_data)
+filters_repeat_cmd_callback (GtkWidget           *widget,
+			     gpointer             callback_data,
+			     guint                callback_action)
 {
-  plug_in_repeat ((long) client_data);
+  plug_in_repeat (callback_action);
 }
 
 void
@@ -2616,7 +2619,7 @@ image_resize_callback (GtkWidget *w,
   if ((gimage = gimage_get_ID (image_resize->gimage_id)) != NULL)
     {
       if (image_resize->resize->width > 0 &&
-	  image_resize->resize->height > 0) 
+	  image_resize->resize->height > 0)
 	{
 	  gimage_resize (gimage,
 			 image_resize->resize->width,
@@ -2625,7 +2628,7 @@ image_resize_callback (GtkWidget *w,
 			 image_resize->resize->off_y);
 	  gdisplays_flush ();
 	}
-      else 
+      else
 	{
 	  g_message ("Resize Error: Both width and height must be greater than zero.");
 	  return;
@@ -2648,14 +2651,14 @@ image_scale_callback (GtkWidget *w,
   if ((gimage = gimage_get_ID (image_scale->gimage_id)) != NULL)
     {
       if (image_scale->resize->width > 0 &&
-	  image_scale->resize->height > 0) 
+	  image_scale->resize->height > 0)
 	{
 	  gimage_scale (gimage,
 			image_scale->resize->width,
 			image_scale->resize->height);
 	  gdisplays_flush ();
 	}
-      else 
+      else
 	{
 	  g_message ("Scale Error: Both width and height must be greater than zero.");
 	  return;
@@ -2761,9 +2764,3 @@ gimage_mask_shrink_callback (GtkWidget *w,
   gimage_mask_shrink (gimage, shrink_pixels);
   gdisplays_flush ();
 }
-
-
-
-
-
-

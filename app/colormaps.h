@@ -22,12 +22,6 @@ struct _PixelRow;
 
 #include "gimage.h"               /* For the image types  */
 
-/*  This is a macro for arranging the red, green, and blue components into
- *  a value acceptable to the target X server
- */
-#define COLOR_COMPOSE(r,g,b) (lookup_red [r] | lookup_green [g] | lookup_blue [b])
-
-
 extern GdkVisual *g_visual;
 extern GdkColormap *g_cmap;
 
@@ -49,20 +43,6 @@ extern gulong new_color_pixel;
 
 /*  Colormap entries reserved for color cycled marching ants--optional  */
 extern gulong  marching_ants_pixels[8];
-
-extern GtkDitherInfo *red_ordered_dither;
-extern GtkDitherInfo *green_ordered_dither;
-extern GtkDitherInfo *blue_ordered_dither;
-extern GtkDitherInfo *gray_ordered_dither;
-
-extern guchar ***ordered_dither_matrix;
-
-extern gulong *g_lookup_red;
-extern gulong *g_lookup_green;
-extern gulong *g_lookup_blue;
-
-extern gulong *color_pixel_vals;
-extern gulong *gray_pixel_vals;
 
 gulong get_color (struct _PixelRow *);
 void   store_color (gulong *pixel, struct _PixelRow *);

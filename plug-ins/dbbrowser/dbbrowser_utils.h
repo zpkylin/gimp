@@ -13,13 +13,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 
-/* 
+/*
    dbbrowser_utils.h
-   0.08  26th sept 97  by Thomas NOEL <thomas@minet.net> 
+   0.08  26th sept 97  by Thomas NOEL <thomas@minet.net>
 */
 
 /* configuration */
@@ -35,6 +35,11 @@
 #include "dbbrowser.h"
 
 typedef struct {
+  gchar *label;
+  gchar *func;
+} ListEntry_t;
+
+typedef struct {
 
   GtkWidget* dlg;
 
@@ -45,7 +50,8 @@ typedef struct {
   GtkWidget* descr_scroll;
   GtkWidget* descr_table;
 
-  GtkWidget* list;
+  GtkWidget* clist;
+  GtkWidget* scrolled_win;
 
   /* the currently selected procedure */
   gchar *selected_proc_name;
@@ -59,7 +65,7 @@ typedef struct {
   int selected_nparams;
   int selected_nreturn_vals;
   GParamDef *selected_params;
-  GParamDef *selected_return_vals; 
+  GParamDef *selected_return_vals;
 
   void (*apply_callback) ( gchar *selected_proc_name,
 			   gchar *selected_scheme_proc_name,
@@ -82,29 +88,27 @@ static void
 dialog_apply_callback(GtkWidget *, gpointer );
 
 static gint
-dialog_list_button (GtkWidget      *widget,
-		    GdkEventButton *event,
-		    gpointer        data);
+procedure_select_callback (GtkWidget *widget,
+			   gint row,
+			   gint column,
+			   GdkEventButton * bevent,
+			   gpointer data);
+
 
 static void
-dialog_search_callback(GtkWidget *, 
+dialog_search_callback(GtkWidget *,
 		       gpointer);
 
 static void
-dialog_select(dbbrowser_t *dbbrowser, 
+dialog_select(dbbrowser_t *dbbrowser,
 	      gchar *proc_name);
 
 static void
-dialog_close_callback(GtkWidget *, 
+dialog_close_callback(GtkWidget *,
 		      gpointer);
 
-static void 
-dialog_selection_free_filename (GtkWidget *widget,
-				gpointer   client_data);
-
-static void      
+static void
 convert_string (gchar *str);
 
-static gchar* 
+static gchar*
 GParamType2char(GParamType t);
-

@@ -57,6 +57,8 @@ static void
 get_shades (GDisplay *gdisp,
 	    char     *buf)
 {
+  sprintf(buf, "Using GdkRgb - we'll get back to you");
+#if 0
   GtkPreviewInfo *info;
 
   info = gtk_preview_get_info ();
@@ -96,6 +98,7 @@ get_shades (GDisplay *gdisp,
       sprintf (buf, "invalid format");
       break;
     }
+#endif
 }
 
 static void

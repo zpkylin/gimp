@@ -25,11 +25,17 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/param.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef HAVE_IPC_H
+#include <sys/ipc.h>
+#endif
+
+#ifdef HAVE_SHM_H
+#include <sys/shm.h>
+#endif
 
 #include "libgimp/gimpprotocol.h"
 #include "libgimp/gimpwire.h"
@@ -297,6 +303,7 @@ plug_in_init ()
   wire_set_writer (plug_in_write);
   wire_set_flusher (plug_in_flush);
 
+#ifdef HAVE_SHM_H
   /* allocate a piece of shared memory for use in transporting tiles
    *  to plug-ins. if we can't allocate a piece of shared memory then
    *  we'll fall back on sending the data over the pipe.
@@ -322,6 +329,7 @@ plug_in_init ()
 #endif
 	}
     }
+#endif
 
   /* search for binaries in the plug-in directory path */
   datafiles_read_directories (plug_in_path, plug_in_init_file, MODE_EXECUTABLE);
@@ -449,7 +457,8 @@ plug_in_kill ()
 {
   GSList *tmp;
   PlugIn *plug_in;
-  
+
+#ifdef HAVE_SHM_H
 #ifndef	IPC_RMID_DEFERRED_RELEASE
   if (shm_ID != -1)
     {
@@ -460,7 +469,8 @@ plug_in_kill ()
   if (shm_ID != -1)
     shmdt ((char*) shm_addr);
 #endif
-  
+#endif
+
   tmp = open_plug_ins;
   while (tmp)
     {
@@ -1050,7 +1060,7 @@ plug_in_get_current_return_vals (ProcRecord *proc_rec)
 Argument*
 plug_in_run (ProcRecord *proc_rec,
 	     Argument   *args,
-	     int         synchronous,   
+	     int         synchronous,
 	     int         destroy_values)
 {
   GPConfig config;
@@ -1114,12 +1124,12 @@ plug_in_run (ProcRecord *proc_rec,
 	  if (plug_in->recurse)
 	    {
 	      gtk_main ();
-	      
+
 	      return_vals = plug_in_get_current_return_vals (proc_rec);
 	    }
 	}
     }
-  
+
 done:
   if (return_vals && destroy_values)
     {
@@ -1223,7 +1233,7 @@ plug_in_recv_message (gpointer          data,
   memset (&msg, 0, sizeof (WireMessage));
   if (!wire_read_msg (current_readfd, &msg))
     plug_in_close (current_plug_in, TRUE);
-  else 
+  else
     {
       plug_in_handle_message (&msg);
       wire_destroy (&msg);
@@ -1723,22 +1733,22 @@ plug_in_handle_proc_install (GPProcInstall *proc_install)
    *  Sanity check for array arguments
    */
 
-  for (i = 1; i < proc_install->nparams; i++) 
+  for (i = 1; i < proc_install->nparams; i++)
     {
       if ((proc_install->params[i].type == PDB_INT32ARRAY ||
 	   proc_install->params[i].type == PDB_INT8ARRAY ||
 	   proc_install->params[i].type == PDB_FLOATARRAY ||
 	   proc_install->params[i].type == PDB_STRINGARRAY) &&
-	  proc_install->params[i-1].type != PDB_INT32) 
+	  proc_install->params[i-1].type != PDB_INT32)
 	{
 	  g_message ("plug_in \"%s\" attempted to install procedure \"%s\" "
 		     "which fails to comply with the array parameter "
-		     "passing standard.  Argument %d is noncompliant.", 
+		     "passing standard.  Argument %d is noncompliant.",
 		     current_plug_in->args[0], proc_install->name, i);
 	  return;
 	}
     }
-  
+
 
   /*
    *  Initialization
@@ -2179,7 +2189,7 @@ plug_in_query (char      *filename,
 	    {
 	      if (!wire_read_msg (current_readfd, &msg))
 		plug_in_close (current_plug_in, TRUE);
-	      else 
+	      else
 		{
 		  plug_in_handle_message (&msg);
 		  wire_destroy (&msg);
@@ -2524,7 +2534,7 @@ plug_in_temp_run (ProcRecord *proc_rec,
       plug_in->recurse = TRUE;
 
       gtk_main ();
-      
+
       return_vals = plug_in_get_current_return_vals (proc_rec);
       plug_in->recurse = old_recurse;
       plug_in->busy = FALSE;
@@ -3134,6 +3144,9 @@ plug_in_progress_update (PlugIn *plug_in,
 			 double  percentage)
 {
 #ifdef SEPARATE_PROGRESS_BAR
+  if (!(percentage >= 0.0 && percentage <= 1.0))
+    return;
+
   if (!plug_in->progress)
     plug_in_progress_init (plug_in, NULL);
 
@@ -3194,12 +3207,12 @@ static Argument*
 message_handler_set_invoker (Argument *args)
 {
   int success = TRUE;
- 
+
   if ((args[0].value.pdb_int >= MESSAGE_BOX) &&
       (args[0].value.pdb_int <= CONSOLE))
     message_handler = args[0].value.pdb_int;
   else
     success = FALSE;
- 
+
   return procedural_db_return_args (&message_handler_set_proc, success);
 }

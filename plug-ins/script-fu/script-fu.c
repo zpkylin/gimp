@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,6 +25,8 @@
 #include "script-fu-console.h"
 #include "script-fu-scripts.h"
 #include "script-fu-server.h"
+
+extern FILE *siod_output;
 
 /* External functions
  */
@@ -96,7 +98,7 @@ static gint script_fu_base = TRUE;
 extern gint server_mode;
 
 
-MAIN ();
+MAIN ()
 
 static void
 sfquit ()
@@ -111,6 +113,13 @@ query ()
     { PARAM_INT32, "run_mode", "Interactive, [non-interactive]" }
   };
   static gint nconsole_args = sizeof (console_args) / sizeof (console_args[0]);
+
+  static GParamDef eval_args[] =
+  {
+    { PARAM_INT32, "run_mode", "[Interactive], non-interactive" },
+    { PARAM_STRING, "code", "The code to evaluate" }
+  };
+  static gint neval_args = sizeof (eval_args) / sizeof (eval_args[0]);
 
   static GParamDef server_args[] =
   {
@@ -154,6 +163,18 @@ query ()
 			  PROC_EXTENSION,
 			  nserver_args, 0,
 			  server_args, NULL);
+
+  gimp_install_procedure ("extension_script_fu_eval",
+			  "Evaluate scheme code",
+			  "Evaluate the code under the scheme interpeter (primarily for batch mode)",
+			  "Manish Singh",
+			  "Manish Singh",
+			  "1998",
+			  NULL,
+			  NULL,
+			  PROC_EXTENSION,
+			  neval_args, 0,
+			  eval_args, NULL);
 }
 
 static void
@@ -163,6 +184,8 @@ run (char    *name,
      int     *nreturn_vals,
      GParam **return_vals)
 {
+  siod_output = stdout;
+
   /*  Determine before we allow scripts to register themselves
    *   whether this is the base, automatically installed script-fu extension
    */
@@ -216,6 +239,13 @@ run (char    *name,
   else if (strcmp (name, "extension_script_fu_server") == 0)
     {
       script_fu_server_run (name, nparams, param, nreturn_vals, return_vals);
+    }
+  /*
+   *  A non-interactive "console" (for batch mode)
+   */
+  else if (strcmp (name, "extension_script_fu_eval") == 0)
+    {
+      script_fu_eval_run (name, nparams, param, nreturn_vals, return_vals);
     }
 }
 
@@ -509,7 +539,7 @@ marshall_proc_db_call (LISP a)
   int success = TRUE;
   LISP color_list;
   LISP intermediate_val;
-  LISP return_val;
+  LISP return_val = NIL;
   char *string;
   int string_len;
   LISP a_saved;
@@ -519,7 +549,7 @@ marshall_proc_db_call (LISP a)
 
   /*  Make sure there are arguments  */
   if (a == NIL)
-    return err ("Procedure database argument marshaller was called with no arguments.  The procedure to be executed and the arguments it requires (possibly none) must be specified.", NIL);
+    return my_err ("Procedure database argument marshaller was called with no arguments.  The procedure to be executed and the arguments it requires (possibly none) must be specified.", NIL);
 
   /*  Derive the pdb procedure name from the argument or first argument of a list  */
   if (TYPEP (a, tc_cons))
@@ -534,7 +564,7 @@ marshall_proc_db_call (LISP a)
   if (gimp_query_procedure (proc_name, &proc_blurb, &proc_help, &proc_author,
 			    &proc_copyright, &proc_date, &proc_type, &nparams, &nreturn_vals,
 			    &params, &return_vals) == FALSE)
-    return err ("Invalid procedure name specified.", NIL);
+    return my_err ("Invalid procedure name specified.", NIL);
 
 
   /*  Check the supplied number of arguments  */
@@ -542,7 +572,7 @@ marshall_proc_db_call (LISP a)
     {
       sprintf (error_str, "Invalid arguments supplied to %s--(# args: %ld, expecting: %d)",
 	       proc_name, (nlength (a) - 1), nparams);
-      return err (error_str, NIL);
+      return my_err (error_str, NIL);
     }
 
   /*  Marshall the supplied arguments  */
@@ -571,7 +601,7 @@ marshall_proc_db_call (LISP a)
 	  if (success)
 	    {
 	      args[i].type = PARAM_INT16;
-	      args[i].data.d_int32 = get_c_long (car (a));
+	      args[i].data.d_int16 = (gint16) get_c_long (car (a));
 	    }
 	  break;
 	case PARAM_INT8:
@@ -580,7 +610,7 @@ marshall_proc_db_call (LISP a)
 	  if (success)
 	    {
 	      args[i].type = PARAM_INT8;
-	      args[i].data.d_int32 = get_c_long (car (a));
+	      args[i].data.d_int8 = (gint8) get_c_long (car (a));
 	    }
 	  break;
 	case PARAM_FLOAT:
@@ -616,7 +646,7 @@ marshall_proc_db_call (LISP a)
 	  if (success)
 	    {
 	      args[i].type = PARAM_INT16ARRAY;
-	      args[i].data.d_int16array = (short *) (car (a))->storage_as.long_array.data;
+	      args[i].data.d_int16array = (gint16*) (car (a))->storage_as.long_array.data;
 	    }
 	  break;
 	case PARAM_INT8ARRAY:
@@ -625,7 +655,7 @@ marshall_proc_db_call (LISP a)
 	  if (success)
 	    {
 	      args[i].type = PARAM_INT8ARRAY;
-	      args[i].data.d_int8array = (gint8 *) (car (a))->storage_as.string.data;
+	      args[i].data.d_int8array = (gint8*) (car (a))->storage_as.string.data;
 	    }
 	  break;
 	case PARAM_FLOATARRAY:
@@ -654,7 +684,7 @@ marshall_proc_db_call (LISP a)
 		list = car (a);
 		num_strings = args[i - 1].data.d_int32;
 		if (nlength (list) != num_strings)
-		  return err ("String array argument has incorrectly specified length", NIL);
+		  return my_err ("String array argument has incorrectly specified length", NIL);
 		array = args[i].data.d_stringarray = g_new (char *, num_strings);
 
 		for (j = 0; j < num_strings; j++)
@@ -680,7 +710,7 @@ marshall_proc_db_call (LISP a)
 	    }
 	  break;
 	case PARAM_REGION:
-	  return err ("Regions are currently unsupported as arguments", car (a));
+	  return my_err ("Regions are currently unsupported as arguments", car (a));
 	  break;
 	case PARAM_DISPLAY:
 	  if (!TYPEP (car (a), tc_flonum))
@@ -737,16 +767,16 @@ marshall_proc_db_call (LISP a)
 	    }
 	  break;
 	case PARAM_BOUNDARY:
-	  return err ("Boundaries are currently unsupported as arguments", car (a));
+	  return my_err ("Boundaries are currently unsupported as arguments", car (a));
 	  break;
 	case PARAM_PATH:
-	  return err ("Paths are currently unsupported as arguments", car (a));
+	  return my_err ("Paths are currently unsupported as arguments", car (a));
 	  break;
 	case PARAM_STATUS:
-	  return err ("Status is for return types, not arguments", car (a));
+	  return my_err ("Status is for return types, not arguments", car (a));
 	  break;
 	default:
-	  return err ("Unknown argument type", NIL);
+	  return my_err ("Unknown argument type", NIL);
 	}
 
       a = cdr (a);
@@ -755,26 +785,26 @@ marshall_proc_db_call (LISP a)
   if (success)
     values = gimp_run_procedure2 (proc_name, &nvalues, nparams, args);
   else
-    return err ("Invalid types specified for arguments", NIL);
+    return my_err ("Invalid types specified for arguments", NIL);
 
   /*  Check the return status  */
   if (! values)
 	{
 	  strcpy (error_str, "Procedural database execution did not return a status:\n    ");
 	  lprin1s (a_saved, error_str + strlen(error_str));
-      return err (error_str, NIL);
+      return my_err (error_str, NIL);
 	}
   switch (values[0].data.d_status)
     {
     case STATUS_EXECUTION_ERROR:
 	  strcpy (error_str, "Procedural database execution failed:\n    ");
 	  lprin1s (a_saved, error_str + strlen(error_str));
-      return err (error_str, NIL);
+      return my_err (error_str, NIL);
       break;
     case STATUS_CALLING_ERROR:
 	  strcpy (error_str, "Procedural database execution failed on invalid input arguments:\n    ");
 	  lprin1s (a_saved, error_str + strlen(error_str));
-      return err (error_str, NIL);
+      return my_err (error_str, NIL);
       break;
     case STATUS_SUCCESS:
       return_val = NIL;
@@ -813,7 +843,7 @@ marshall_proc_db_call (LISP a)
 	      }
 	      break;
 	    case PARAM_INT16ARRAY:
-	      return err ("Arrays are currently unsupported as return values", NIL);
+	      return my_err ("Arrays are currently unsupported as return values", NIL);
 	      break;
 	    case PARAM_INT8ARRAY:
 	      {
@@ -866,7 +896,7 @@ marshall_proc_db_call (LISP a)
 	      return_val = cons (intermediate_val, return_val);
 	      break;
 	    case PARAM_REGION:
-	      return err ("Regions are currently unsupported as return values", NIL);
+	      return my_err ("Regions are currently unsupported as return values", NIL);
 	      break;
 	    case PARAM_DISPLAY:
 	      return_val = cons (flocons (values[i + 1].data.d_int32), return_val);
@@ -887,16 +917,16 @@ marshall_proc_db_call (LISP a)
 	      return_val = cons (flocons (values[i + 1].data.d_int32), return_val);
 	      break;
 	    case PARAM_BOUNDARY:
-	      return err ("Boundaries are currently unsupported as return values", NIL);
+	      return my_err ("Boundaries are currently unsupported as return values", NIL);
 	      break;
 	    case PARAM_PATH:
-	      return err ("Paths are currently unsupported as return values", NIL);
+	      return my_err ("Paths are currently unsupported as return values", NIL);
 	      break;
 	    case PARAM_STATUS:
-	      return err ("Procedural database execution returned multiple status values", NIL);
+	      return my_err ("Procedural database execution returned multiple status values", NIL);
 	      break;
 	    default:
-	      return err ("Unknown return type", NIL);
+	      return my_err ("Unknown return type", NIL);
 	    }
 	}
       break;

@@ -8,6 +8,9 @@ pluginlibdir = $(gimpplugindir)/plug-ins
 
 pluginlib_PROGRAMS = script-fu
 
+AM_CPPFLAGS = \
+	-DREGEX_MALLOC
+
 script_fu_SOURCES = \
 	interp_md5.c		\
 	interp_md5.h		\

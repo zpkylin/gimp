@@ -65,6 +65,9 @@ extern Precision default_precision;
 extern int       show_tips;
 extern int       last_tip;
 extern int       show_tool_tips;
+extern float     monitor_xres;
+extern float     monitor_yres;
+extern int       using_xserver_resolution;
 
 /*  function prototypes  */
 char *  gimp_directory (void);

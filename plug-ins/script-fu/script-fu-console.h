@@ -13,13 +13,18 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #ifndef __SCRIPT_FU_CONSOLE_H__
 #define __SCRIPT_FU_CONSOLE_H__
 
 void  script_fu_console_run (char     *name,
+			     int       nparams,
+			     GParam   *params,
+			     int      *nreturn_vals,
+			     GParam  **return_vals);
+void  script_fu_eval_run    (char     *name,
 			     int       nparams,
 			     GParam   *params,
 			     int      *nreturn_vals,

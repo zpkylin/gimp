@@ -52,24 +52,6 @@ gulong new_color_pixel;
 
 gulong marching_ants_pixels[8];
 
-GtkDitherInfo *red_ordered_dither;
-GtkDitherInfo *green_ordered_dither;
-GtkDitherInfo *blue_ordered_dither;
-GtkDitherInfo *gray_ordered_dither;
-
-guchar ***ordered_dither_matrix;
-
-/*  These arrays are calculated for quick 24 bit to 16 color conversions  */
-gulong *g_lookup_red;
-gulong *g_lookup_green;
-gulong *g_lookup_blue;
-
-gulong *color_pixel_vals;
-gulong *gray_pixel_vals;
-
-static int reserved_entries = 4;  /* extra colors aside from color cube */
-static gulong *reserved_pixels;
-
 static void make_color (gulong *pixel_ptr,
 			int     red,
 			int     green,
@@ -77,22 +59,9 @@ static void make_color (gulong *pixel_ptr,
 			int     readwrite);
 
 static void
-set_app_colors ()
+set_app_colors (void)
 {
-  int i;
-
-  if ((g_visual->type == GDK_VISUAL_PSEUDO_COLOR) ||
-      (g_visual->type == GDK_VISUAL_GRAYSCALE))
-    {
-      foreground_pixel = reserved_pixels[0];
-      background_pixel = reserved_pixels[1];
-      old_color_pixel = reserved_pixels[2];
-      new_color_pixel = reserved_pixels[3];
-    }
-  else
-    {
-      cycled_marching_ants = FALSE;
-    }
+  cycled_marching_ants = FALSE;
 
   make_color (&g_black_pixel, 0, 0, 0, FALSE);
   make_color (&g_gray_pixel, 127, 127, 127, FALSE);
@@ -115,31 +84,8 @@ set_app_colors ()
     store_color (&background_pixel, &col);
     store_color (&new_color_pixel, &col);
   }
-  
-  /* marching ants pixels--if enabled */
-  if (cycled_marching_ants)
-    {
-      COLOR16_NEW (black, tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO));
-      COLOR16_NEW (white, tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO));
-
-      COLOR16_INIT (black);
-      COLOR16_INIT (white);
-
-      palette_get_black (&black);
-      palette_get_white (&white);
-                                   
-      for (i = 0; i < 8; i++)
-        {
-          marching_ants_pixels[i] = reserved_pixels[i + reserved_entries - 8];
-          if (i < 4)
-            store_color (&marching_ants_pixels[i], &black);
-          else
-            store_color (&marching_ants_pixels[i], &white);
-        }
-    }
 }
-
-
+/* poof - can't use this anymore
 static unsigned int
 gamma_correct (int intensity, double gamma)
 {
@@ -157,7 +103,7 @@ gamma_correct (int intensity, double gamma)
 
   return val;
 }
-
+*/
 
 /*************************************************************************/
 
@@ -165,22 +111,13 @@ gamma_correct (int intensity, double gamma)
 gulong
 get_color (PixelRow * col)
 {
-  gulong pixel;
   PixelRow r;
   guchar d[TAG_MAX_BYTES];
 
   pixelrow_init (&r, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO), d, 1);
   copy_row (col, &r);
-  
-  if ((g_visual->type == GDK_VISUAL_PSEUDO_COLOR) ||
-      (g_visual->type == GDK_VISUAL_GRAYSCALE))
-    pixel = color_pixel_vals [(red_ordered_dither[d[0]].s[1] +
-			       green_ordered_dither[d[1]].s[1] +
-			       blue_ordered_dither[d[2]].s[1])];
-  else
-    store_color (&pixel, col);
 
-  return pixel;
+  return gdk_rgb_xpixel_from_rgb ((d[0] << 16) | (d[1] << 8) | d[2]);
 }
 
 
@@ -191,39 +128,16 @@ make_color (gulong *pixel_ptr,
             int     blue,
 	    int     readwrite)
 {
-  GdkColor col;
-
-  red = gamma_correct (red, gamma_val);
-  green = gamma_correct (green, gamma_val);
-  blue = gamma_correct (blue, gamma_val);
-
-  col.red = red * (65535 / 255);
-  col.green = green * (65535 / 255);
-  col.blue = blue * (65535 / 255);
-  col.pixel = *pixel_ptr;
-
-  if (readwrite && ((g_visual->type == GDK_VISUAL_PSEUDO_COLOR) ||
-		    (g_visual->type == GDK_VISUAL_GRAYSCALE)))
-    gdk_color_change (g_cmap, &col);
-  else
-    gdk_color_alloc (g_cmap, &col);
-
-  *pixel_ptr = col.pixel;
+  
+  *pixel_ptr = gdk_rgb_xpixel_from_rgb ((red << 16) | (green << 8) | blue);
 }
 
 void
 store_color (gulong *pixel_ptr,
 	     PixelRow * col)
 {
-  PixelRow r;
-  guchar d[TAG_MAX_BYTES];
-
-  pixelrow_init (&r, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO), d, 1);
-  copy_row (col, &r);
-
-  make_color (pixel_ptr, d[0], d[1], d[2], TRUE);
+  *pixel_ptr = get_color (col);
 }
-
 
 void
 store_display_color (gulong *pixel_ptr,
@@ -257,56 +171,13 @@ get_standard_colormaps ()
 {
   GtkPreviewInfo *info;
 
-  if (cycled_marching_ants)
-    reserved_entries += 8;
-
-  gtk_preview_set_gamma (gamma_val);
-  gtk_preview_set_color_cube (color_cube_shades[0], color_cube_shades[1],
-			      color_cube_shades[2], color_cube_shades[3]);
-  gtk_preview_set_install_cmap (install_cmap);
-  gtk_preview_set_reserved (reserved_entries);
-
-  /* so we can reinit the colormaps */
-  gtk_preview_reset ();
-
   gtk_widget_set_default_visual (gtk_preview_get_visual ());
   gtk_widget_set_default_colormap (gtk_preview_get_cmap ());
 
   info = gtk_preview_get_info ();
   g_visual = info->visual;
 
-  if (((g_visual->type == GDK_VISUAL_PSEUDO_COLOR) ||
-       (g_visual->type == GDK_VISUAL_GRAYSCALE)) &&
-      info->reserved_pixels == NULL) {
-    g_print("GIMP cannot get enough colormaps to boot.\n");
-    g_print("Try exiting other color intensive applications.\n");
-    g_print("Also try enabling the (install-colormap) option in gimprc.\n");
-    brushes_free ();
-    patterns_free ();
-    palettes_free ();
-    gradients_free ();
-    palette_free ();
-    procedural_db_free ();
-    plug_in_kill ();
-    tile_swap_exit ();
-    gtk_exit(0);
-  }
-
   g_cmap = info->cmap;
-  color_pixel_vals = info->color_pixels;
-  gray_pixel_vals = info->gray_pixels;
-  reserved_pixels = info->reserved_pixels;
-
-  red_ordered_dither = info->dither_red;
-  green_ordered_dither = info->dither_green;
-  blue_ordered_dither = info->dither_blue;
-  gray_ordered_dither = info->dither_gray;
-
-  ordered_dither_matrix = info->dither_matrix;
-
-  g_lookup_red = info->lookup_red;
-  g_lookup_green = info->lookup_green;
-  g_lookup_blue = info->lookup_blue;
 
   set_app_colors ();
 }

@@ -265,6 +265,8 @@ tile_swap_command (Tile *tile,
 	  return;
       }
   } while ((* swap_file->swap_func) (swap_file->fd, tile, command, swap_file->user_data));
+
+  write_err_msg = read_err_msg = seek_err_msg = TRUE;
 }
 
 static void

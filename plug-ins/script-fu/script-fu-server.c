@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <stdarg.h>
@@ -25,13 +25,17 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif /* HAVE_SYS_SELECT_H */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#include "config.h"
+
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif /* HAVE_SYS_SELECT_H */
+
 #include "libgimp/gimp.h"
 #include "gtk/gtk.h"
 #include "siod.h"
@@ -41,6 +45,9 @@
 #define RESPONSE_HEADER 4
 #define MAGIC   'G'
 
+#ifdef NO_DIFFTIME
+#define difftime(a,b) (((double)(a)) - ((double)(b)))
+#endif
 
 #ifndef NO_FD_SET
 #  define SELECT_MASK fd_set
@@ -108,7 +115,6 @@ static void   server_start       (gint       port,
 static gint   execute_command    (SFCommand *cmd);
 static gint   read_from_client   (gint       filedes);
 static gint   make_socket        (guint      port);
-static guint  clientname_hash    (gpointer   key);
 static void   server_log         (gchar     *format,
 				     ...);
 static void   server_quit        (void);
@@ -133,7 +139,7 @@ static gint   server_sock;
 static GList *command_queue = NULL;
 static gint   queue_length = 0;
 static gint   request_no = 0;
-static FILE  *server_log_file = stdout;
+static FILE  *server_log_file = NULL;
 static GHashTable *clientname_ht = NULL;
 static SELECT_MASK server_active, server_read;
 
@@ -289,7 +295,7 @@ server_start (gint   port,
   SFCommand *cmd;
 
   /*  Set up the clientname hash table  */
-  clientname_ht = g_hash_table_new (clientname_hash, NULL);
+  clientname_ht = g_hash_table_new (g_direct_hash, NULL);
 
   /*  Setup up the server log file  */
   if (logfile)
@@ -495,23 +501,15 @@ make_socket (guint port)
   return sock;
 }
 
-static guint
-clientname_hash (gpointer key)
-{
-  return (int) key;
-}
-
 static void
 server_log (gchar *format, ...)
 {
-  va_list args, args2;
+  va_list args;
   char *buf;
 
   va_start (args, format);
-  va_start (args2, format);
-  buf = g_vsprintf (format, &args, &args2);
+  buf = g_strdup_vprintf (format, args);
   va_end (args);
-  va_end (args2);
 
   fputs (buf, server_log_file);
   if (server_log_file != stdout)

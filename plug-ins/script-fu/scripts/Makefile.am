@@ -79,7 +79,6 @@ scriptdata_DATA = \
 	weave.scm				\
 	xach-effect.scm
 
-EXTRA_DATA =
 EXTRA_DIST = $(scriptdata_DATA)
 
 files:

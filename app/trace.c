@@ -1,4 +1,4 @@
-
+#include <glib.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -36,15 +36,12 @@ trace_begin  (
               ...
               )
 {
-  va_list args, args2;
+  va_list args;
   char *buf;
-  extern char * g_vsprintf ();
     
   va_start (args, format);
-  va_start (args2, format);
-  buf = g_vsprintf (format, &args, &args2);
+  buf = g_strdup_vprintf (format, args);
   va_end (args);
-  va_end (args2);
 
   fputs (indent+level, stdout);
   fputs (buf, stdout);
@@ -72,13 +69,10 @@ trace_printf  (
 {
   va_list args, args2;
   char *buf;
-  extern char * g_vsprintf ();
 
   va_start (args, format);
-  va_start (args2, format);
-  buf = g_vsprintf (format, &args, &args2);
+  buf = g_strdup_vprintf (format, args);
   va_end (args);
-  va_end (args2);
 
   fputs (indent+level, stdout);
   fputs (buf, stdout);

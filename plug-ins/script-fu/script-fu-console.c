@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <stdlib.h>
@@ -28,6 +28,7 @@
 #include "libgimp/gimpui.h"
 #include "siod.h"
 #include "script-fu-console.h"
+#include <plug-ins/dbbrowser/dbbrowser.h>
 
 #define TEXT_WIDTH  400
 #define TEXT_HEIGHT 400
@@ -132,7 +133,7 @@ script_fu_console_run (char     *name,
     case RUN_WITH_LAST_VALS:
     case RUN_NONINTERACTIVE:
       status = STATUS_CALLING_ERROR;
-      g_warning ("Script-Fu console mode allows only interactive invocation");
+      gimp_message ("Script-Fu console mode allows only interactive invocation");
       break;
 
     default:
@@ -157,7 +158,6 @@ script_fu_console_interface ()
   GtkWidget *hbox;
   gchar **argv;
   gint argc;
-  guchar *color_cube;
 
   argc = 1;
   argv = g_new (gchar *, 1);
@@ -166,21 +166,15 @@ script_fu_console_interface ()
   gtk_init (&argc, &argv);
   gtk_rc_parse (gimp_gtkrc ());
 
-  gdk_set_use_xshm(gimp_use_xshm());
-  
-  gtk_preview_set_gamma(gimp_gamma());
-  gtk_preview_set_install_cmap(gimp_install_cmap());
-  color_cube = gimp_color_cube();
-  gtk_preview_set_color_cube(color_cube[0], color_cube[1], color_cube[2], color_cube[3]);
-  
-  gtk_widget_set_default_visual(gtk_preview_get_visual());
-  gtk_widget_set_default_colormap(gtk_preview_get_cmap());
-
   dlg = gtk_dialog_new ();
   gtk_window_set_title (GTK_WINDOW (dlg), "Script-Fu Console");
   gtk_signal_connect (GTK_OBJECT (dlg), "destroy",
 		      (GtkSignalFunc) script_fu_close_callback,
 		      NULL);
+  gtk_signal_connect (GTK_OBJECT (dlg),
+		      "destroy",
+		      GTK_SIGNAL_FUNC (gtk_widget_destroyed),
+		      &dlg);
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dlg)->vbox), 2);
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dlg)->action_area), 2);
 
@@ -257,7 +251,7 @@ script_fu_console_interface ()
   gtk_text_insert (GTK_TEXT (cint.console), cint.font_weak, NULL, NULL,
 		   "along with this program; if not, write to the Free Software\n", -1);
   gtk_text_insert (GTK_TEXT (cint.console), cint.font_weak, NULL, NULL,
-		   "Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.\n", -1);
+		   "Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.\n", -1);
   gtk_text_insert (GTK_TEXT (cint.console), cint.font_weak, NULL, NULL,
 		   "\n\n", -1);
   gtk_text_insert (GTK_TEXT (cint.console), cint.font_strong, NULL, NULL,
@@ -315,7 +309,8 @@ script_fu_console_interface ()
   gtk_main ();
 
   gdk_input_remove (cint.input_id);
-  gtk_widget_destroy (dlg);
+  if (dlg)
+    gtk_widget_destroy (dlg);
   gdk_flush ();
 }
 
@@ -358,7 +353,25 @@ static void
 script_fu_browse_callback(GtkWidget *widget,
 			  gpointer   data)
 {
-  gimp_db_browser(apply_callback);
+  gtk_quit_add_destroy (1, (GtkObject*) gimp_db_browser (apply_callback));
+}
+
+static gint
+script_fu_console_scroll_end (gpointer data)
+{
+  /* The Text widget in 1.0.1 doesn't like being scrolled before
+   * it is size-allocated, so we wait for it
+   */
+  if ((cint.console->allocation.width > 1) && 
+      (cint.console->allocation.height > 1))
+    {
+      cint.vadj->value = cint.vadj->upper - cint.vadj->page_size;
+      gtk_signal_emit_by_name (GTK_OBJECT (cint.vadj), "changed");
+    }
+  else
+    gtk_idle_add (script_fu_console_scroll_end, NULL);
+  
+  return FALSE;
 }
 
 static void
@@ -375,8 +388,7 @@ script_fu_siod_read (gpointer          data,
       gtk_text_insert (GTK_TEXT (cint.console), cint.font_weak, NULL, NULL, read_buffer, -1);
       gtk_text_thaw (GTK_TEXT (cint.console));
 
-      cint.vadj->value = cint.vadj->upper - cint.vadj->page_size;
-      gtk_signal_emit_by_name (GTK_OBJECT (cint.vadj), "changed");
+      script_fu_console_scroll_end (NULL);
     }
 }
 
@@ -517,11 +529,11 @@ script_fu_open_siod_console ()
     {
       if (pipe (siod_output_pipe))
 	{
-	  g_warning ("Unable to open SIOD output pipe");
+	  gimp_message ("Unable to open SIOD output pipe");
 	}
       else if ((siod_output = fdopen (siod_output_pipe [1], "w")) == NULL)
 	{
-	  g_warning ("Unable to open a stream on the SIOD output pipe");
+	  gimp_message ("Unable to open a stream on the SIOD output pipe");
 	  siod_output = stdout;
 	}
       else
@@ -541,4 +553,41 @@ script_fu_close_siod_console ()
     fclose (siod_output);
   close (siod_output_pipe[0]);
   close (siod_output_pipe[1]);
+}
+
+void
+script_fu_eval_run (char     *name,
+		    int       nparams,
+		    GParam   *params,
+		    int      *nreturn_vals,
+		    GParam  **return_vals)
+{
+  static GParam values[1];
+  GStatusType status = STATUS_SUCCESS;
+  GRunModeType run_mode;
+
+  run_mode = params[0].data.d_int32;
+
+  switch (run_mode)
+    {
+    case RUN_NONINTERACTIVE:
+      if (repl_c_string (params[1].data.d_string, 0, 0, 1) != 0)
+	status = STATUS_EXECUTION_ERROR;
+      break;
+
+    case RUN_INTERACTIVE:
+    case RUN_WITH_LAST_VALS:
+      status = STATUS_CALLING_ERROR;
+      gimp_message ("Script-Fu evaluate mode allows only noninteractive invocation");
+      break;
+
+    default:
+      break;
+    }
+
+  *nreturn_vals = 1;
+  *return_vals = values;
+
+  values[0].type = PARAM_STATUS;
+  values[0].data.d_status = status;
 }

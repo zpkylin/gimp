@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <stdlib.h>
@@ -111,6 +111,9 @@ static void       script_fu_preview_changed  (GtkWidget *widget,
 					      gpointer   data);
 static void       script_fu_preview_cancel   (GtkWidget *widget,
 					      gpointer   data);
+static gint       script_fu_preview_delete   (GtkWidget *widget,
+					      GdkEvent  *event,
+					      gpointer   data);
 
 /*
  *  Local variables
@@ -148,7 +151,7 @@ script_fu_find_scripts ()
   gchar *token;
   gchar *next_token;
   gchar *command;
-  gint   err;
+  gint   my_err;
   DIR   *dir;
   struct dirent *dir_ent;
 
@@ -209,9 +212,9 @@ script_fu_find_scripts ()
 	    } /* else */
 
 	  /* Check if directory exists and if it has any items in it */
-	  err = stat (path, &filestat);
+	  my_err = stat (path, &filestat);
 
-	  if (!err && S_ISDIR (filestat.st_mode))
+	  if (!my_err && S_ISDIR (filestat.st_mode))
 	    {
 	      if (path[strlen (path) - 1] != '/')
 		strcat (path, "/");
@@ -220,7 +223,7 @@ script_fu_find_scripts ()
 	      dir = opendir (path);
 
 	      if (!dir)
-		g_warning("error reading script directory \"%s\"", path);
+		  g_message ("error reading script directory \"%s\"", path);
 	      else
 		{
 		  while ((dir_ent = readdir (dir)))
@@ -232,9 +235,9 @@ script_fu_find_scripts ()
 		      if (strcmp (filename + strlen (filename) - 4, ".scm") == 0)
 			{
 			  /* Check the file and see that it is not a sub-directory */
-			  err = stat (filename, &filestat);
+			  my_err = stat (filename, &filestat);
 
-			  if (!err && S_ISREG (filestat.st_mode))
+			  if (!my_err && S_ISREG (filestat.st_mode))
 			    {
 			      command = g_new (char, strlen ("(load \"\")") + strlen (filename) + 1);
 			      sprintf (command, "(load \"%s\")", filename);
@@ -272,10 +275,11 @@ script_fu_add_script (LISP a)
   int i;
   gdouble color[3];
   LISP color_list;
+  gchar *menu_path = NULL;
 
   /*  Check the length of a  */
   if (nlength (a) < 7)
-    return err ("Too few arguments to script-fu-register", NIL);
+    return my_err ("Too few arguments to script-fu-register", NIL);
 
   /*  Create a new script  */
   script = g_new (SFScript, 1);
@@ -289,6 +293,10 @@ script_fu_add_script (LISP a)
   val = get_c_string (car (a));
   script->description = g_strdup (val);
   a = cdr (a);
+
+  /* Allow scripts with no menus */
+  if (strncmp(val, "<None>", 6) != 0)
+      menu_path = script->description;
 
   /*  Find the script help  */
   val = get_c_string (car (a));
@@ -326,39 +334,40 @@ script_fu_add_script (LISP a)
   /*  Check the supplied number of arguments  */
   script->num_args = nlength (a) / 3;
 
+  args = g_new (GParamDef, script->num_args + 1);
+  args[0].type = PARAM_INT32;
+  args[0].name = "run_mode";
+  args[0].description = "Interactive, non-interactive";
+
+  script->args_widgets = NULL;
+  script->arg_types = g_new (SFArgType, script->num_args);
+  script->arg_labels = g_new (char *, script->num_args);
+  script->arg_defaults = g_new (SFArgValue, script->num_args);
+  script->arg_values = g_new (SFArgValue, script->num_args);
+
   if (script->num_args > 0)
     {
-      script->args_widgets = NULL;
-      script->arg_types = g_new (SFArgType, script->num_args);
-      script->arg_labels = g_new (char *, script->num_args);
-      script->arg_defaults = g_new (SFArgValue, script->num_args);
-      script->arg_values = g_new (SFArgValue, script->num_args);
-      args = g_new (GParamDef, script->num_args + 1);
-      args[0].type = PARAM_INT32;
-      args[0].name = "run_mode";
-      args[0].description = "Interactive, non-interactive";
-
       for (i = 0; i < script->num_args; i++)
 	{
 	  if (a != NIL)
 	    {
 	      if (!TYPEP (car (a), tc_flonum))
-		return err ("script-fu-register: argument types must be integer values", NIL);
+		return my_err ("script-fu-register: argument types must be integer values", NIL);
 	      script->arg_types[i] = get_c_long (car (a));
 	      a = cdr (a);
 	    }
 	  else
-	    return err ("script-fu-register: missing type specifier", NIL);
+	    return my_err ("script-fu-register: missing type specifier", NIL);
 
 	  if (a != NIL)
 	    {
 	      if (!TYPEP (car (a), tc_string))
-		return err ("script-fu-register: argument labels must be strings", NIL);
+		return my_err ("script-fu-register: argument labels must be strings", NIL);
 	      script->arg_labels[i] = g_strdup (get_c_string (car (a)));
 	      a = cdr (a);
 	    }
 	  else
-	    return err ("script-fu-register: missing arguments label", NIL);
+	    return my_err ("script-fu-register: missing arguments label", NIL);
 
 	  if (a != NIL)
 	    {
@@ -369,7 +378,7 @@ script_fu_add_script (LISP a)
 		case SF_LAYER:
 		case SF_CHANNEL:
 		  if (!TYPEP (car (a), tc_flonum))
-		    return err ("script-fu-register: drawable defaults must be integer values", NIL);
+		    return my_err ("script-fu-register: drawable defaults must be integer values", NIL);
 		  script->arg_defaults[i].sfa_image = get_c_long (car (a));
 		  script->arg_values[i].sfa_image = script->arg_defaults[i].sfa_image;
 
@@ -400,7 +409,7 @@ script_fu_add_script (LISP a)
 
 		case SF_COLOR:
 		  if (!TYPEP (car (a), tc_cons))
-		    return err ("script-fu-register: color defaults must be a list of 3 integers", NIL);
+		    return my_err ("script-fu-register: color defaults must be a list of 3 integers", NIL);
 		  color_list = car (a);
 		  color[0] = (gdouble) get_c_long (car (color_list)) / 255.0;
 		  color_list = cdr (color_list);
@@ -419,7 +428,7 @@ script_fu_add_script (LISP a)
 
 		case SF_TOGGLE:
 		  if (!TYPEP (car (a), tc_flonum))
-		    return err ("script-fu-register: toggle default must be an integer value", NIL);
+		    return my_err ("script-fu-register: toggle default must be an integer value", NIL);
 		  script->arg_defaults[i].sfa_toggle = (get_c_long (car (a))) ? TRUE : FALSE;
 		  script->arg_values[i].sfa_toggle = script->arg_defaults[i].sfa_toggle;
 
@@ -430,7 +439,7 @@ script_fu_add_script (LISP a)
 
 		case SF_VALUE:
 		  if (!TYPEP (car (a), tc_string))
-		    return err ("script-fu-register: value defaults must be string values", NIL);
+		    return my_err ("script-fu-register: value defaults must be string values", NIL);
 		  script->arg_defaults[i].sfa_value = g_strdup (get_c_string (car (a)));
 
 		  args[i + 1].type = PARAM_STRING;
@@ -444,7 +453,7 @@ script_fu_add_script (LISP a)
 	      a = cdr (a);
 	    }
 	  else
-	    return err ("script-fu-register: missing default argument", NIL);
+	    return my_err ("script-fu-register: missing default argument", NIL);
 	}
     }
 
@@ -454,7 +463,7 @@ script_fu_add_script (LISP a)
 			  script->author,
 			  script->copyright,
 			  script->date,
-			  script->description,
+			  menu_path,
 			  script->img_types,
 			  PROC_TEMPORARY,
 			  script->num_args + 1, 0,
@@ -508,6 +517,7 @@ script_fu_script_proc (char     *name,
   GStatusType status = STATUS_SUCCESS;
   GRunModeType run_mode;
   SFScript *script;
+  int min_args;
 
   run_mode = params[0].data.d_int32;
 
@@ -515,6 +525,9 @@ script_fu_script_proc (char     *name,
     status = STATUS_CALLING_ERROR;
   else
     {
+      if (script->num_args == 0)
+	run_mode = RUN_NONINTERACTIVE;
+
       switch (run_mode)
 	{
 	case RUN_INTERACTIVE:
@@ -530,8 +543,12 @@ script_fu_script_proc (char     *name,
 	    script->image_based = FALSE;
 
 	  /*  First acquire information with a dialog  */
-	  script_fu_interface (script);
-	  break;
+	  /*  Skip this part if the script takes no parameters */ 
+	  min_args = (script->image_based) ? 2 : 0;
+	  if (script->num_args > min_args) {
+	    script_fu_interface (script); 
+	    break;
+	  }
 
 	case RUN_NONINTERACTIVE:
 	  /*  Make sure all the arguments are there!  */
@@ -540,7 +557,7 @@ script_fu_script_proc (char     *name,
 	  if (status == STATUS_SUCCESS)
 	    {
 	      gint err_msg;
-	      char *text;
+	      char *text = NULL;
 	      char *command, *c;
 	      char buffer[32];
 	      int length;
@@ -572,6 +589,8 @@ script_fu_script_proc (char     *name,
 
 	      c = command = g_new (char, length);
 
+	      if (script->num_args)
+	      {
 	      sprintf (command, "(%s ", script->script_name);
 	      c += strlen (script->script_name) + 2;
 	      for (i = 0; i < script->num_args; i++)
@@ -609,6 +628,9 @@ script_fu_script_proc (char     *name,
 		    sprintf (c, "%s ", text);
 		  c += strlen (text) + 1;
 		}
+	      }
+	      else
+		sprintf (command, "(%s)", script->script_name);
 
 	      /*  run the command through the interpreter  */
 	      err_msg = (repl_c_string (command, 0, 0, 1) != 0) ? TRUE : FALSE;
@@ -704,7 +726,10 @@ static void
 script_fu_disable_cc (gint err_msg)
 {
   if (err_msg)
-    g_warning ("%s", siod_err_msg);
+    g_message ("Script-Fu Error\n%s\n"
+              "If this happens while running a logo script,\n"
+              "you might not have the font it wants installed on your system",
+              siod_err_msg);
 
   current_command_enabled = FALSE;
 
@@ -756,11 +781,12 @@ script_fu_interface (SFScript *script)
 
   sf_interface.script = script;
 
-  title = g_new (char, strlen ("Script-Fu: ") + strlen (script->description) + 1);
-  sprintf (title, "Script-Fu: %s", script->description);
+  title = g_new (guchar, strlen ("Script-Fu: ") + strlen (script->description) + 1);
+  sprintf ((char *)title, "Script-Fu: %s", script->description);
 
   dlg = gtk_dialog_new ();
-  gtk_window_set_title (GTK_WINDOW (dlg), title);
+  gtk_quit_add_destroy (1, GTK_OBJECT (dlg));
+  gtk_window_set_title (GTK_WINDOW (dlg), (const gchar *)title);
   gtk_signal_connect (GTK_OBJECT (dlg), "destroy",
 		      (GtkSignalFunc) script_fu_close_callback,
 		      NULL);
@@ -901,8 +927,7 @@ script_fu_interface (SFScript *script)
   gtk_widget_show (dlg);
 
   gtk_main ();
-
-  gtk_widget_destroy (dlg);
+  
   g_free (script->args_widgets);
   gdk_flush ();
 }
@@ -952,7 +977,7 @@ script_fu_ok_callback (GtkWidget *widget,
 {
   SFScript *script;
   gint err_msg;
-  char *text;
+  char *text = NULL;
   char *command, *c;
   char buffer[32];
   int length;
@@ -1081,12 +1106,12 @@ script_fu_preview_callback (GtkWidget *widget,
   SFColor *color;
 
   color = (SFColor *) data;
+  color->old_color[0] = color->color[0];
+  color->old_color[1] = color->color[1];
+  color->old_color[2] = color->color[2];
+      
   if (!color->dialog)
     {
-      color->old_color[0] = color->color[0];
-      color->old_color[1] = color->color[1];
-      color->old_color[2] = color->color[2];
-      
       color->dialog = gtk_color_selection_dialog_new ("Script-Fu Color Picker");
       csd = GTK_COLOR_SELECTION_DIALOG (color->dialog);
 
@@ -1095,6 +1120,9 @@ script_fu_preview_callback (GtkWidget *widget,
       gtk_signal_connect_object (GTK_OBJECT (csd->ok_button), "clicked",
 				 (GtkSignalFunc) gtk_widget_hide,
 				 GTK_OBJECT (color->dialog));
+      gtk_signal_connect (GTK_OBJECT (csd), "delete_event",
+			  (GtkSignalFunc) script_fu_preview_delete,
+			  color);
       gtk_signal_connect (GTK_OBJECT (csd->cancel_button), "clicked",
 			  (GtkSignalFunc) script_fu_preview_cancel,
 			  color);
@@ -1143,4 +1171,13 @@ script_fu_preview_cancel (GtkWidget *widget,
   color->color[2] = color->old_color[2];
 
   script_fu_color_preview (color->preview, color->color);
+}
+
+static gint
+script_fu_preview_delete (GtkWidget *widget,
+			  GdkEvent *event,
+			  gpointer data)
+{
+  script_fu_preview_cancel (widget, data);
+  return TRUE;
 }

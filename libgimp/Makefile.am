@@ -14,7 +14,9 @@ libgimpi_a_SOURCES =	gimpprotocol.c	\
 			gimpwire.c	\
 			gimpwire.h
 
+if STATICLIBS
 libgimpi_a_DEPENDENCIES = libgimp.la
+endif
 
 libgimp_la_SOURCES =	gimp.c		\
 			gimpchannel.c	\
@@ -39,8 +41,8 @@ gimpinclude_HEADERS =	gimp.h		\
 			gimpmenu.h	\
 			gimpui.h
 
-libgimp_la_LDFLAGS = -version-info 1:0:0
-libgimpui_la_LDFLAGS = -version-info 1:0:0
+libgimp_la_LDFLAGS = -version-info $(GIMP_MAJOR_VERSION):$(GIMP_MICRO_VERSION):0
+libgimpui_la_LDFLAGS = -version-info $(GIMP_MAJOR_VERSION):$(GIMP_MICRO_VERSION):0
 
 CPPFLAGS = \
 	-DGIMPDIR=\""$(gimpdir)"\"

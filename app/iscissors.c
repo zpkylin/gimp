@@ -2688,7 +2688,7 @@ CR_convert (Iscissors *iscissors,
 
 	      *b++ = (unsigned char) (val / SUPERSAMPLE2);
 	    }
-	  pixelarea_write_row (&maskPR, offx/*0*/, (i / SUPERSAMPLE)+offy, drawable_width (GIMP_DRAWABLE (iscissors->mask))-offx, buf);
+	  /* pixelarea_write_row (&maskPR, offx, (i / SUPERSAMPLE)+offy, drawable_width (GIMP_DRAWABLE (iscissors->mask))-offx, buf); */
 	}
 
       g_slist_free (CR_scanlines[i]);
