@@ -154,7 +154,6 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Image/Scale", NULL, image_scale_cmd_callback, 0 },
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/Histogram", NULL, image_histogram_cmd_callback, 0 },
-  { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Layers/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
   { "/Layers/Raise Layer", "<control>F", layers_raise_cmd_callback, 0 },
   { "/Layers/Lower Layer", "<control>B", layers_lower_cmd_callback, 0 },

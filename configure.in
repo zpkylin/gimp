@@ -278,6 +278,7 @@ plug-ins/compose/Makefile
 plug-ins/dbbrowser/Makefile
 plug-ins/decompose/Makefile
 plug-ins/edge/Makefile
+plug-ins/fur/Makefile
 plug-ins/gauss_rle/Makefile
 plug-ins/gbr/Makefile
 plug-ins/gz/Makefile

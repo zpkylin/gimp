@@ -1,11 +1,16 @@
-Thu Jul 29 23:20:54 PDT 1999 Manish Singh <yosh@gimp.org>
+Wed Sep  6 14:45:39 PDT 2000 Manish Singh <yosh@gimp.org>
 
-	* plug-ins/gbr/gbr.c: use the g_[nh]ton[sl] functions instead
-	of the system native ones
+	* Upgraded to use GTK 1.2
 
-Thu Jul 29 15:41:28 PDT 1999 Manish Singh <yosh@gimp.org>
+Tue May 16 13:15:12 PDT 2000 caro@rhythm.com
 
-	* merged with mainline 1.0.4.. now requires GTK+ 1.2
+	* new release 1.0.0.6
+
+Mon May  1 13:51:17 PDT 2000 caro@rhythm.com
+
+	* added a visual frame manager
+
+	* added revert to save
 
 Wed Jul 15 23:01:14 PDT 1998 Manish Singh <yosh@gimp.org>
 

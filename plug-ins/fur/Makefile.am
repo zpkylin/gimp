@@ -1,41 +1,29 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = \
-	blur		\
-	bz2		\
-	compose		\
-	dbbrowser	\
-	decompose	\
-	edge		\
-	fur		\
-	gauss_rle	\
-	gbr		\
-	gz		\
-	mail		\
-	mblur		\
-	noisify		\
-	script-fu	\
-	sgi		\
-	sharpen		\
-	snoise		\
-	sobel		\
-	spread		\
-	@TIFF@		\
-	url
-
-scriptdata =
-
 pluginlibdir = $(gimpplugindir)/plug-ins
 
-AM_CPPFLAGS = \
-        -DPRECISION_CONFIG=$(precision)
+pluginlib_PROGRAMS = fur
+
+fur_SOURCES = \
+	fur.c   
 
 INCLUDES = \
 	$(X_CFLAGS)			\
 	-I$(top_srcdir)			\
 	-I$(includedir)
 
-LIBGIMPUI = $(top_builddir)/libgimp/libgimpui.la
+LDADD = \
+	$(top_builddir)/libgimp/libgimpui.la	\
+	$(top_builddir)/libgimp/libgimp.la	\
+	$(X_LIBS)				\
+					\
+	-lc
+
+DEPS = \
+	$(top_builddir)/libgimp/libgimpui.la	\
+	$(top_builddir)/libgimp/libgimp.la
+
+fur_DEPENDENCIES = $(DEPS)
 
 .PHONY: files
 

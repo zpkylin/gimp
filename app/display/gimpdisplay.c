@@ -1002,8 +1002,9 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
 
   menus_set_sensitive ("<Image>/Image/RGB", (format != FORMAT_RGB));
   menus_set_sensitive ("<Image>/Image/Grayscale", (format != FORMAT_GRAY));
+#if 0
   menus_set_sensitive ("<Image>/Image/Indexed", (format != FORMAT_INDEXED));
-
+#endif
   menus_set_sensitive ("<Image>/Image/Colors/Threshold", (format != FORMAT_INDEXED));
   menus_set_sensitive ("<Image>/Image/Colors/Posterize", (format != FORMAT_INDEXED));
   menus_set_sensitive ("<Image>/Image/Colors/Equalize", (format != FORMAT_INDEXED));
@@ -1012,11 +1013,12 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   menus_set_sensitive ("<Image>/Image/Colors/Color Balance", (format == FORMAT_RGB));
   menus_set_sensitive ("<Image>/Image/Colors/Brightness-Contrast", (format != FORMAT_INDEXED));
   menus_set_sensitive ("<Image>/Image/Colors/Hue-Saturation", (format == FORMAT_RGB));
-  menus_set_sensitive ("<Image>/Image/Colors/Curves", (format != FORMAT_INDEXED));
-  menus_set_sensitive ("<Image>/Image/Colors/Levels", (format != FORMAT_INDEXED));
-
-  menus_set_sensitive ("<Image>/Image/Colors/Desaturate", (format == FORMAT_RGB));
 #if 0
+  menus_set_sensitive ("<Image>/Image/Colors/Curves", (format != FORMAT_INDEXED));
+#endif
+  menus_set_sensitive ("<Image>/Image/Colors/Levels", (format != FORMAT_INDEXED));
+#if 0
+  menus_set_sensitive ("<Image>/Image/Colors/Desaturate", (format == FORMAT_RGB));
   menus_set_sensitive ("<Image>/Image/Alpha/Add Alpha Channel", !fs && !aux && lp && !lm && !alpha);
 #endif
 
