@@ -136,10 +136,12 @@ gimp_init (int    gimp_argc,
   if (!no_interface && show_tips)
     tips_dialog_create ();
   
-if (enable_brush_dialog)
+  /*
+  if (enable_brush_dialog)
         create_brush_dialog ();
   if (enable_layer_dialog)
        lc_dialog_create (-1);
+  */
 }
 
 

@@ -782,7 +782,7 @@ file_prefs_save_callback (GtkWidget *widget,
       update = g_list_append (update, "enable-rgbm-painting");
       remove = g_list_append (remove, "dont-enable-rgbm-painting");
     }
-  if (enable_brush_dialog != old_enable_brush_dialog)
+/*  if (enable_brush_dialog != old_enable_brush_dialog)
     {
       update = g_list_append (update, "enable-brush-dialog");
       remove = g_list_append (remove, "dont-enable-brush-dialog");
@@ -792,6 +792,7 @@ file_prefs_save_callback (GtkWidget *widget,
       update = g_list_append (update, "enable-layer-dialog");
       remove = g_list_append (remove, "dont-enable-layer-dialog");
     }
+*/
   if (enable_paste_c_disp!= old_enable_paste_c_disp)
     {
       update = g_list_append (update, "enable-paste-c-disp");
@@ -1711,6 +1712,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 			  &enable_rgbm_painting);
       gtk_widget_show (button);
       
+      /*
       button = gtk_check_button_new_with_label("Show brush dialog");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
                                    enable_brush_dialog);
@@ -1727,6 +1729,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 			  (GtkSignalFunc) file_prefs_toggle_callback,
 			  &enable_layer_dialog);
       gtk_widget_show (button);
+      */
       
       button = gtk_check_button_new_with_label("Enable paste in center of display");
       gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
