@@ -1111,9 +1111,9 @@ file_save (int   image_ID,
     return FALSE;
 
  if (gimage_is_layered (gimage) && !save_layer && !save_copy)
-  if (strcmp(file_proc->extensions, "xcf"))
+  if (strcmp(file_proc->extensions, "rll") && strcmp(file_proc->extensions, "xcf"))
     {
-      g_message ("Can't save layered image except as xcf Choose Flatten first");
+      g_message ("Can't save layered image except as xcf or rll Choose Flatten first");
       return TRUE; 
     }
 

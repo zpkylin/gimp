@@ -1755,7 +1755,7 @@ frame_manager_load (GDisplay *gdisplay, GImage *gimage)
   GSList *item_list=NULL;
   int i;
 
-  if (!gdisplay->frame_manager)
+  if (!gdisplay || !gdisplay->frame_manager)
     return NULL;
 
   /* get the selected item */

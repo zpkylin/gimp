@@ -454,18 +454,18 @@ histogram_tool_histogram_info_float16 (PixelArea *src_area,
 	       red   = FLT (s[RED_PIX], u);
 	       green = FLT (s[GREEN_PIX], u);
 	       blue  = FLT (s[BLUE_PIX], u);
-
-	       red = CLAMP (red, 0.0, 1.0);
-	       green = CLAMP (green, 0.0, 1.0);
-	       blue = CLAMP (blue, 0.0, 1.0);
-
+#if 1
+	       red = CLAMP (red, -0.01, 1.01);
+	       green = CLAMP (green, -0.01, 1.01);
+	       blue = CLAMP (blue, -0.01, 1.01);
+#endif
 	       value = MAX (red, green);
 	       value = MAX (value, blue);
 
-	       value_bin = (int)(value * (bins-1));
-	       red_bin = (int)(red * (bins-1));   	
-	       green_bin = (int)(green * (bins-1));
-	       blue_bin = (int)(blue * (bins-1));
+	       value_bin = (int)((value) * 100 + 1);
+	       red_bin = (int)((red) * 100 + 1);   	
+	       green_bin = (int)((green) * 100 + 1);
+	       blue_bin = (int)((blue) * 100 + 1);
 
 	       if (mask_area)
 		 {
@@ -477,6 +477,7 @@ histogram_tool_histogram_info_float16 (PixelArea *src_area,
 		 }
 	       else
 		 {
+		   
 		   values[HISTOGRAM_VALUE][value_bin] += 1.0;
 		   values[HISTOGRAM_RED][red_bin]     += 1.0;
 		   values[HISTOGRAM_GREEN][green_bin] += 1.0;
@@ -792,7 +793,7 @@ histogram_tool_dialog_update_float (HistogramToolDialog *htd,
   gtk_label_set (GTK_LABEL (htd->info_labels[3]), text);
 
   /*  intensity  */
-  sprintf (text, "%f..%f", start/256.0, (end+1)/256.0);
+  sprintf (text, "%f..%f", (start-1)/100.0, (end-1)/100.0);
   gtk_label_set (GTK_LABEL (htd->info_labels[4]), text);
 
   /*  count  */
@@ -976,7 +977,7 @@ histogram_tool_initialize (void *gdisp_ptr)
       bins = 256;
       break;
   case PRECISION_FLOAT16:
-      bins = 256;
+      bins = 103; /* changed from 256 */ 
       break;
   default:
       return;

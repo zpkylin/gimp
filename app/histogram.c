@@ -75,6 +75,16 @@ histogram_draw (Histogram *histogram,
 
   if (update & HISTOGRAM)
     {
+      max = FLT_MIN; /* min for float */
+      for (i = 0; i < histogram_p->bins; i++)
+	{
+	    log_val = histogram_p->values[histogram_p->channel][i];
+
+	  if (log_val > max)
+	    max = log_val;
+	}
+
+#if 0
       /*  find the maximum value  */
       max = FLT_MAX; /* max for float */
       for (i = 0; i < histogram_p->bins; i++)
@@ -87,7 +97,7 @@ histogram_draw (Histogram *histogram,
 	  if (log_val > max)
 	    max = log_val;
 	}
-
+#endif
       /*  clear the histogram  */
       gdk_window_clear (histogram->histogram_widget->window);
 
@@ -101,7 +111,10 @@ histogram_draw (Histogram *histogram,
 	{
 	  x = (width * i) / histogram_p->bins + 1;
 	  if (histogram_p->values[histogram_p->channel][i])
+#if 0
 	    y = (int) ((height * log (histogram_p->values[histogram_p->channel][i])) / max);
+#endif
+       	  y = (int) ((height * (histogram_p->values[histogram_p->channel][i])) / max);
 	  else
 	    y = 0;
 	  gdk_draw_line (histogram->histogram_widget->window,
@@ -152,6 +165,7 @@ histogram_events (GtkWidget *widget,
 
       histogram_p->start = BOUNDS ((((bevent->x - 1) * histogram_p->bins) / width), 0, histogram_p->bins-1);
       histogram_p->end = histogram_p->start;
+
 
       histogram_draw (histogram, RANGE);
       break;

@@ -326,7 +326,6 @@ convolve_painthit_setup (PaintCore * paint_core, Canvas * painthit)
     {
       PixelArea src_area, painthit_area;
       Tag tag = drawable_tag (paint_core->linked_drawable);
-	  printf("linked\n");
       if (paint_core->w >= matrix_size && paint_core->h >= matrix_size)
 	{
 	  Canvas * temp_canvas;

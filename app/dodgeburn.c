@@ -320,82 +320,152 @@ dodgeburn_painthit_setup (PaintCore * paint_core,Canvas * painthit)
   PixelArea srcPR, destPR, tempPR;
   gfloat exposure;
   gfloat brush_opacity;
-  Tag tag = drawable_tag(paint_core->drawable);
+  Tag tag;
   gint x1, y1, x2, y2;
 
   if (!painthit)
     return;
 
-  x1 = BOUNDS (paint_core->x, 0, drawable_width (paint_core->drawable));
-  y1 = BOUNDS (paint_core->y, 0, drawable_height (paint_core->drawable));
-  x2 = BOUNDS (paint_core->x + paint_core->w, 0, drawable_width (paint_core->drawable));
-  y2 = BOUNDS (paint_core->y + paint_core->h, 0, drawable_height (paint_core->drawable));
+  if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+  tag = drawable_tag(paint_core->drawable);
+      x1 = BOUNDS (paint_core->x, 0, drawable_width (paint_core->drawable));
+      y1 = BOUNDS (paint_core->y, 0, drawable_height (paint_core->drawable));
+      x2 = BOUNDS (paint_core->x + paint_core->w, 0, drawable_width (paint_core->drawable));
+      y2 = BOUNDS (paint_core->y + paint_core->h, 0, drawable_height (paint_core->drawable));
 
-  if (!(x2 - x1) || !(y2 - y1))
-    return;
+      if (!(x2 - x1) || !(y2 - y1))
+	return;
 
-  /*  get the original untouched image  */
+      /*  get the original untouched image  */
 
 #if 1 
-  orig_canvas = paint_core_16_area_original (paint_core, 
-		paint_core->drawable, x1, y1, x2, y2);
+      orig_canvas = paint_core_16_area_original (paint_core, 
+	  paint_core->drawable, x1, y1, x2, y2);
 
-  pixelarea_init (&srcPR, orig_canvas, 
-		0, 0, 
-		x2-x1, y2-y1, 
-		FALSE);
+      pixelarea_init (&srcPR, orig_canvas, 
+	  0, 0, 
+	  x2-x1, y2-y1, 
+	  FALSE);
 #endif
 
 #if 0 
-  pixelarea_init (&srcPR, drawable_data (paint_core->drawable), 
-		x1, y1, 
-		x2, y2,
-		FALSE);
+      pixelarea_init (&srcPR, drawable_data (paint_core->drawable), 
+	  x1, y1, 
+	  x2, y2,
+	  FALSE);
 #endif
-  /* Get a temp buffer to hold the result of dodgeburning the orig */
-  temp_canvas = canvas_new(tag, paint_core->w, paint_core->h, STORAGE_FLAT); 
-  pixelarea_init (&tempPR, temp_canvas, 
-		0, 0, 
-		canvas_width (temp_canvas), canvas_height(temp_canvas),
-		TRUE);
+      /* Get a temp buffer to hold the result of dodgeburning the orig */
+      temp_canvas = canvas_new(tag, paint_core->w, paint_core->h, STORAGE_FLAT); 
+      pixelarea_init (&tempPR, temp_canvas, 
+	  0, 0, 
+	  canvas_width (temp_canvas), canvas_height(temp_canvas),
+	  TRUE);
 
-  brush_opacity = gimp_brush_get_opacity();
-  exposure = (dodgeburn_options->exposure)/100.0;
+      brush_opacity = gimp_brush_get_opacity();
+      exposure = (dodgeburn_options->exposure)/100.0;
 
 #if 0
-  printf("dodgeburn_motion: brush_opacity is %f\n", brush_opacity);
-  printf("dodgeburn_motion: exposure is %f\n", exposure);
+      printf("dodgeburn_motion: brush_opacity is %f\n", brush_opacity);
+      printf("dodgeburn_motion: exposure is %f\n", exposure);
 #endif
- 
-  dodgeburn_area (&srcPR, &tempPR,
-	dodgeburn_options->type,dodgeburn_options->mode,exposure);
 
-  pixelarea_init (&tempPR, temp_canvas, 
-		0, 0, 
-		canvas_width (temp_canvas), canvas_height(temp_canvas),
-		FALSE);
-  
-  pixelarea_init (&destPR, painthit, 
-		0, 0, 
-		paint_core->w, paint_core->h, 
-		TRUE);  
- 
-  if (!drawable_has_alpha (paint_core->drawable))
-    add_alpha_area (&tempPR, &destPR);
+      dodgeburn_area (&srcPR, &tempPR,
+	  dodgeburn_options->type,dodgeburn_options->mode,exposure);
+
+      pixelarea_init (&tempPR, temp_canvas, 
+	  0, 0, 
+	  canvas_width (temp_canvas), canvas_height(temp_canvas),
+	  FALSE);
+
+      pixelarea_init (&destPR, painthit, 
+	  0, 0, 
+	  paint_core->w, paint_core->h, 
+	  TRUE);  
+
+      /*if (!drawable_has_alpha (paint_core->drawable))
+	add_alpha_area (&tempPR, &destPR);
+	else*/
+      copy_area(&tempPR, &destPR);
+
+      canvas_delete(temp_canvas);
+    }
   else
-    copy_area(&tempPR, &destPR);
+    if (paint_core->setup_mode == LINKED_SETUP)
+      {
+  tag = drawable_tag(paint_core->linked_drawable);
+	x1 = BOUNDS (paint_core->x, 0, drawable_width (paint_core->drawable));
+	y1 = BOUNDS (paint_core->y, 0, drawable_height (paint_core->drawable));
+	x2 = BOUNDS (paint_core->x + paint_core->w, 0, drawable_width (paint_core->drawable));
+	y2 = BOUNDS (paint_core->y + paint_core->h, 0, drawable_height (paint_core->drawable));
 
-  canvas_delete(temp_canvas);
+	if (!(x2 - x1) || !(y2 - y1))
+	  return;
+
+	/*  get the original untouched image  */
+
+#if 1 
+	orig_canvas = paint_core_16_area_original (paint_core, 
+	    paint_core->linked_drawable, x1, y1, x2, y2);
+
+	pixelarea_init (&srcPR, orig_canvas, 
+	    0, 0, 
+	    x2-x1, y2-y1, 
+	    FALSE);
+#endif
+
+#if 0 
+	pixelarea_init (&srcPR, drawable_data (paint_core->drawable), 
+	    x1, y1, 
+	    x2, y2,
+	    FALSE);
+#endif
+	/* Get a temp buffer to hold the result of dodgeburning the orig */
+	temp_canvas = canvas_new(tag, paint_core->w, paint_core->h, STORAGE_FLAT); 
+	pixelarea_init (&tempPR, temp_canvas, 
+	    0, 0, 
+	    canvas_width (temp_canvas), canvas_height(temp_canvas),
+	    TRUE);
+
+	brush_opacity = gimp_brush_get_opacity();
+	exposure = (dodgeburn_options->exposure)/100.0;
+
+#if 0
+	printf("dodgeburn_motion: brush_opacity is %f\n", brush_opacity);
+	printf("dodgeburn_motion: exposure is %f\n", exposure);
+#endif
+
+	dodgeburn_area (&srcPR, &tempPR,
+	    dodgeburn_options->type,dodgeburn_options->mode,exposure);
+
+	pixelarea_init (&tempPR, temp_canvas, 
+	    0, 0, 
+	    canvas_width (temp_canvas), canvas_height(temp_canvas),
+	    FALSE);
+
+	pixelarea_init (&destPR, painthit, 
+	    0, 0, 
+	    paint_core->w, paint_core->h, 
+	    TRUE);  
+
+	/*if (!drawable_has_alpha (paint_core->drawable))
+	  add_alpha_area (&tempPR, &destPR);
+	  else*/
+	copy_area(&tempPR, &destPR);
+
+	canvas_delete(temp_canvas);
+
+      }
 }
 
 void
 dodgeburn_area (
-             PixelArea * src_area,
-             PixelArea * dest_area,
-	     gint type,
-	     gint mode,
-	     gfloat exposure
-             )
+    PixelArea * src_area,
+    PixelArea * dest_area,
+    gint type,
+    gint mode,
+    gfloat exposure
+	       )
 {
   DodgeburnRowFunc dodgeburn_row = dodgeburn_row_func (pixelarea_tag (src_area), mode);
   void * pag;
@@ -404,8 +474,8 @@ dodgeburn_area (
     exposure = -exposure; 
 
   for (pag = pixelarea_register (2, src_area, dest_area);
-       pag != NULL;
-       pag = pixelarea_process (pag))
+      pag != NULL;
+      pag = pixelarea_process (pag))
     {
       PixelRow src_row;
       PixelRow dest_row;

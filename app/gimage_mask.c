@@ -248,7 +248,6 @@ gimage_mask_extract (gimage, drawable, cut_gimage, keep_indexed)
      
   canvas_fixme_setx (tiles, x1 + off_x);
   canvas_fixme_sety (tiles, y1 + off_y);
-
   /* configure the pixel areas  */
   pixelarea_init (&srcPR, drawable_data (drawable), 
 		x1, y1, (x2 - x1), (y2 - y1), cut_gimage);

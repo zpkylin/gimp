@@ -130,10 +130,10 @@ crop_buffer (TileManager *tiles,
 	}
     }
 
-  /*
+  
   x2 = BOUNDS (x2-x1 + 1, 0, canvas_width (tiles));
   y2 = BOUNDS (y2-y1 + 1, 0, canvas_height (tiles));
-*/
+
   empty = (x1 == canvas_width (tiles) && y1 == canvas_height (tiles));
 
   /*  If there are no visible pixels, return NULL */

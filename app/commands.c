@@ -3076,7 +3076,7 @@ brush_increase_radius ()
 
       gimp_brush_generated_set_radius ((GimpBrushGenerated *)get_active_brush (), radius);
       create_win_cursor (gdisplay->canvas->window, 
-	  radius*2*(SCALEDEST (gdisplay) / SCALESRC (gdisplay))); 
+	  radius*2*((double)SCALEDEST (gdisplay) / SCALESRC (gdisplay))); 
     }
   else
     printf ("ERROR : you can not edit this brush\n");
@@ -3095,7 +3095,7 @@ brush_decrease_radius ()
 
       gimp_brush_generated_set_radius ((GimpBrushGenerated *)get_active_brush (), radius);
       create_win_cursor (gdisplay->canvas->window,           
-	  radius*2*(SCALEDEST (gdisplay) / SCALESRC (gdisplay)));                     
+	  radius*2*((double)SCALEDEST (gdisplay) / SCALESRC (gdisplay)));                     
     }
   else
     printf ("ERROR : you can not edit this brush\n");

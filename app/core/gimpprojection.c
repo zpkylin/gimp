@@ -145,9 +145,8 @@ GDisplay*
 gdisplay_fm (GImage *gimage,
 	      unsigned int  scale)
 {
-  GDisplay *gdisplay = gdisplay_active ();
   
-  return frame_manager_load (gdisplay, gimage);
+  return frame_manager_load (NULL, gimage);
 }
 
 static void
