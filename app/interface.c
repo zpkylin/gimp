@@ -125,11 +125,6 @@ static ToolButton tool_data[] =
   { (char **) bezier_bits,
     "Select regions using Bezier curves",
     (gpointer) BEZIER_SELECT },
-#if 0
-  { (char **) iscissors_bits,
-    "Select shapes from image",
-    (gpointer) ISCISSORS },
-#endif
   { (char **) move_bits,
     "Move layers & selections",
     (gpointer) MOVE },
@@ -139,6 +134,11 @@ static ToolButton tool_data[] =
   { (char **) crop_bits,
     "Crop the image",
     (gpointer) CROP },
+#if 0
+  { (char **) iscissors_bits,
+    "Select shapes from image",
+    (gpointer) ISCISSORS },
+#endif
   { (char **) scale_bits,
     "Transform the layer or selection",
     (gpointer) ROTATE },
@@ -183,11 +183,17 @@ static ToolButton tool_data[] =
   { (char **) smudge_bits,
     "Smudge",
     (gpointer) SMUDGE },
-#if 0
+#if 1
   { NULL,
     NULL,
     (gpointer) BY_COLOR_SELECT },
 #endif
+  { NULL,
+    NULL,
+    (gpointer) POSTERIZE },
+  { NULL,
+    NULL,
+    (gpointer) THRESHOLD },
   { NULL,
     NULL,
     (gpointer) COLOR_BALANCE },
@@ -197,15 +203,11 @@ static ToolButton tool_data[] =
   { NULL,
     NULL,
     (gpointer) HUE_SATURATION },
-  { NULL,
-    NULL,
-    (gpointer) POSTERIZE },
-  { NULL,
-    NULL,
-    (gpointer) THRESHOLD },
-  { NULL,
+#if 0
+      { NULL,
     NULL,
     (gpointer) CURVES },
+#endif
   { NULL,
     NULL,
     (gpointer) LEVELS },

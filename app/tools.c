@@ -122,39 +122,37 @@ ToolInfo tool_info[] =
   { NULL, "Fuzzy Select", 3 },
   { NULL, "Bezier Select", 4 },
   { NULL, "Intelligent Scissors", 5 },
-  { NULL, "Move", 5 },
-  { NULL, "Magnify", 6 },
-  { NULL, "Crop", 7 },
-  { NULL, "Transform", 8 }, /* rotate */
-  { NULL, "Transform", 8 }, /* scale */
-  { NULL, "Transform", 8 }, /* shear */
-  { NULL, "Transform", 8 }, /* perspective */
-  { NULL, "Flip", 9 }, /* horizontal */
-  { NULL, "Flip", 9 }, /* vertical */
-  { NULL, "Text", 11 },
-  { NULL, "Color Picker", 10 },
-  { NULL, "Bucket Fill", 11 },
-  { NULL, "Blend", 12 },
-  { NULL, "Pencil", 13 },
-  { NULL, "Paintbrush", 14 },
-  { NULL, "Eraser", 15 },
-  { NULL, "Airbrush", 16 },
-  { NULL, "Clone", 17 },
-  { NULL, "Convolve", 18 },
-  { NULL, "Dodge Burn", 19 },
-  { NULL, "Smudge", 20 },
+  { NULL, "Move", 6 },
+  { NULL, "Magnify", 7 },
+  { NULL, "Crop", 8 },
+  { NULL, "Transform", 9 }, /* rotate */
+  { NULL, "Transform", 9 }, /* scale */
+  { NULL, "Transform", 9 }, /* shear */
+  { NULL, "Transform", 9 }, /* perspective */
+  { NULL, "Flip", 10 }, /* horizontal */
+  { NULL, "Flip", 10 }, /* vertical */
+  { NULL, "Color Picker", 11 },
+  { NULL, "Bucket Fill", 12 },
+  { NULL, "Blend", 13 },
+  { NULL, "Pencil", 14 },
+  { NULL, "Paintbrush", 15 },
+  { NULL, "Eraser", 16 },
+  { NULL, "Airbrush", 17 },
+  { NULL, "Clone", 18 },
+  { NULL, "Convolve", 19 },
+  { NULL, "Dodge Burn", 20 },
+  { NULL, "Smudge", 21 },
 
   /*  Non-toolbox tools  */
-  { NULL, "By Color Select", 21 },
-  { NULL, "Color Balance", 22 },
-  { NULL, "Brightness-Contrast", 23 },
-  { NULL, "Hue-Saturation", 24 },
-  { NULL, "Posterize", 25 },
-  { NULL, "Threshold", 26 },
-  { NULL, "Curves", 27 },
-  { NULL, "Levels", 28 },
-  { NULL, "Histogram", 29 },
-  { NULL, "Measure", 30 }
+  { NULL, "By Color Select", 22 },
+  { NULL, "Color Balance", 23 },
+  { NULL, "Brightness-Contrast", 24 },
+  { NULL, "Hue-Saturation", 25 },
+  { NULL, "Posterize", 26 },
+  { NULL, "Threshold", 27 },
+  { NULL, "Curves", 28 },
+  { NULL, "Levels", 29 },
+  { NULL, "Histogram", 30 }
 };
 #endif
 
@@ -225,9 +223,11 @@ active_tool_free (void)
     case FLIP_VERT:
       tools_free_flip_tool (active_tool);
       break;
+#if 0
     case TEXT:
       tools_free_text (active_tool);
       break;
+#endif
     case COLOR_PICKER:
       tools_free_color_picker (active_tool);
       break;
@@ -279,9 +279,12 @@ active_tool_free (void)
     case THRESHOLD:
       tools_free_threshold (active_tool);
       break;
+#if 0
     case CURVES:
       tools_free_curves (active_tool);
       break;
+#endif
+
     case LEVELS:
       tools_free_levels (active_tool);
       break;
@@ -351,9 +354,11 @@ tools_select (ToolType type)
     case FLIP_VERT:
       active_tool = tools_new_flip ();
       break;
+#if 0
     case TEXT:
       active_tool = tools_new_text ();
       break;
+#endif 
     case COLOR_PICKER:
       active_tool = tools_new_color_picker ();
       break;
@@ -405,9 +410,11 @@ tools_select (ToolType type)
     case THRESHOLD:
       active_tool = tools_new_threshold ();
       break;
+#if 0
     case CURVES:
       active_tool = tools_new_curves ();
       break;
+#endif
     case LEVELS:
       active_tool = tools_new_levels ();
       break;
@@ -492,9 +499,11 @@ tools_initialize (ToolType type, GDisplay *gdisp_ptr)
     case FLIP_VERT:
       active_tool = tools_new_flip ();
       break;
+#if 0
     case TEXT:
       active_tool = tools_new_text ();
       break;
+#endif 
     case COLOR_PICKER:
       active_tool = tools_new_color_picker ();
       break;
@@ -577,6 +586,7 @@ tools_initialize (ToolType type, GDisplay *gdisp_ptr)
 	active_tool = tools_new_rect_select ();
       }
       break;
+#if 0
     case CURVES:
       if (gdisp) {
 	active_tool = tools_new_curves ();
@@ -585,6 +595,7 @@ tools_initialize (ToolType type, GDisplay *gdisp_ptr)
 	active_tool = tools_new_rect_select ();
       }
       break;
+#endif
     case LEVELS:
       if (gdisp) {
 	active_tool = tools_new_levels ();

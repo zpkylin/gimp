@@ -68,7 +68,10 @@
 #include "scale_tool.h"
 #include "shear_tool.h"
 #include "shmbuf.h"
+#if 0
 #include "text_tool.h"
+#endif
+
 #include "threshold.h"
 #include "undo_cmds.h"
 #include "procedural_db.h"
@@ -106,11 +109,13 @@ internal_procs_init ()
   procedural_db_register (&rotate_proc); pcount++;
   procedural_db_register (&scale_proc); pcount++;
   procedural_db_register (&shear_proc); pcount++;
+#if 0
   procedural_db_register (&text_tool_proc); pcount++;
   procedural_db_register (&text_tool_proc_ext); pcount++;
   procedural_db_register (&text_tool_get_extents_proc); pcount++;
   procedural_db_register (&text_tool_get_extents_proc_ext); pcount++;
-  
+#endif
+
   app_init_update_status(NULL, "GDisplay procedures",
 			 pcount/total_pcount);
 
@@ -342,8 +347,10 @@ internal_procs_init ()
   procedural_db_register (&invert_proc); pcount++;
 
   procedural_db_register (&brightness_contrast_proc); pcount++;
+#if 0
   procedural_db_register (&curves_spline_proc); pcount++;
   procedural_db_register (&curves_explicit_proc); pcount++;
+#endif
   procedural_db_register (&color_balance_proc); pcount++;
   procedural_db_register (&histogram_proc); pcount++;
   procedural_db_register (&hue_saturation_proc); pcount++;

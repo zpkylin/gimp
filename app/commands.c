@@ -2331,8 +2331,6 @@ image_posterize_cmd_callback (GtkWidget *widget,
 {
   GDisplay * gdisp;
 
-  printf ("post\n");
-
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) POSTERIZE].toolbar_position]);
   posterize_initialize ((void *) gdisp);
@@ -2407,6 +2405,7 @@ void
 image_curves_cmd_callback (GtkWidget *widget,
 			   gpointer client_data)
 {
+#if 0
   GDisplay * gdisp;
 
   gdisp = gdisplay_active ();
@@ -2416,6 +2415,7 @@ image_curves_cmd_callback (GtkWidget *widget,
   gdisp = gdisplay_active ();
 
   active_tool->drawable = gimage_active_drawable (gdisp->gimage);
+#endif
 }
 
 void

@@ -101,7 +101,6 @@ typedef enum
   PERSPECTIVE,
   FLIP_HORZ,
   FLIP_VERT,
-  TEXT,
   COLOR_PICKER,
   BUCKET_FILL,
   BLEND,
@@ -116,15 +115,13 @@ typedef enum
 
   /*  Non-toolbox tools  */
   BY_COLOR_SELECT,
+  POSTERIZE,
+  THRESHOLD,
   COLOR_BALANCE,
   BRIGHTNESS_CONTRAST,
   HUE_SATURATION,
-  POSTERIZE,
-  THRESHOLD,
-  CURVES,
   LEVELS,
-  HISTOGRAM, 
-  MEASURE
+  HISTOGRAM 
 } ToolType;
 
 #define XButtonEvent GdkEventButton

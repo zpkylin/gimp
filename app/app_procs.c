@@ -573,7 +573,9 @@ app_exit_finish (void)
   palettes_free ();
   gradients_free ();
   hue_saturation_free ();
+#if 0
   curves_free ();
+#endif 
   levels_free ();
   brush_select_dialog_free ();
   pattern_select_dialog_free ();
