@@ -130,6 +130,12 @@ int	  enable_layer_display = FALSE;
 int	  enable_paste_c_disp = FALSE;
 int	  enable_tmp_saving = TRUE;
 int	  enable_channel_revert = FALSE;
+int       zoom_window_x = 500, zoom_window_y = 500;
+int       frame_manager_x = 600, frame_manager_y = 600;
+int       brush_select_x = 700, brush_select_y = 700;
+int       brush_edit_x = 400, brush_edit_y = 400;
+int       layer_channel_x = 300, layer_channel_y = 300;
+int       palette_x = 200, palette_y = 200;
 
 static int get_next_token (void);
 static int peek_next_token (void);
@@ -219,6 +225,12 @@ static ParseFunc funcs[] =
   { "auto-save",             TT_BOOLEAN,    &auto_save, NULL },
   { "dont-auto-save",        TT_BOOLEAN,    NULL, &auto_save },
   { "cubic-interpolation",   TT_BOOLEAN,    &cubic_interpolation, NULL },
+  { "framemanager-position", TT_POSITION,   &frame_manager_x, &frame_manager_y },
+  { "palette-position",      TT_POSITION,   &palette_x, &palette_y },
+  { "zoom-position",         TT_POSITION,   &zoom_window_x, &zoom_window_y},
+  { "brusheditor-position",  TT_POSITION,   &brush_edit_x, &brush_edit_y},
+  { "brushselect-position",  TT_POSITION,   &brush_select_x, &brush_select_y},
+  { "layerchannel-position", TT_POSITION,   &layer_channel_x, &layer_channel_y},
   { "toolbox-position",      TT_POSITION,   &toolbox_x, &toolbox_y },
   { "progress-position",     TT_POSITION,   &progress_x, &progress_y },
   { "info-position",         TT_POSITION,   &info_x, &info_y },

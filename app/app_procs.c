@@ -62,6 +62,7 @@
 #include "errors.h"
 #include "actionarea.h"
 #include "gimpbrush.h"
+#include "layout.h"
 
 #include "config.h"
 
@@ -594,6 +595,7 @@ app_exit_finish (void)
       gximage_free ();
       render_free ();
       tools_options_dialog_free ();
+      layout_save();
     }
   /*  gtk_exit (0); */
   gtk_main_quit();

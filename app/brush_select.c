@@ -32,6 +32,8 @@
 #include "errors.h"
 #include "float16.h"
 #include "paint_funcs.h"
+#include "layout.h"
+#include "gimprc.h"
 
 #define STD_CELL_WIDTH    24
 #define STD_CELL_HEIGHT   24
@@ -214,6 +216,8 @@ brush_select_new (gchar * title,
   /*  The shell and main vbox  */
   bsp->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (bsp->shell), "brushselection", "Gimp");
+  gtk_widget_set_uposition(bsp->shell, brush_select_x, brush_select_y);
+  layout_connect_window_position(bsp->shell, &brush_select_x, &brush_select_y);
 
   if(!title)
     {

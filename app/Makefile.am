@@ -26,6 +26,8 @@ gimp_SOURCES = \
 	paint_funcs_row_float16.h \
 	float16.c               \
 	float16.h               \
+	layout.c               \
+	layout.h               \
 	smudge.c               \
 	smudge.h               \
 	dodgeburn.c               \

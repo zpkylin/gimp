@@ -38,7 +38,7 @@
 #include "palette.h"
 #include "pixelrow.h"
 #include "tag.h"
-
+#include "layout.h"
 
 #define ENTRY_WIDTH  14
 #define ENTRY_HEIGHT 10
@@ -224,6 +224,9 @@ palette_create ()
       gtk_window_set_wmclass (GTK_WINDOW (palette->shell), "color_palette", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (palette->shell), FALSE, FALSE, FALSE);
       gtk_window_set_title (GTK_WINDOW (palette->shell), "Color Palette");
+      gtk_widget_set_uposition(palette->shell, palette_x, palette_y);
+      layout_connect_window_position(palette->shell, &palette_x, &palette_y);
+
       vbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);
       gtk_box_pack_start (GTK_BOX (GTK_DIALOG (palette->shell)->vbox), vbox, TRUE, TRUE, 0);

@@ -28,12 +28,14 @@
 #include "gdisplay.h"
 #include "gdisplay_ops.h"
 #include "gimage.h"
-#include "gimprc.h"
 #include "general.h"
 #include "interface.h"
 #include "menus.h"
 #include "tools.h"
 #include "devices.h"
+#include "layout.h"
+#include "gimprc.h"
+
 
 #include "pixmaps.h"
 
@@ -567,6 +569,7 @@ create_toolbox ()
   gtk_signal_connect (GTK_OBJECT (window), "destroy",
 		      (GtkSignalFunc) toolbox_destroy,
 		      NULL);
+  layout_connect_window_position(window, &toolbox_x, &toolbox_y);
 
   main_vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (main_vbox), 1);

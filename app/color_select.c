@@ -27,6 +27,7 @@
 #include "gimprc.h"
 #include "paint_funcs_area.h"
 #include "pixelrow.h"
+#include "layout.h"
 
 #define XY_DEF_WIDTH       192
 #define XY_DEF_HEIGHT      192
@@ -195,6 +196,7 @@ color_select_new (PixelRow           * col,
   gtk_window_set_title (GTK_WINDOW (csp->shell), "Color Selection");
   gtk_window_set_policy (GTK_WINDOW (csp->shell), FALSE, FALSE, FALSE);
   gtk_widget_set_uposition (csp->shell, color_select_x, color_select_y);
+  layout_connect_window_position(csp->shell, &color_select_x, &color_select_y);
 
   /*  handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (csp->shell), "delete_event",

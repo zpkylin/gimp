@@ -43,6 +43,7 @@
 #include "resize.h"
 #include "undo.h"
 #include "fileops.h"
+#include "layout.h"
 
 #include "tools/eye.xbm"
 #include "tools/linked.xbm"
@@ -315,6 +316,9 @@ lc_dialog_create (int gimage_id)
 
       gtk_window_set_title (GTK_WINDOW (lc_shell), "Layers & Channels");
       gtk_window_set_wmclass (GTK_WINDOW (lc_shell), "layers_and_channels", "Gimp");
+      gtk_widget_set_uposition(lc_shell, layer_channel_x, layer_channel_y);
+      layout_connect_window_position(lc_shell, &layer_channel_x, &layer_channel_y);
+
       gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (lc_shell)->vbox), 2);
       gtk_signal_connect (GTK_OBJECT (lc_shell),
 			  "delete_event",

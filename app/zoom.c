@@ -6,6 +6,8 @@
 #include "stdio.h"
 #include "scroll.h"
 #include "zoombookmark.h"
+#include "layout.h"
+#include "gimprc.h"
 
 /************************************************************/
 /*     Internal Function Declarations                       */
@@ -168,7 +170,9 @@ ZoomControl * zoom_control_new()
                   GTK_SIGNAL_FUNC(zoom_control_close), 0);
   gtk_window_set_policy (GTK_WINDOW (zoom->window), FALSE, FALSE, FALSE);
   gtk_window_set_title (GTK_WINDOW (zoom->window), "Zoom/Pan Control");
-  gtk_window_set_position(GTK_WINDOW(zoom->window), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(zoom->window, zoom_window_x, zoom_window_y);
+  layout_connect_window_position(zoom->window, &zoom_window_x, &zoom_window_y);
+
   gtk_object_sink(GTK_OBJECT(zoom->window));
   gtk_object_ref(GTK_OBJECT(zoom->window));
 
@@ -215,7 +219,7 @@ ZoomControl * zoom_control_new()
                   GTK_SIGNAL_FUNC(zoom_slider_value_changed), 0);
 
   zoom->preview = gtk_drawing_area_new();
-  gtk_drawing_area_size(GTK_DRAWING_AREA(zoom->preview), 128, 128);
+  gtk_drawing_area_size(GTK_DRAWING_AREA(zoom->preview), 100, 100);
   gtk_signal_connect (GTK_OBJECT (zoom->preview), "expose-event",
 		      (GtkSignalFunc) zoom_preview_expose_event, NULL);
   gtk_signal_connect (GTK_OBJECT(zoom->preview),"configure-event",

@@ -30,6 +30,8 @@
 #include "layer_pvt.h"
 #include "clone.h"
 #include "fileops.h"
+#include "layout.h"
+#include "gimprc.h"
 
 #include "tools/forward.xpm"
 #include "tools/forward_is.xpm"
@@ -235,6 +237,8 @@ frame_manager_create (GDisplay *gdisplay)
       gtk_window_set_policy (GTK_WINDOW (gdisplay->frame_manager->shell), FALSE, TRUE, FALSE);
       sprintf (tmp, "Frame Manager for %s\0", gdisplay->gimage->filename); 
       gtk_window_set_title (GTK_WINDOW (gdisplay->frame_manager->shell), tmp);
+      gtk_widget_set_uposition(gdisplay->frame_manager->shell, frame_manager_x, frame_manager_y);
+      layout_connect_window_position(gdisplay->frame_manager->shell, &frame_manager_x, &frame_manager_y);
 
       /* vbox */
       vbox = gtk_vbox_new (FALSE, 1);

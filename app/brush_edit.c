@@ -26,6 +26,8 @@
 #include "brush_select.h"
 #include "actionarea.h"
 #include "math.h"
+#include "layout.h"
+#include "gimprc.h"
 
 static void brush_edit_close_callback (GtkWidget *w, void *data);
 static gint brush_edit_preview_resize (GtkWidget *widget, GdkEvent *event, 
@@ -200,6 +202,8 @@ brush_edit_generated_new ()
 			  "Gimp");
   gtk_window_set_title (GTK_WINDOW (begw->shell), "Brush Editor");
   gtk_window_set_policy(GTK_WINDOW(begw->shell), FALSE, TRUE, FALSE);
+  gtk_widget_set_uposition(begw->shell, brush_edit_x, brush_edit_y);
+  layout_connect_window_position(begw->shell, &brush_edit_x, &brush_edit_y);
 
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (vbox), 2);
