@@ -225,7 +225,6 @@ paint_funcs_area_setup  (
     {
       int tmp;
       int swap = i + ((int)(drand48()*RANDOM_SEED)) % (RANDOM_TABLE_SIZE - i);
-      printf ("paint_funcs_area_setup %d\n", swap);
       tmp = random_table[i];
       random_table[i] = random_table[swap];
       random_table[swap] = tmp;
