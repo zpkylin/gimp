@@ -260,6 +260,16 @@ static GtkItemFactory *save_factory = NULL;
 
 static int initialize = TRUE;
 
+void
+menus_get_image_menubar(GDisplay *gdisp)
+{
+   gchar buff[256];
+   g_snprintf(buff, 256, "<Image%d>", gdisp->ID);
+   gdisp->menubar_fac = gtk_item_factory_new (GTK_TYPE_MENU_BAR, buff, NULL);
+   gtk_item_factory_create_items_ac (gdisp->menubar_fac , n_image_entries,image_entries, NULL, 2);
+				
+   gdisp->menubar = gdisp->menubar_fac->widget;
+}
 
 void
 menus_get_toolbox_menubar (GtkWidget           **menubar,

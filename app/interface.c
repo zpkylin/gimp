@@ -639,6 +639,7 @@ create_display_shell (int   gdisp_id,
   static GtkAccelGroup *image_accel_group = NULL;
   GDisplay *gdisp;
   GtkWidget *table;
+  GtkWidget *vbox;
   int n_width, n_height;
   int s_width, s_height;
   int scalesrc, scaledest;
@@ -707,13 +708,24 @@ create_display_shell (int   gdisp_id,
                       gdisp);
 
   /*  the table containing all widgets  */
+
+  /* Ideally, we'd put everything in a 3x4 table, with the menubar occupying
+   * the entire top row, and the bottom 3x3 section containing the sliders,
+   * rulers, and canvas.  However, this was causing layout errors, so i put
+   * the menubar and the 3x3 table in a vbox.  This seems to work correctly. 
+   * -jcohen 12/4/01 */
+  
+  vbox = gtk_vbox_new(FALSE, 0);
+
   table = gtk_table_new (3, 3, FALSE);
   gtk_table_set_col_spacing (GTK_TABLE (table), 0, 1);
   gtk_table_set_col_spacing (GTK_TABLE (table), 1, 2);
   gtk_table_set_row_spacing (GTK_TABLE (table), 0, 1);
   gtk_table_set_row_spacing (GTK_TABLE (table), 1, 2);
   gtk_container_border_width (GTK_CONTAINER (table), 2);
-  gtk_container_add (GTK_CONTAINER (gdisp->shell), table);
+
+  gtk_container_add (GTK_CONTAINER (gdisp->shell), vbox);
+  //gtk_container_add (GTK_CONTAINER (gdisp->shell), table);
   
   /*  scrollbars, rulers, canvas, menu popup button  */
   gdisp->origin = gtk_frame_new (NULL);
@@ -765,6 +777,13 @@ create_display_shell (int   gdisp_id,
 
 
   /*  pack all the widgets  */
+
+  menus_get_image_menubar (gdisp);
+  
+  gtk_signal_connect(GTK_OBJECT(gdisp->menubar), "button-press-event", 
+                  GTK_SIGNAL_FUNC(gdisplay_menubar_down), gdisp);
+
+  //gtk_table_attach (GTK_TABLE (table), gdisp->menubar, 0, 3, 0, 1, GTK_FILL, GTK_FILL, 0, 0);
   gtk_table_attach (GTK_TABLE (table), gdisp->origin, 0, 1, 0, 1,
 		    GTK_FILL, GTK_FILL, 0, 0);
   gtk_table_attach (GTK_TABLE (table), gdisp->hrule, 1, 2, 0, 1,
@@ -779,6 +798,10 @@ create_display_shell (int   gdisp_id,
   gtk_table_attach (GTK_TABLE (table), gdisp->vsb, 2, 3, 0, 2,
 		    GTK_FILL, GTK_EXPAND | GTK_SHRINK | GTK_FILL, 0, 0);
 
+  gtk_box_pack_start (GTK_BOX (vbox), gdisp->menubar, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (vbox), table, TRUE, TRUE, 0);
+
+
   if (! image_popup_menu)
     menus_get_image_menu (&image_popup_menu, &image_accel_group);
 
@@ -788,6 +811,7 @@ create_display_shell (int   gdisp_id,
   /*  the accelerator table for images  */
   gtk_window_add_accel_group (GTK_WINDOW (gdisp->shell), image_accel_group);
 
+  gtk_widget_show (gdisp->menubar);
   gtk_widget_show (gdisp->hsb);
   gtk_widget_show (gdisp->vsb);
 
@@ -801,6 +825,7 @@ create_display_shell (int   gdisp_id,
   gtk_widget_show (gdisp->canvas);
   gtk_widget_show (table);
   gtk_widget_show (gdisp->shell);
+  gtk_widget_show (vbox);
 
   /*  set the focus to the canvas area  */
   gtk_widget_grab_focus (gdisp->canvas);

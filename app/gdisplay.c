@@ -79,6 +79,9 @@ gdisplay_new (GImage       *gimage,
 	      unsigned int  scale)
 {
   GDisplay *gdisp;
+  GtkItemFactoryItem * fac_item;
+  GSList *cur_slist;
+  GSList *cur_wid_list = fac_item->widgets;
   char title [MAX_TITLE_BUF];
   int instance;
 
@@ -111,6 +114,8 @@ gdisplay_new (GImage       *gimage,
   gdisp->current_cursor = -1;
   gdisp->draw_guides = TRUE;
   gdisp->snap_to_guides = TRUE;
+  gdisp->menubar = NULL;
+  gdisp->menubar_fac = NULL;
 
   gdisp->framemanager = 0;
 
@@ -130,8 +135,27 @@ gdisplay_new (GImage       *gimage,
   if (!display_ht)
     display_ht = g_hash_table_new ((GHashFunc) gdisplay_hash, NULL);
 
+  /* Add the coorespondences for event qidget lookup */
   g_hash_table_insert (display_ht, gdisp->shell, gdisp);
   g_hash_table_insert (display_ht, gdisp->canvas, gdisp);
+  g_hash_table_insert (display_ht, gdisp->menubar, gdisp);
+
+  /* Add all of the top-level menus to the hash table as well,
+     so they can be resolved on event widget lookup. */
+
+  cur_slist = gdisp->menubar_fac->items;
+  while (cur_slist != NULL) {
+    fac_item = (GtkItemFactoryItem *) cur_slist->data; 
+    cur_wid_list = fac_item->widgets;
+
+    while (cur_wid_list != NULL) { 
+
+      /* printf("Adding factory component: %s\n", gtk_type_query(GTK_OBJECT_TYPE(cur_wid_list->data))->type_name); */
+      g_hash_table_insert(display_ht, cur_wid_list->data, gdisp); 
+      cur_wid_list = cur_wid_list->next;
+    }
+    cur_slist = cur_slist->next;
+  }
 
   /*  set the current tool cursor  */
   gdisplay_install_tool_cursor (gdisp, default_gdisplay_cursor);
@@ -989,6 +1013,7 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   gint lm;
   gint lp;
   gint alpha = FALSE;
+  gchar buff[1024];
   GimpDrawable *drawable;
   Format format;
   Tag t;
@@ -1010,6 +1035,79 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
       t = drawable_tag (drawable);
     }
 
+
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->ID);
+  menus_set_sensitive (buff, !fs && !aux && lp && alpha);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Lower Layer", gdisp->ID);
+  menus_set_sensitive (buff, !fs && !aux && lp && alpha);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->ID);
+  menus_set_sensitive (buff, fs && !aux && lp);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Merge Visible Layers", gdisp->ID);
+  menus_set_sensitive (buff, !fs && !aux && lp);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Flatten Image", gdisp->ID);
+  menus_set_sensitive (buff, !fs && !aux && lp);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Mask To Selection", gdisp->ID);
+  menus_set_sensitive (buff, !fs && !aux && lp);
+  g_snprintf(buff, 1024, "<Image%d>/Image/RGB", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_RGB));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Grayscale", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_GRAY));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Threshold", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Posterize", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Equalize", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Invert", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Color Balance", gdisp->ID);
+  menus_set_sensitive (buff, (format == FORMAT_RGB));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Brightness-Contrast", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Hue-Saturation", gdisp->ID);
+  menus_set_sensitive (buff, (format == FORMAT_RGB));
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Levels", gdisp->ID);
+  menus_set_sensitive (buff, (format != FORMAT_INDEXED));
+  g_snprintf(buff, 1024, "<Image%d>/Select", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Into", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Clear", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Fill", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Stroke", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut Named", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy Named", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Named", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Channel Ops/Offset", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Histogram", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Filters", gdisp->ID);
+  menus_set_sensitive (buff, lp);
+  g_snprintf(buff, 1024, "<Image%d>/Select/Save To Channel", gdisp->ID);
+  menus_set_sensitive (buff, !fs);
+  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Rulers", gdisp->ID);
+  menus_set_sensitive (buff, GTK_WIDGET_VISIBLE (gdisp->origin) ? 1 : 0);
+  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Guides", gdisp->ID);
+  menus_set_sensitive (buff, gdisp->draw_guides);
+  g_snprintf(buff, 1024, "<Image%d>/View/Snap To Guides", gdisp->ID);
+  menus_set_sensitive (buff, gdisp->snap_to_guides);
+
+  
   menus_set_sensitive ("<Image>/Layers/Raise Layer", !fs && !aux && lp && alpha);
   menus_set_sensitive ("<Image>/Layers/Lower Layer", !fs && !aux && lp && alpha);
   menus_set_sensitive ("<Image>/Layers/Anchor Layer", fs && !aux && lp);
@@ -1121,7 +1219,7 @@ GDisplay *
 gdisplay_active ()
 {
   GtkWidget *event_widget;
-  GtkWidget *toplevel_widget;
+  GtkWidget *cur_widget;
   GdkEvent *event;
   GDisplay *gdisp = NULL;
 
@@ -1133,18 +1231,19 @@ gdisplay_active ()
   if (event_widget == NULL)
     return NULL;
 
-  toplevel_widget = gtk_widget_get_toplevel (event_widget);
+  cur_widget = event_widget;
 
-  if (display_ht)
-    gdisp = g_hash_table_lookup (display_ht, event_widget /*toplevel_widget*/);
+  if (display_ht) {
+    while (cur_widget != NULL) {
+      /* printf("%s\n", gtk_type_query(GTK_OBJECT_TYPE(cur_widget))->type_name);*/
+      gdisp = g_hash_table_lookup (display_ht, cur_widget);
 
-  if (gdisp)
-    return gdisp;
-
-  if (display_ht)
-        gdisp = g_hash_table_lookup (display_ht, toplevel_widget );
-  if (gdisp)
+      if (gdisp)
         return gdisp;
+
+      cur_widget = cur_widget->parent;
+    }
+  }
 
   if (popup_shell)
     {

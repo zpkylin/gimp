@@ -97,6 +97,18 @@ gdisplay_shell_events (GtkWidget *widget,
   return FALSE;
 }
 
+gboolean    
+gdisplay_menubar_down(
+  GtkWidget *widget,
+  GdkEventButton *event,
+  gpointer user_data)
+{
+  GDisplay * disp;
+  disp = (GDisplay *)user_data;   
+  gdisplay_set_menu_sensitivity (disp);
+
+  return FALSE;
+}
 
 gint
 gdisplay_canvas_events (GtkWidget *canvas,

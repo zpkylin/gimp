@@ -20,8 +20,9 @@
 
 
 #include "gtk/gtk.h"
+#include "gdisplay.h"
 
-
+void menus_get_image_menubar   (GDisplay * disp);
 void menus_get_toolbox_menubar (GtkWidget           **menubar,
 				GtkAccelGroup       **accel_group);
 void menus_get_image_menu      (GtkWidget           **menu,

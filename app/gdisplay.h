@@ -60,6 +60,8 @@ struct _GDisplay
   GtkWidget *hrule, *vrule;       /*  widgets for rulers                      */
   GtkWidget *origin;              /*  widgets for rulers                      */
   GtkWidget *popup;               /*  widget for popup menu                   */
+  GtkWidget *menubar;             /*  widget for menubar across the top       */
+  GtkItemFactory *menubar_fac;    /*  Factory for menubar                     */
  
   GtkWidget *statusarea;          /*  hbox holding the statusbar and stuff    */
   GtkWidget *statusbar;           /*  widget for statusbar		      */ 
