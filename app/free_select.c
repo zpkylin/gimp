@@ -717,6 +717,7 @@ free_select_button_release (Tool *tool, GdkEventButton *bevent,
   gdk_pointer_ungrab (bevent->time);
   gdk_flush ();
 
+  draw_core_pause (free_sel->core, tool);
   draw_core_stop (free_sel->core, tool);
 
   tool->state = INACTIVE;

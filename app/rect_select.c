@@ -303,6 +303,7 @@ rect_select (GImage *gimage,
     }
   else
     channel_combine_rect (gimage_get_mask (gimage), op, x, y, w, h);
+ 
 }
 
 void
@@ -355,8 +356,7 @@ rect_select_button_press (Tool           *tool,
 	}
       rect_sel->op = REPLACE;
     }
-
-  draw_core_start (rect_sel->core, gdisp->canvas->window, tool);
+   draw_core_start (rect_sel->core, gdisp->canvas->window, tool);
 }
 
 void
@@ -374,6 +374,7 @@ rect_select_button_release (Tool           *tool,
   gdk_pointer_ungrab (bevent->time);
   gdk_flush ();
 
+  draw_core_pause (rect_sel->core, tool);
   draw_core_stop (rect_sel->core, tool);
   tool->state = INACTIVE;
 
@@ -528,7 +529,6 @@ rect_select_draw (Tool *tool)
 
   gdisplay_transform_coords (gdisp, x1, y1, &x1, &y1, 0);
   gdisplay_transform_coords (gdisp, x2, y2, &x2, &y2, 0);
-
 
   gdk_draw_rectangle (rect_sel->core->win,
 		      rect_sel->core->gc, 0,

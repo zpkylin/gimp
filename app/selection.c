@@ -693,7 +693,7 @@ selection_layer_invis (Selection *select)
       y3 = select->segs_layer[0].y1 + 1;
       x4 = select->segs_layer[3].x2 - 1;
       y4 = select->segs_layer[3].y2 - 1;
-
+      
       /*  expose the region  */
       gdisplay_expose_area (gdisp, x1, y1, (x2 - x1) + 1, (y3 - y1) + 1);
       gdisplay_expose_area (gdisp, x1, y3, (x3 - x1) + 1, (y4 - y3) + 1);
