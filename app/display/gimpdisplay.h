@@ -123,14 +123,14 @@ void       gdisplay_snap_rectangle         (GDisplay *, int, int, int, int, int 
 
 GDisplay * gdisplay_active                 (void);
 GDisplay * gdisplay_get_ID                 (int);
-void       gdisplays_update_title          (int);
-void       gdisplays_update_area           (int, int, int, int, int);
-void       gdisplays_expose_guides         (int);
-void       gdisplays_expose_guide          (int, Guide *);
-void       gdisplays_update_full           (int);
-void       gdisplays_shrink_wrap           (int);
+void       gdisplays_update_title          (GimpImage*);
+void       gdisplays_update_area           (GimpImage*, int, int, int, int);
+void       gdisplays_expose_guides         (GimpImage*);
+void       gdisplays_expose_guide          (GimpImage*, Guide *);
+void       gdisplays_update_full           (GimpImage*);
+void       gdisplays_shrink_wrap           (GimpImage*);
 void       gdisplays_expose_full           (void);
-void       gdisplays_selection_visibility  (int, SelectionControl);
+void       gdisplays_selection_visibility  (GimpImage*, SelectionControl);
 int        gdisplays_dirty                 (void);
 void       gdisplays_delete                (void);
 void       gdisplays_flush                 (void);

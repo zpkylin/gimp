@@ -1143,7 +1143,7 @@ gdisplay_get_ID (int ID)
 
 
 void
-gdisplays_update_title (int ID)
+gdisplays_update_title (GimpImage* gimage)
 {
   GDisplay *gdisp;
   GSList *list = display_list;
@@ -1153,10 +1153,10 @@ gdisplays_update_title (int ID)
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	{
 	  /* format the title */
-	  gdisplay_format_title (gdisp->gimage, title);
+	  gdisplay_format_title (gimage, title);
 	  gdk_window_set_title (gdisp->shell->window, title);
 	}
 
@@ -1166,7 +1166,7 @@ gdisplays_update_title (int ID)
 
 
 void
-gdisplays_update_area (int ID,
+gdisplays_update_area (GimpImage* gimage,
 		       int x,
 		       int y,
 		       int w,
@@ -1181,7 +1181,7 @@ gdisplays_update_area (int ID,
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	{
 	  /*  We only need to update the first instance that
 	      we find of this gimage ID.  Otherwise, we would
@@ -1203,7 +1203,7 @@ gdisplays_update_area (int ID,
 
 
 void
-gdisplays_expose_guides (int ID)
+gdisplays_expose_guides (GimpImage* gimage)
 {
   GDisplay *gdisp;
   GList *tmp_list;
@@ -1214,7 +1214,7 @@ gdisplays_expose_guides (int ID)
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	{
 	  tmp_list = gdisp->gimage->guides;
 	  while (tmp_list)
@@ -1230,7 +1230,7 @@ gdisplays_expose_guides (int ID)
 
 
 void
-gdisplays_expose_guide (int    ID,
+gdisplays_expose_guide (GimpImage* gimage,
 			Guide *guide)
 {
   GDisplay *gdisp;
@@ -1241,7 +1241,7 @@ gdisplays_expose_guide (int    ID,
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	gdisplay_expose_guide (gdisp, guide);
 
       list = g_slist_next (list);
@@ -1250,7 +1250,7 @@ gdisplays_expose_guide (int    ID,
 
 
 void
-gdisplays_update_full (int ID)
+gdisplays_update_full (GimpImage* gimage)
 {
   GDisplay *gdisp;
   GSList *list = display_list;
@@ -1260,12 +1260,12 @@ gdisplays_update_full (int ID)
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	{
 	  if (! count)
 	    gdisplay_add_update_area (gdisp, 0, 0,
-				      gdisp->gimage->width,
-				      gdisp->gimage->height);
+				      gimage->width,
+				      gimage->height);
 	  else
 	    gdisplay_add_display_area (gdisp, 0, 0,
 				       gdisp->disp_width,
@@ -1280,7 +1280,7 @@ gdisplays_update_full (int ID)
 
 
 void
-gdisplays_shrink_wrap (int ID)
+gdisplays_shrink_wrap (GimpImage* gimage)
 {
   GDisplay *gdisp;
   GSList *list = display_list;
@@ -1289,7 +1289,7 @@ gdisplays_shrink_wrap (int ID)
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == ID)
+      if (gdisp->gimage == gimage)
 	shrink_wrap_display (gdisp);
 
       list = g_slist_next (list);
@@ -1314,7 +1314,7 @@ gdisplays_expose_full ()
 
 
 void
-gdisplays_selection_visibility (int              gimage_ID,
+gdisplays_selection_visibility (GimpImage* gimage,
 				SelectionControl function)
 {
   GDisplay *gdisp;
@@ -1325,7 +1325,7 @@ gdisplays_selection_visibility (int              gimage_ID,
   while (list)
     {
       gdisp = (GDisplay *) list->data;
-      if (gdisp->gimage->ID == gimage_ID && gdisp->select)
+      if (gdisp->gimage == gimage && gdisp->select)
 	{
 	  switch (function)
 	    {

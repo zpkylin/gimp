@@ -36,6 +36,7 @@
 #include "plug_in.h"
 #include "procedural_db.h"
 #include "gimprc.h"
+#include "drawable.h"
 
 typedef struct _OverwriteBox OverwriteBox;
 

@@ -792,10 +792,10 @@ convert_image (GImage *gimage,
   undo_push_group_end (gimage);
 
   /*  shrink wrap and update all views  */
-  layer_invalidate_previews (gimage->ID);
+  layer_invalidate_previews (gimage);
   gimage_invalidate_preview (gimage);
-  gdisplays_update_title (gimage->ID);
-  gdisplays_update_full (gimage->ID);
+  gdisplays_update_title (gimage);
+  gdisplays_update_full (gimage);
 
   indexed_palette_update_image_list ();
 }

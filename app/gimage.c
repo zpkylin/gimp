@@ -1,5 +1,3 @@
-#ifndef __GIMAGE_C__
-#define __GIMAGE_C__
 #include "gimpimage_pvt.h"
 #include "gimage.h"
 #include "gimpimage.h"
@@ -20,12 +18,19 @@
 #include "gimpset.h"
 
 #include "layer.h"
+#include "layer_pvt.h"
 #include "channel.h"
+
+/* gimage.c: Junk (ugly dependencies) from gimpimage.c on its way
+   to proper places */
+
 static int global_gimage_ID = 1;
 
 static void gimage_destroy_handler (GimpImage* gimage);
 static void gimage_rename_handler (GimpImage* gimage);
 static void gimage_resize_handler (GimpImage* gimage);
+static void gimage_restructure_handler (GimpImage* gimage);
+static void gimage_repaint_handler (GimpImage* gimage, Rectangle* area);
 
 /* This is not strictly needed any more, but bloody idiotic code from
    outside declares this extern and accesses this directly! */
@@ -44,6 +49,10 @@ gimage_new(int width, int height, GimpImageBaseType base_type)
 		      gimage_rename_handler, NULL);
   gtk_signal_connect (GTK_OBJECT (gimage), "resize",
 		      gimage_resize_handler, NULL);
+  gtk_signal_connect (GTK_OBJECT (gimage), "restructure",
+		      gimage_restructure_handler, NULL);
+  gtk_signal_connect (GTK_OBJECT (gimage), "repaint",
+		      gimage_repaint_handler, NULL);
   
   gimage->ref_count = 0;
   gimage->ID = global_gimage_ID ++;
@@ -108,7 +117,7 @@ gimage_destroy_handler (GimpImage* gimage)
 static void
 gimage_rename_handler (GimpImage* gimage)
 {
-  gdisplays_update_title (gimage->ID);
+  gdisplays_update_title (gimage);
   indexed_palette_update_image_list ();
 }
 
@@ -118,11 +127,78 @@ gimage_resize_handler (GimpImage* gimage)
   undo_push_group_end (gimage);
 
   /*  shrink wrap and update all views  */
-  channel_invalidate_previews (gimage->ID);
-  layer_invalidate_previews (gimage->ID);
+  channel_invalidate_previews (gimage);
+  layer_invalidate_previews (gimage);
   gimp_image_invalidate_preview (gimage);
-  gdisplays_update_full (gimage->ID);
-  gdisplays_shrink_wrap (gimage->ID);
+  gdisplays_update_full (gimage);
+  gdisplays_shrink_wrap (gimage);
 }
 
-#endif
+static void
+gimage_restructure_handler (GimpImage* gimage)
+{
+  gdisplays_update_title (gimage);
+}
+
+static void
+gimage_repaint_handler (GimpImage* gimage, Rectangle* area)
+{
+  gdisplays_update_area (gimage,
+			 area->x, area->y, area->width, area->height);
+}
+
+  
+
+/* These really belong in the layer class */
+
+void
+gimage_set_layer_mask_apply (GImage *gimage, int layer_id)
+{
+  Layer *layer;
+  int off_x, off_y;
+
+  /*  find the layer  */
+  if (! (layer = layer_get_ID (layer_id)))
+    return;
+  if (! layer->mask)
+    return;
+
+  layer->apply_mask = ! layer->apply_mask;
+  drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
+  gdisplays_update_area (gimage, off_x, off_y,
+			 drawable_width (GIMP_DRAWABLE(layer)), 
+			 drawable_height (GIMP_DRAWABLE(layer)));
+}
+
+
+
+void
+gimage_set_layer_mask_edit (GImage *gimage, Layer * layer, int edit)
+{
+  /*  find the layer  */
+  if (!layer)
+    return;
+
+  if (layer->mask)
+    layer->edit_mask = edit;
+}
+
+
+void
+gimage_set_layer_mask_show (GImage *gimage, int layer_id)
+{
+  Layer *layer;
+  int off_x, off_y;
+
+  /*  find the layer  */
+  if (! (layer = layer_get_ID (layer_id)))
+    return;
+  if (! layer->mask)
+    return;
+
+  layer->show_mask = ! layer->show_mask;
+  drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
+  gdisplays_update_area (gimage, off_x, off_y,
+			 drawable_width (GIMP_DRAWABLE(layer)), drawable_height (GIMP_DRAWABLE(layer)));
+}
+

@@ -2148,7 +2148,7 @@ layer_widget_button_events (GtkWidget *widget,
 	  if (exclusive)
 	    {
 	      gimage_invalidate_preview (layer_widget->gimage);
-	      gdisplays_update_area (layer_widget->gimage->ID, 0, 0,
+	      gdisplays_update_area (layer_widget->gimage, 0, 0,
 				     layer_widget->gimage->width,
 				     layer_widget->gimage->height);
 	      gdisplays_flush ();
@@ -2922,7 +2922,7 @@ new_layer_query_ok_callback (GtkWidget *w,
       /*  Start a group undo  */
       undo_push_group_start (gimage, EDIT_PASTE_UNDO);
 
-      layer = layer_new (gimage->ID, options->xsize, options->ysize,
+      layer = layer_new (gimage, options->xsize, options->ysize,
 			 gimage_base_type_with_alpha (gimage),
 			 layer_name, OPAQUE_OPACITY, NORMAL_MODE);
       if (layer) 
@@ -3274,7 +3274,7 @@ add_mask_query_ok_callback (GtkWidget *w,
 
   options = (AddMaskOptions *) client_data;
   if ((layer =  (options->layer)) &&
-      (gimage = gimage_get_ID (GIMP_DRAWABLE(layer)->gimage_ID)))
+      (gimage = GIMP_DRAWABLE(layer)->gimage))
     {
       mask = layer_create_mask (layer, options->add_mask_type);
       gimage_add_layer_mask (gimage, layer, mask);
@@ -3557,7 +3557,7 @@ scale_layer_query_ok_callback (GtkWidget *w,
   if (options->resize->width > 0 && options->resize->height > 0 &&
       (layer =  (options->layer)))
     {
-      if ((gimage = gimage_get_ID (GIMP_DRAWABLE(layer)->gimage_ID)) != NULL)
+      if ((gimage = GIMP_DRAWABLE(layer)->gimage) != NULL)
 	{
 	  undo_push_group_start (gimage, LAYER_SCALE_UNDO);
 
@@ -3676,7 +3676,7 @@ resize_layer_query_ok_callback (GtkWidget *w,
   if (options->resize->width > 0 && options->resize->height > 0 &&
       (layer = (options->layer)))
     {
-      if ((gimage = gimage_get_ID (GIMP_DRAWABLE(layer)->gimage_ID)) != NULL)
+      if ((gimage = GIMP_DRAWABLE(layer)->gimage) != NULL)
 	{
 	  undo_push_group_start (gimage, LAYER_RESIZE_UNDO);
 

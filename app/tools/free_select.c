@@ -154,7 +154,7 @@ scan_convert (int gimage_ID, int num_pts, FreeSelectPoint *pts,
   if (num_pts < 3)
     return NULL;
 
-  mask = channel_new_mask (gimage_ID, width, height);
+  mask = channel_new_mask (gimage_get_ID (gimage_ID), width, height);
 
   if (antialias)
     {

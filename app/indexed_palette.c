@@ -375,7 +375,7 @@ indexed_palette_select_callback (int   r,
 	gimage->cmap[indexedP->col_index * 3 + 1] = g;
 	gimage->cmap[indexedP->col_index * 3 + 2] = b;
 	
-	gdisplays_update_full (gimage->ID);
+	gdisplays_update_full (gimage);
 	indexed_palette_draw ();
 	/* Fallthrough */
       case COLOR_SELECT_CANCEL:

@@ -97,7 +97,7 @@ guint prefix##_get_type (void)\
 #define GIMP_IS_OBJECT(obj) GTK_CHECK_TYPE (obj, gimp_object_get_type())
 
 #define CLASS (obj) (GTK_OBJECT(obj)->klass)
-
+#define CAST (obj, type) ((type*)obj)
 
 guint gimp_object_get_type(void);
 

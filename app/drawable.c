@@ -139,10 +139,10 @@ drawable_apply_image (GimpDrawable *drawable,
   if (drawable)
     {
       if (! tiles)
-	undo_push_image (gimage_get_ID (drawable->gimage_ID), drawable, 
+	undo_push_image (drawable->gimage, drawable, 
 			 x1, y1, x2, y2);
       else
-	undo_push_image_mod (gimage_get_ID (drawable->gimage_ID), drawable, 
+	undo_push_image_mod (drawable->gimage, drawable, 
 			     x1, y1, x2, y2, tiles, sparse);
     }
 }
@@ -265,7 +265,7 @@ drawable_update (GimpDrawable *drawable, int x, int y, int w, int h)
   drawable_offsets (drawable, &offset_x, &offset_y);
   x += offset_x;
   y += offset_y;
-  gdisplays_update_area (gimage->ID, x, y, w, h);
+  gdisplays_update_area (gimage, x, y, w, h);
 
   /*  invalidate the preview  */
   drawable_invalidate_preview (drawable);
@@ -345,13 +345,12 @@ drawable_clean (GimpDrawable *drawable)
 }
 
 
-GImage *
+GimpImage *
 drawable_gimage (GimpDrawable *drawable)
 {
-  if (drawable)
-    return gimage_get_ID (drawable->gimage_ID);
-  else
-    return NULL;
+  g_return_val_if_fail (drawable, NULL);
+
+  return drawable->gimage;
 }
 
 
@@ -567,7 +566,7 @@ gimp_drawable_init (GimpDrawable *drawable)
   drawable->offset_x = drawable->offset_y = 0;
   drawable->bytes = 0;
   drawable->dirty = FALSE;
-  drawable->gimage_ID = -1;
+  drawable->gimage = NULL;
   drawable->type = -1;
   drawable->has_alpha = FALSE;
   drawable->preview = NULL;
@@ -607,7 +606,7 @@ gimp_drawable_destroy (GtkObject *object)
 
 void
 gimp_drawable_configure (GimpDrawable *drawable,
-			 int gimage_ID, int width, int height, 
+			 GimpImage* gimage, int width, int height, 
 			 int type, char *name)
 {
   int bpp;
@@ -652,7 +651,7 @@ gimp_drawable_configure (GimpDrawable *drawable,
   drawable->dirty = FALSE;
   drawable->visible = TRUE;
 
-  drawable->gimage_ID = gimage_ID;
+  drawable->gimage = gimage;
 
   /*  preview variables  */
   drawable->preview = NULL;

@@ -68,9 +68,11 @@ gimage_invalidate_previews (void);
 #define gimage_set_component_active	gimp_image_set_component_active
 #define gimage_set_component_visible	gimp_image_set_component_visible
 #define gimage_pick_correlate_layer	gimp_image_pick_correlate_layer
-#define gimage_set_layer_mask_apply	gimp_image_set_layer_mask_apply
-#define gimage_set_layer_mask_edit	gimp_image_set_layer_mask_edit
-#define gimage_set_layer_mask_show	gimp_image_set_layer_mask_show
+
+void gimage_set_layer_mask_apply (GImage *gimage, int layer_id);
+void gimage_set_layer_mask_edit (GImage *gimage, Layer * layer, int edit);
+void gimage_set_layer_mask_show (GImage *gimage, int layer_id);
+
 #define gimage_raise_layer		gimp_image_raise_layer
 #define gimage_lower_layer	       	gimp_image_lower_layer
 #define gimage_merge_visible_layers	gimp_image_merge_visible_layers

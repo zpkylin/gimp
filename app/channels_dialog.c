@@ -36,6 +36,7 @@
 #include "paint_funcs.h"
 #include "palette.h"
 #include "resize.h"
+#include "channel.h"
 
 #include "tools/eye.xbm"
 #include "tools/channel.xbm"
@@ -1161,12 +1162,12 @@ channel_widget_button_events (GtkWidget *widget,
 	{
 	  if (exclusive)
 	    {
-	      gdisplays_update_area (channel_widget->gimage->ID, 0, 0, width, height);
+	      gdisplays_update_area (channel_widget->gimage, 0, 0, width, height);
 	      gdisplays_flush ();
 	    }
 	  else if (old_state != visible)
 	    {
-	      gdisplays_update_area (channel_widget->gimage->ID, 0, 0, width, height);
+	      gdisplays_update_area (channel_widget->gimage, 0, 0, width, height);
 	      gdisplays_flush ();
 	    }
 	}
@@ -1652,7 +1653,7 @@ new_channel_query_ok_callback (GtkWidget *w,
 
   if ((gimage = gimage_get_ID (options->gimage_id)))
     {
-      new_channel = channel_new (gimage->ID, gimage->width, gimage->height,
+      new_channel = channel_new (gimage, gimage->width, gimage->height,
 				 channel_name, (int) (255 * options->opacity) / 100,
 				 options->color_panel->color);
       drawable_fill (GIMP_DRAWABLE(new_channel), TRANSPARENT_FILL);

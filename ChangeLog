@@ -1,3 +1,54 @@
+Wed Apr  8 04:25:27 EEST 1998  Lauri Alanko  <nether@gimp.org>
+
+	* app/bezier_select.c
+	* app/by_color_select.c
+	* app/channel.c
+	* app/channel.h
+	* app/channel_cmds.c
+	* app/channels_dialog.c
+	* app/commands.c
+	* app/convert.c
+	* app/crop.c
+	* app/drawable.c
+	* app/drawable.h
+	* app/drawable_pvt.h
+	* app/ellipse_select.c
+	* app/fileops.c
+	* app/floating_sel.c
+	* app/fuzzy_select.c
+	* app/gdisplay.c
+	* app/gdisplay.h
+	* app/gimage.c
+	* app/gimage.h
+	* app/gimage_cmds.c
+	* app/gimage_mask.c
+	* app/gimage_mask_cmds.c
+	* app/gimpimage.c
+	* app/gimpimage.h
+	* app/gimpobject.h
+	* app/indexed_palette.c
+	* app/iscissors.c
+	* app/layer.c
+	* app/layer.h
+	* app/layer_cmds.c
+	* app/layer_select.c
+	* app/layers_dialog.c
+	* app/move.c
+	* app/paint_core.c
+	* app/rect_select.c
+	* app/text_tool.c
+	* app/transform_core.c
+	* app/undo.c
+	* app/xcf.c
+	* app/free_select.c
+
+	Moved some more dirt to gimage. GimpImage no longer depends on
+	gdisplay (and there was much rejoicing).
+
+	Continued getting rid of ids. Drawables and displays now use a
+	direct pointer reference to GImages. Soon we can constrain image
+	ids just to pdb. Then there's drawables and displays to do...
+	
 Mon Apr  6 18:35:11 EEST 1998  Lauri Alanko  <nether@gimp.org>
 
 	* app/gimage.c

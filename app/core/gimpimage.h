@@ -94,6 +94,27 @@ struct _Guide
 
 typedef struct _Guide Guide;
 
+struct _Rectangle
+{
+  gint x;
+  gint y;
+  guint width;
+  guint height;
+};
+
+typedef struct _Rectangle Rectangle;
+
+/* These are just informative, they can't really be used as types
+   much.. */
+
+
+typedef void (*GimpImageDirtyHandler) (GimpImage* gimage,
+				       gpointer user_data);
+
+typedef void (*GimpImageRepaintHandler) (GimpImage* gimage,
+					 Rectangle* area,
+					 gpointer user_data);
+
 
 guint gimp_image_get_type(void);
 

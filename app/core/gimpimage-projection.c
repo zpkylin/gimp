@@ -19,8 +19,6 @@
 
 #include "drawable.h"
 #include "floating_sel.h"
-#include "gdisplay.h"
-#include "general.h"
 #include "gimage_mask.h"
 
 /* TODO: Add some sort of exception system.. gimage code must not call 
@@ -39,20 +37,21 @@
 #include "gimpimage_pvt.h"
 #include "globals.h"
 #include "gimpset.h"
+#include "gimpsignal.h"
 
 /*  Local function declarations  */
 static void     gimp_image_free_projection       (GimpImage *);
-static void     gimp_image_allocate_shadow       (GimpImage *, int, int, int);
-static void     gimp_image_allocate_projection   (GimpImage *);
-static void     gimp_image_free_layers           (GimpImage *);
-static void     gimp_image_free_channels         (GimpImage *);
-static void     gimp_image_construct_layers      (GimpImage *, int, int, int, int);
-static void     gimp_image_construct_channels    (GimpImage *, int, int, int, int);
+static void	gimp_image_allocate_shadow    (GimpImage *, int, int, int);
+static void     gimp_image_allocate_projection(GimpImage *);
+static void     gimp_image_free_layers        (GimpImage *);
+static void     gimp_image_free_channels      (GimpImage *);
+static void     gimp_image_construct_layers   (GimpImage *, int, int, int, int);
+static void     gimp_image_construct_channels (GimpImage *, int, int, int, int);
 static void     gimp_image_initialize_projection (GimpImage *, int, int, int, int);
-static void     gimp_image_get_active_channels   (GimpImage *, GimpDrawable *, int *);
+static void     gimp_image_get_active_channels(GimpImage *, GimpDrawable *, int *);
  
 /*  projection functions  */
-static void     project_intensity            (GimpImage *, Layer *, PixelRegion *,
+static void     project_intensity         (GimpImage *, Layer *, PixelRegion *,
 					      PixelRegion *, PixelRegion *);
 static void     project_intensity_alpha      (GimpImage *, Layer *, PixelRegion *,
 					      PixelRegion *, PixelRegion *);
@@ -88,8 +87,11 @@ enum
   REPAINT,
   RENAME,
   RESIZE,
+  RESTRUCTURE,
   LAST_SIGNAL
 };
+
+
 
 static guint gimp_image_signals[LAST_SIGNAL];
 static GimpObjectClass* parent_class;
@@ -106,28 +108,36 @@ gimp_image_class_init (GimpImageClass *klass)
 
   gimp_image_signals[DIRTY] =
     gtk_signal_new ("dirty",
-		    GTK_RUN_FIRST,
+		    0,
 		    object_class->type,
 		    0,
 		    gtk_signal_default_marshaller,
 		    GTK_TYPE_NONE, 0);
   gimp_image_signals[REPAINT] =
     gtk_signal_new ("repaint",
-		    GTK_RUN_FIRST,
+		    0,
 		    object_class->type,
 		    0,
-		    gtk_signal_default_marshaller,
-		    GTK_TYPE_NONE, 0);
+		    gimp_marshaller_pointer,
+		    GTK_TYPE_NONE, 1,
+		    GTK_TYPE_POINTER);
   gimp_image_signals[RENAME] =
     gtk_signal_new ("rename",
-		    GTK_RUN_FIRST,
+		    0,
 		    object_class->type,
 		    0,
 		    gtk_signal_default_marshaller,
 		    GTK_TYPE_NONE, 0);
   gimp_image_signals[RESIZE] =
     gtk_signal_new ("resize",
-		    GTK_RUN_FIRST,
+		    0,
+		    object_class->type,
+		    0,
+		    gtk_signal_default_marshaller,
+		    GTK_TYPE_NONE, 0);
+  gimp_image_signals[RESTRUCTURE] =
+    gtk_signal_new ("restructure",
+		    0,
 		    object_class->type,
 		    0,
 		    gtk_signal_default_marshaller,
@@ -261,7 +271,11 @@ gimp_image_new (int width, int height, GimpImageBaseType base_type)
     }
 
   /* create the selection mask */
-  gimage->selection_mask = channel_new_mask (gimage->ID, gimage->width, gimage->height);
+  /* Augh! Our legacy ID is still undefined here! Have to convert
+     drawables to use straight pointers.. For now, this is handled in
+     gimage.c */
+  
+  gimage->selection_mask = channel_new_mask (gimage, gimage->width, gimage->height);
 
  
   return gimage;
@@ -1193,8 +1207,7 @@ gimp_image_inflate (GimpImage *gimage)
 
   gimage->flat = FALSE;
 
-  /*  update the gdisplay titles  */
-  gdisplays_update_title (gimage->ID);
+  gtk_signal_emit (GTK_OBJECT (gimage), gimp_image_signals[RESTRUCTURE]);
 }
 
 
@@ -1206,8 +1219,7 @@ gimp_image_deflate (GimpImage *gimage)
 
   gimage->flat = TRUE;
 
-  /*  update the gdisplay titles  */
-  gdisplays_update_title (gimage->ID);
+  gtk_signal_emit (GTK_OBJECT (gimage), gimp_image_signals[RESTRUCTURE]);
 }
 
 
@@ -1584,57 +1596,6 @@ gimp_image_pick_correlate_layer (GimpImage *gimage, int x, int y)
 }
 
 
-void
-gimp_image_set_layer_mask_apply (GimpImage *gimage, int layer_id)
-{
-  Layer *layer;
-  int off_x, off_y;
-
-  /*  find the layer  */
-  if (! (layer = layer_get_ID (layer_id)))
-    return;
-  if (! layer->mask)
-    return;
-
-  layer->apply_mask = ! layer->apply_mask;
-  drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
-  gdisplays_update_area (gimage->ID, off_x, off_y,
-			 drawable_width (GIMP_DRAWABLE(layer)), 
-			 drawable_height (GIMP_DRAWABLE(layer)));
-}
-
-
-void
-gimp_image_set_layer_mask_edit (GimpImage *gimage, Layer * layer, int edit)
-{
-  /*  find the layer  */
-  if (!layer)
-    return;
-
-  if (layer->mask)
-    layer->edit_mask = edit;
-}
-
-
-void
-gimp_image_set_layer_mask_show (GimpImage *gimage, int layer_id)
-{
-  Layer *layer;
-  int off_x, off_y;
-
-  /*  find the layer  */
-  if (! (layer = layer_get_ID (layer_id)))
-    return;
-  if (! layer->mask)
-    return;
-
-  layer->show_mask = ! layer->show_mask;
-  drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
-  gdisplays_update_area (gimage->ID, off_x, off_y,
-			 drawable_width (GIMP_DRAWABLE(layer)), drawable_height (GIMP_DRAWABLE(layer)));
-}
-
-
 Layer *
 gimp_image_raise_layer (GimpImage *gimage, Layer *layer_arg)
 {
@@ -1676,8 +1637,13 @@ gimp_image_raise_layer (GimpImage *gimage, Layer *layer_arg)
 	      y2 = MIN (off_y + drawable_height (GIMP_DRAWABLE(layer)),
 			    off2_y + drawable_height (GIMP_DRAWABLE(prev_layer)));
 	      if ((x2 - x1) > 0 && (y2 - y1) > 0)
-		gdisplays_update_area (gimage->ID, x1, y1, (x2 - x1), (y2 - y1));
-
+		{
+		  Rectangle area = {x1, y1, (x2 - y1), (y2 - y1)};
+		  gtk_signal_emit (GTK_OBJECT (gimage),
+				   gimp_image_signals[REPAINT],
+				   &area);
+		}
+	      
 	      /*  invalidate the composite preview  */
 	      gimp_image_invalidate_preview (gimage);
 
@@ -1745,7 +1711,12 @@ gimp_image_lower_layer (GimpImage *gimage, Layer *layer_arg)
 	      y2 = MIN (off_y + drawable_height (GIMP_DRAWABLE(layer)),
 			    off2_y + drawable_height (GIMP_DRAWABLE(next_layer)));
 	      if ((x2 - x1) > 0 && (y2 - y1) > 0)
-		gdisplays_update_area (gimage->ID, x1, y1, (x2 - x1), (y2 - y1));
+		{
+		  Rectangle area = {x1, y1, (x2 - y1), (y2 - y1)};
+		  gtk_signal_emit (GTK_OBJECT (gimage),
+				   gimp_image_signals[REPAINT],
+				   &area);
+		}
 
 	      /*  invalidate the composite preview  */
 	      gimp_image_invalidate_preview (gimage);
@@ -1922,7 +1893,7 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
 	case GRAY: type = GRAY_GIMAGE; break;
 	case INDEXED: type = INDEXED_GIMAGE; break;
 	}
-      merge_layer = layer_new (gimage->ID, gimage->width, gimage->height,
+      merge_layer = layer_new (gimage, gimage->width, gimage->height,
 			       type, drawable_name (GIMP_DRAWABLE(layer)), OPAQUE_OPACITY, NORMAL_MODE);
 
       if (!merge_layer) {
@@ -1947,7 +1918,7 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
        *  with a notable exception:  The resulting layer has an alpha channel
        *  whether or not the original did
        */
-      merge_layer = layer_new (gimage->ID, (x2 - x1), (y2 - y1),
+      merge_layer = layer_new (gimage, (x2 - x1), (y2 - y1),
 			       drawable_type_with_alpha (GIMP_DRAWABLE(layer)),
 			       drawable_name (GIMP_DRAWABLE(layer)),
 			       layer->opacity, layer->mode);
@@ -2054,12 +2025,9 @@ gimp_image_merge_layers (GimpImage *gimage, GSList *merge_list, MergeType merge_
   /*  Update the gimage  */
   GIMP_DRAWABLE(merge_layer)->visible = TRUE;
 
-  /*  update gdisplay titles to reflect the possibility of
-   *  this layer being the only layer in the gimage
-   */
-  gdisplays_update_title (gimage->ID);
-
   drawable_update (GIMP_DRAWABLE(merge_layer), 0, 0, drawable_width (GIMP_DRAWABLE(merge_layer)), drawable_height (GIMP_DRAWABLE(merge_layer)));
+
+  gtk_signal_emit (GTK_OBJECT (gimage), gimp_image_signals[RESTRUCTURE]);
 
   return merge_layer;
 }
@@ -2070,8 +2038,8 @@ gimp_image_add_layer (GimpImage *gimage, Layer *float_layer, int position)
 {
   LayerUndo * lu;
 
-  if (GIMP_DRAWABLE(float_layer)->gimage_ID != 0 && 
-      GIMP_DRAWABLE(float_layer)->gimage_ID != gimage->ID) 
+  if (GIMP_DRAWABLE(float_layer)->gimage != NULL && 
+      GIMP_DRAWABLE(float_layer)->gimage != gimage) 
     {
       /*warning("gimp_image_add_layer: attempt to add layer to wrong image");*/
       return NULL;
@@ -2103,7 +2071,7 @@ gimp_image_add_layer (GimpImage *gimage, Layer *float_layer, int position)
     gimage->floating_sel = float_layer;
 
   /*  let the layer know about the gimage  */
-  GIMP_DRAWABLE(float_layer)->gimage_ID = gimage->ID;
+  GIMP_DRAWABLE(float_layer)->gimage = gimage;
 
   /*  add the layer to the list at the specified position  */
   if (position == -1)
@@ -2168,8 +2136,15 @@ gimp_image_remove_layer (GimpImage *gimage, Layer * layer)
 	}
 
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
-      gdisplays_update_area (gimage->ID, off_x, off_y,
-			     drawable_width (GIMP_DRAWABLE(layer)), drawable_height (GIMP_DRAWABLE(layer)));
+	{
+	  Rectangle area = {off_x, off_y,
+			    drawable_width (GIMP_DRAWABLE(layer)),
+			    drawable_height (GIMP_DRAWABLE(layer))
+	  };
+	  gtk_signal_emit (GTK_OBJECT (gimage),
+			   gimp_image_signals[REPAINT],
+			   &area);
+	}  
 
       /*  Push the layer undo--It is important it goes here since layer might
        *   be immediately destroyed if the undo push fails
@@ -2219,8 +2194,6 @@ gimp_image_add_layer_mask (GimpImage *gimage, Layer *layer, LayerMask *mask)
   lmu->show_mask = layer->show_mask;
   undo_push_layer_mask (gimage, lmu);
 
-  gimp_image_set_layer_mask_edit (gimage, layer, layer->edit_mask);
-
   return mask;
 }
 
@@ -2266,10 +2239,17 @@ gimp_image_remove_layer_mask (GimpImage *gimage, Layer *layer, int mode)
       gimp_image_invalidate_preview (gimage);
 
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
-      gdisplays_update_area (gimage->ID, off_x, off_y,
-			     drawable_width (GIMP_DRAWABLE(layer)), drawable_height (GIMP_DRAWABLE(layer)));
+      {
+	Rectangle area = {off_x, off_y,
+			  drawable_width (GIMP_DRAWABLE(layer)),
+			  drawable_height (GIMP_DRAWABLE(layer))
+	};
+	gtk_signal_emit (GTK_OBJECT (gimage),
+			 gimp_image_signals[REPAINT],
+			 &area);
+      }
     }
-  gdisplays_flush ();
+  /*  gdisplays_flush (); */
 
   return NULL;
 }
@@ -2369,8 +2349,8 @@ gimp_image_add_channel (GimpImage *gimage, Channel *channel, int position)
 {
   ChannelUndo * cu;
 
-  if (GIMP_DRAWABLE(channel)->gimage_ID != 0 &&
-      GIMP_DRAWABLE(channel)->gimage_ID != gimage->ID)
+  if (GIMP_DRAWABLE(channel)->gimage != NULL &&
+      GIMP_DRAWABLE(channel)->gimage != gimage)
     {
       /* warning("gimp_image_add_channel: attempt to add channel to wrong image");*/
       return NULL;

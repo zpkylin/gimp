@@ -261,7 +261,7 @@ find_contiguous_region (GImage *gimage, GimpDrawable *drawable, int antialias,
       has_alpha = drawable_has_alpha (drawable);
     }
 
-  mask = channel_new_mask (gimage->ID, srcPR.w, srcPR.h);
+  mask = channel_new_mask (gimage, srcPR.w, srcPR.h);
   pixel_region_init (&maskPR, drawable_data (GIMP_DRAWABLE(mask)), 0, 0, drawable_width (GIMP_DRAWABLE(mask)), drawable_height (GIMP_DRAWABLE(mask)), TRUE);
 
   tile = tile_manager_get_tile (srcPR.tiles, x, y, 0);

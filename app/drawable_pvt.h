@@ -21,6 +21,7 @@
 #include <gtk/gtkdata.h>
 #include "tile_manager.h"
 #include "temp_buf.h"
+#include "gimpimage_decl.h"
 
 struct _GimpDrawable
 {
@@ -35,7 +36,7 @@ struct _GimpDrawable
   int bytes;				/* bytes per pixel */
   int dirty;				/* dirty bit */
   int ID;				/* provides a unique ID */
-  int gimage_ID;			/* ID of gimage owner */
+  GimpImage* gimage;			/* gimage owner */
   int type;				/* type of drawable */
   int has_alpha;			/* drawable has alpha */
 

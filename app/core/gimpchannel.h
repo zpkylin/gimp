@@ -68,7 +68,7 @@ struct _mask_undo
 
 /* function declarations */
 
-Channel *       channel_new (int, int, int, char *, int, unsigned char *);
+Channel *       channel_new (GimpImage*, int, int, char *, int, unsigned char *);
 Channel *       channel_copy (Channel *);
 Channel *	channel_ref (Channel *);
 void   		channel_unref (Channel *);
@@ -84,11 +84,11 @@ unsigned char * channel_data (Channel *);
 int             channel_toggle_visibility (Channel *);
 TempBuf *       channel_preview (Channel *, int, int);
 
-void            channel_invalidate_previews (int);
+void            channel_invalidate_previews (GimpImage*);
 
 /* selection mask functions  */
 
-Channel *       channel_new_mask        (int, int, int);
+Channel *       channel_new_mask        (GimpImage*, int, int);
 int             channel_boundary        (Channel *, BoundSeg **, BoundSeg **,
 					 int *, int *, int, int, int, int);
 int             channel_bounds          (Channel *, int *, int *, int *, int *);

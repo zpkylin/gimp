@@ -23,6 +23,8 @@
 #include "gimage.h"
 #include "gimage_mask.h"
 #include "gimage_mask_cmds.h"
+#include "layer.h"
+#include "channel.h"
 
 static int int_value;
 static double fp_value;

@@ -206,7 +206,7 @@ file_new_ok_callback (GtkWidget *widget,
   gimage = gimage_new (vals->width, vals->height, vals->type);
 
   /*  Make the background (or first) layer  */
-  layer = layer_new (gimage->ID, gimage->width, gimage->height,
+  layer = layer_new (gimage, gimage->width, gimage->height,
 		     type, "Background", OPAQUE_OPACITY, NORMAL);
 
   if (layer) {
@@ -785,7 +785,7 @@ file_prefs_cancel_callback (GtkWidget *widget,
       transparency_size = old_transparency_size;
 
       render_setup (transparency_type, transparency_size);
-      layer_invalidate_previews (-1);
+      layer_invalidate_previews (NULL);
       gimage_invalidate_previews ();
       gdisplays_expose_full ();
       gdisplays_flush ();
@@ -837,7 +837,7 @@ file_prefs_toggle_callback (GtkWidget *widget,
       val = data;
       *val = (long) gtk_object_get_user_data (GTK_OBJECT (widget));
       render_setup (transparency_type, transparency_size);
-      layer_invalidate_previews (-1);
+      layer_invalidate_previews (NULL);
       gimage_invalidate_previews ();
       gdisplays_expose_full ();
       gdisplays_flush ();
