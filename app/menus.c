@@ -132,7 +132,7 @@ static GtkItemFactoryEntry image_entries[] =
   { "/View/Toggle Guides", "<control><shift>T", view_toggle_guides_cmd_callback, 0, "<ToggleItem>" },
   { "/View/Snap To Guides", NULL, view_snap_to_guides_cmd_callback, 0, "<ToggleItem>" },
   { "/View/---", NULL, NULL, 0, "<Separator>" },
-  { "/View/New View", NULL, view_new_view_cmd_callback, 0 },
+/*  { "/View/New View", NULL, view_new_view_cmd_callback, 0 }, */
   { "/View/Shrink Wrap", "<control>E", view_shrink_wrap_cmd_callback, 0 },
   { "/Image/Colors/Equalize", NULL, image_equalize_cmd_callback, 0 },
   { "/Image/Colors/Invert", NULL, image_invert_cmd_callback, 0 },
