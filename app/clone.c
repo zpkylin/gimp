@@ -467,7 +467,6 @@ clone_paint_func (PaintCore *paint_core,
   switch (state)
     {
     case MOTION_PAINT :
-      clone_now = TRUE; 
 
       x1 = paint_core->curx;
       y1 = paint_core->cury;
@@ -516,7 +515,6 @@ clone_paint_func (PaintCore *paint_core,
 		}
 	      if (gdisp->gimage->onionskin)
 		{
-		  printf ("offset image\n"); 
 		frame_manager_onionskin_offset (gdisp, offset_x, offset_y); 
 		}
 	      first_down = FALSE;
@@ -560,6 +558,7 @@ clone_paint_func (PaintCore *paint_core,
 	  error_x = error_x < 0 ? scale_x + error_x : error_x;
 	  error_y = error_y < 0 ? scale_y + error_y : error_y;
 
+      clone_now = TRUE; 
 
 	  if (!dont_draw)
 	  clone_motion (paint_core, drawable, src_x, src_y);
@@ -569,6 +568,7 @@ clone_paint_func (PaintCore *paint_core,
       if (clone_point_set) 
 	{
 	  draw = 0;
+      printf ("MMMMM\n"); 
 	  draw_core_pause (paint_core->core, active_tool);
 	}
       break;
@@ -624,9 +624,11 @@ clone_paint_func (PaintCore *paint_core,
 	  first_down = TRUE;
 	  first_mv = TRUE;
 	}
-      else if (clone_options->aligned == AlignNo && 
+      else if (clone_options->aligned == AlignNo &&
 	  clone_point_set==1)
 	{
+	  src_x = saved_x;
+	  src_y = saved_y; 
 	  first_down = TRUE;
 	}
       else if (!clone_point_set)
@@ -634,7 +636,8 @@ clone_paint_func (PaintCore *paint_core,
 	g_message ("Set clone point with CTRL + left mouse button.");
 	}
       first_up = TRUE;
-      clone_now = TRUE; 
+      clone_now = TRUE;
+
       break;
 
     case FINISH_PAINT :
@@ -660,15 +663,17 @@ clone_paint_func (PaintCore *paint_core,
 
   if (state == INIT_PAINT && clone_point_set)
     {
-    /*  Initialize the tool drawing core  */
+      printf ("HHHHHH %d %d\n", src_x, src_y); 
+      /*  Initialize the tool drawing core  */
       draw = 1;
-    draw_core_start (paint_core->core,
-	src_gdisp->canvas->window,
-	active_tool);
+      draw_core_start (paint_core->core,
+	  src_gdisp->canvas->window,
+	  active_tool);
     }
   else if (state == MOTION_PAINT && clone_point_set)
     {
       draw = 1;
+      printf ("YYYYYY\n"); 
       draw_core_resume (paint_core->core, active_tool);
     }
   return NULL;
@@ -720,6 +725,7 @@ clone_draw (Tool *tool)
 	      canvas_width (get_active_brush ()->mask) : canvas_height (get_active_brush ()->mask))* 
 	    ((double)SCALEDEST (gdisplay) / 
 	     (double)SCALESRC (gdisplay));
+	  printf ("OOOOO %d \n"); 
 	}
       else if (draw)
 	{
@@ -728,8 +734,12 @@ clone_draw (Tool *tool)
       if (clone_now)
 	{
 	  if ((GDisplay *) tool->gdisp_ptr &&
-	      !((GDisplay *) tool->gdisp_ptr)->gimage->onionskin)
+	      !((GDisplay *) tool->gdisp_ptr)->gimage->onionskin &&
+	      !(active_tool->state == INACTIVE && clone_options->aligned == AlignNo))
 	    {
+	  printf ("LLLL\n"); 
+
+	  printf ("%d %d\n", trans_tx, trans_ty);
 	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
 		  trans_tx - (TARGET_WIDTH >> 1), trans_ty,
 		  trans_tx + (TARGET_WIDTH >> 1), trans_ty);
@@ -747,7 +757,8 @@ clone_draw (Tool *tool)
 	{
 	  if (!(dont_dist && ((GDisplay *) tool->gdisp_ptr)->gimage->onionskin))
 	    {
-	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+
+              gdk_draw_line (paint_core->core->win, paint_core->core->gc,
 		  trans_tx - (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
 		  trans_tx + (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
 	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
@@ -790,9 +801,9 @@ clone_undo_clean_up ()
       clean_up = 0;
       clone_draw (active_tool);
     }
-  if (!clone_point_set)
+  if (!clone_point_set && clone_options->aligned == AlignYes)
     clean_up = 0;
-  if (expose)
+  if (expose && clone_options->aligned == AlignYes)
     {
     expose = 0; 
     clean_up = 0;
@@ -802,7 +813,7 @@ clone_undo_clean_up ()
 void 
 clone_expose ()
 {
-  if (clean_up)
+  if (clean_up && clone_options->aligned == AlignYes)
   expose = 1;
 
 }
@@ -955,9 +966,19 @@ clone_line_image  (PaintCore * paint_core,
 	    }
 	  if (!(x2 - x1) || !(y2 - y1))
 	    return FALSE;
-#if 0
-	  pixelarea_init (&srcPR, drawable_data (src_drawable),
-	      x1, y1, (x2 - x1), (y2 - y1), FALSE);
+#if 1
+	  if (drawable_width (drawable) != drawable_width (src_drawable) ||
+	      drawable_height (drawable) != drawable_height (src_drawable))
+	    {
+	      pixelarea_init (&srcPR, drawable_data (src_drawable),
+		  x1, y1, (x2 - x1), (y2 - y1), FALSE);
+	      pixelarea_init (&destPR, painthit,
+		  (x1 - x), (y1 - y), x2-x1, y2-y1, TRUE);
+
+
+	      copy_area (&srcPR, &destPR);
+	      return TRUE; 
+	    }
 #endif	  
 	  orig = paint_core_16_area_original2 (paint_core, src_drawable, 
 	      x1, y1, x2, y2);

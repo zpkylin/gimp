@@ -199,8 +199,8 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Tools/---", NULL, NULL, 0, "<Separator>" },
   { "/Tools/Toolbox", NULL, toolbox_raise_callback, 0 },
 #endif
-  { "/Short cuts/Increase Brush Radius (+1)", ".", gimp_brush_generated_increase_radius, 0 },
-  { "/Short cuts/Decrease Brush Radius (-1)", ",", gimp_brush_generated_decrease_radius, 0 },
+  { "/Short cuts/Increase Brush Radius (+1)", ".", brush_increase_radius, 0 },
+  { "/Short cuts/Decrease Brush Radius (-1)", ",", brush_decrease_radius, 0 },
   { "/Short cuts/Increase clone x offset ", ",", clone_x_offset_increase, 0 },
   { "/Short cuts/Decrease clone x offset ", ",", clone_x_offset_decrease, 0 },
   { "/Short cuts/Increase clone y offset ", ",", clone_y_offset_increase, 0 },
@@ -274,7 +274,9 @@ menus_get_image_menu (GtkWidget           **menu,
 		      GtkAccelGroup       **accel_group)
 {
   if (initialize)
+    {
     menus_init ();
+    }
 
   if (menu)
     *menu = image_factory->widget;

@@ -1081,6 +1081,7 @@ file_save (int   image_ID,
   char temp_filename[250]; 
   char temp_raw_filename[250]; 
 
+  GDisplay *gdisplay;
   
   if(save_layer)
     image_ID = save_layer_id; 
@@ -1088,9 +1089,11 @@ file_save (int   image_ID,
   if ((gimage = gimage_get_ID (image_ID)) == NULL)
     return FALSE;
 
+  gdisplay = gdisplay_get_ID (gimage->ID);
+
   if (gimage->onionskin)
     {
-      frame_manager_rm_onionskin (0);
+      frame_manager_rm_onionskin (gdisplay);
     }
   if (save_copy)
     {
@@ -1169,7 +1172,7 @@ file_save (int   image_ID,
       /*  set the image title  */
       gimage_set_filename (gimage, filename);
 
-      frame_manager_set_dirty_flag (0); 
+      frame_manager_set_dirty_flag (gdisplay, 0); 
     }
   else
     {
@@ -1932,9 +1935,9 @@ file_save_invoker (Argument *args)
   
   if (!return_vals)
     printf ("ERROR : saving\n");
-      
-  frame_manager_set_dirty_flag (1); 
-
+/* FIXME
+  frame_manager_set_dirty_flag (gdisplay, 1); 
+*/
   g_free (new_args);
 
   return return_vals;

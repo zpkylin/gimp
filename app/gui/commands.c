@@ -71,6 +71,7 @@
 #include "tips_dialog.h"
 #include "tools.h"
 #include "undo.h"
+#include "gimpbrushgenerated.h"
 
 /*  external functions  */
 extern void layers_dialog_layer_merge_query (GImage *, int);
@@ -3023,5 +3024,43 @@ dialogs_input_devices_cmd_callback (GtkWidget *widget,
                                         gpointer   client_data)
 {
     input_dialog_create ();
+}
+
+void
+brush_increase_radius ()
+{
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+
+  if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
+    {
+      int radius = gimp_brush_generated_get_radius ((GimpBrushGenerated *)get_active_brush ());
+      radius = radius < 100 ? radius + 1 : radius;
+
+      gimp_brush_generated_set_radius ((GimpBrushGenerated *)get_active_brush (), radius);
+      create_win_cursor (gdisplay->canvas->window, 
+	  radius*2*(SCALEDEST (gdisplay) / SCALESRC (gdisplay))); 
+    }
+  else
+    printf ("ERROR : you can not edit this brush\n");
+}
+
+void
+brush_decrease_radius ()
+{
+  GDisplay *gdisplay;
+  gdisplay = gdisplay_active ();
+
+  if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
+    {
+      int radius = gimp_brush_generated_get_radius ((GimpBrushGenerated *)get_active_brush ());
+      radius = radius > 1 ? radius - 1 : radius;
+
+      gimp_brush_generated_set_radius ((GimpBrushGenerated *)get_active_brush (), radius);
+      create_win_cursor (gdisplay->canvas->window,           
+	  radius*2*(SCALEDEST (gdisplay) / SCALESRC (gdisplay)));                     
+    }
+  else
+    printf ("ERROR : you can not edit this brush\n");
 }
 

@@ -109,5 +109,7 @@ void dialogs_tools_options_cmd_callback (GtkWidget *, gpointer);
 void about_dialog_cmd_callback (GtkWidget *, gpointer);
 void tips_dialog_cmd_callback (GtkWidget *, gpointer);
 void dialogs_input_devices_cmd_callback   (GtkWidget *, gpointer);
+void brush_increase_radius ();
+void brush_decrease_radius (); 
 
 #endif /* __COMMANDS_H__ */

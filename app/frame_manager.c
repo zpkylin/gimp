@@ -3357,7 +3357,7 @@ frame_manager_set_dirty_flag (GDisplay *gdisplay, int flag)
   GSList *item_list;
 
 
-  if (!gdisplay->frame_manager)
+  if (!gdisplay || !gdisplay->frame_manager)
   return;
 
   item_list =  (GList*) GTK_LIST(gdisplay->frame_manager->store_list)->selection;

@@ -800,6 +800,9 @@ paint_core_16_area_setup  (
 
   paint_core->canvas_buf_width = (x2 - x1);
   paint_core->canvas_buf_height = (y2 - y1);
+ 
+ 
+  printf ("%d %d\n", x2 - x1, y2 - y1);
   
 }
 
@@ -1229,7 +1232,40 @@ brush_to_canvas_buf(
                              )
 {
   PixelArea srcPR, maskPR;
+#if 1
+  int xoff, yoff;
+      int x, y;
+      
+          x = (int) paint_core->curx - (canvas_width (brush_mask) >> 1);
+	      y = (int) paint_core->cury - (canvas_height (brush_mask) >> 1);
+	          xoff = (x < 0) ? -x : 0;
+		      yoff = (y < 0) ? -y : 0;
 
+  /*  combine the canvas buf and the brush mask to the canvas buf  */
+  pixelarea_init (&srcPR, paint_core->canvas_buf,
+                  0, 0,  
+                  paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+                  TRUE);
+  pixelarea_init (&maskPR, brush_mask,
+                  xoff, yoff, 
+                  canvas_width (brush_mask), canvas_height (brush_mask),
+		  TRUE);
+  apply_mask_to_area (&srcPR, &maskPR, brush_opacity);
+
+  if (paint_core->linked_drawable)
+    {
+	/*  combine the linked canvas buf and the brush mask to the canvas buf  */
+	pixelarea_init (&srcPR, paint_core->linked_canvas_buf,
+			0, 0,
+			paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+			TRUE);
+	pixelarea_init (&maskPR, brush_mask,
+			xoff, yoff,
+			canvas_width (brush_mask), canvas_height (brush_mask),
+			TRUE);
+	apply_mask_to_area (&srcPR, &maskPR, brush_opacity);
+    }
+#else
   /*  combine the canvas buf and the brush mask to the canvas buf  */
   pixelarea_init (&srcPR, paint_core->canvas_buf,
                   0, 0,
@@ -1254,6 +1290,7 @@ brush_to_canvas_buf(
 			TRUE);
 	apply_mask_to_area (&srcPR, &maskPR, brush_opacity);
     }
+#endif
 }
   
 

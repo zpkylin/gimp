@@ -165,6 +165,7 @@ airbrush_paint_func (PaintCore *paint_core,
 	gtk_timeout_remove (timer);
       timer_state = OFF;
 
+      printf ("motion\n");
       airbrush_motion (paint_core, drawable, airbrush_options->pressure);
 
       if (airbrush_options->rate != 0.0)
@@ -245,6 +246,7 @@ airbrush_motion  (PaintCore * paint_core,
 {
   Canvas * painthit;
   PixelArea a;
+      printf ("motion2\n");
       
   /* Get the working canvas */
 
@@ -274,6 +276,7 @@ airbrush_painthit_setup (PaintCore * paint_core,Canvas * painthit)
       COLOR16_NEW (paint, canvas_tag (painthit));
       COLOR16_INIT (paint);
       palette_get_foreground (&paint);
+      printf ("motion3\n");
       color_area (&a, &paint);
     }
     else if (paint_core->setup_mode == LINKED_SETUP)

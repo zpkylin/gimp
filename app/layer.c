@@ -267,7 +267,6 @@ layer_copy (layer, add_alpha)
 
   layer_tag = new_layer_tag = drawable_tag (GIMP_DRAWABLE(layer));
  
-  new_layer->gimage_id = layer->gimage_id;
   
   /*  when copying a layer, the copy ALWAYS has an alpha channel  */
   if (add_alpha)
@@ -279,6 +278,8 @@ layer_copy (layer, add_alpha)
                          drawable_height (GIMP_DRAWABLE(layer)), 
 			 new_layer_tag, STORAGE_TILED, layer_name, 
 			 layer->opacity, layer->mode);
+  
+  new_layer->gimage_id = layer->gimage_id;
   if (!new_layer) {
     g_message ("layer_copy: could not allocate new layer");
     goto cleanup;

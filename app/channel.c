@@ -424,7 +424,7 @@ channel_set_rgbm (gint rgbm)
   while (list)
     {
       gimage = (GImage*) list->data;
-      if (gimage)
+      if (gimage && (gimage->channels))
 	{
 	  ((Channel*) gimage->channels->data)->link_paint = rgbm;
 	}
