@@ -61,6 +61,7 @@
 			GDK_BUTTON1_MOTION_MASK | \
 			GDK_POINTER_MOTION_HINT_MASK
 
+
 typedef struct _Levels Levels;
 
 struct _Levels
@@ -924,7 +925,8 @@ levels_high_input_text_check_float (
   gfloat value;
   gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
   gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
-  value = BOUNDS ( atof (str), low_input[ld->channel], 1.0);
+  value = atof (str) > low_input[ld->channel] ? atof (str) : low_input[ld->channel];
+  /*BOUNDS ( atof (str), low_input[ld->channel], 1.0);*/
   if (value != high_input[ld->channel])
   {
       high_input[ld->channel] = value;
@@ -942,7 +944,8 @@ levels_low_input_text_check_float (
   gfloat value;
   gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
   gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
-  value = BOUNDS ( atof (str), 0, high_input[ld->channel]);
+  value = atof (str) < high_input[ld->channel] ? atof (str) : high_input[ld->channel];
+  /*BOUNDS ( atof (str), 0, high_input[ld->channel]);*/
   if (value != low_input[ld->channel])
   {
       low_input[ld->channel] = value;
@@ -1296,7 +1299,7 @@ levels_output_da_setui_values_float16(
 
     case 4:  /*  high output  */
       tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
-      high_output[ld->channel] = BOUNDS (tmp, 0, 1.0);
+      high_output[ld->channel] = BOUNDS (tmp, 0, 1.0); 
 
 	/* round the value to 6 places */
       sprintf (text, "%.6f", high_output[ld->channel]);
@@ -1312,9 +1315,11 @@ levels_high_output_text_check_float16 (
 				)
 {
   gfloat value;
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
   gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
 
-  value = BOUNDS ( atof (str), 0, 1.0);
+  value = atof (str) > low_output[ld->channel] ? atof (str) : low_output[ld->channel];
+  /* BOUNDS ( atof (str), 0, 1.0);*/
   if (value != high_output[ld->channel])
   {
       high_output[ld->channel] = value;
@@ -1331,8 +1336,11 @@ levels_low_output_text_check_float16 (
 {
   gfloat value;
   gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
 
-  value = BOUNDS ( atof (str), 0, 1.0);
+  value = atof (str) < high_output[ld->channel] ? atof (str) :
+high_output[ld->channel];
+  /* BOUNDS ( atof (str), 0, 1.0); */
   if (value != low_output[ld->channel])
   {
       low_output[ld->channel] = value;
@@ -1350,7 +1358,8 @@ levels_high_input_text_check_float16 (
   gfloat value;
   gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
   gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
-  value = BOUNDS ( atof (str), low_input[ld->channel], 1.0);
+  value = atof (str) > low_input[ld->channel] ? atof (str) : low_input[ld->channel];
+  /*BOUNDS ( atof (str), low_input[ld->channel], 1.0); */
   if (value != high_input[ld->channel])
   {
       high_input[ld->channel] = value;
@@ -1368,7 +1377,8 @@ levels_low_input_text_check_float16 (
   gfloat value;
   gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
   gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
-  value = BOUNDS ( atof (str), 0, high_input[ld->channel]);
+  value =  atof (str) < high_input[ld->channel] ? atof (str) : high_input[ld->channel];
+  /*BOUNDS ( atof (str), 0, high_input[ld->channel]);*/ 
   if (value != low_input[ld->channel])
   {
       low_input[ld->channel] = value;
