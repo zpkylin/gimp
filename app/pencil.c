@@ -97,10 +97,6 @@ pencil_motion (paint_core, drawable)
      PaintCore *paint_core;
      GimpDrawable *drawable;
 {
-  double op;
- 
-  double opacity=0;
-  
   /* Get the working canvas */
   paint_core_16_area_setup (paint_core, drawable);
 

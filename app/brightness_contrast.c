@@ -231,6 +231,9 @@ static double contrast_func (double x, double c)
    {
      return mean; 
    }
+  
+ g_warning("contrast_func out of range");
+ return 0;
 }
 
 static void 

@@ -139,7 +139,7 @@ invert_row_float16  (
 {
   gint    b;
   guint16 *dest         = (guint16*) pixelrow_data (dest_row);
-  guint16 *mask         = (guint16*) pixelrow_data (mask_row);
+  /*guint16 *mask         = (guint16*) pixelrow_data (mask_row);*/
   gint    num_channels = tag_num_channels (pixelrow_tag (dest_row));
   gint    width        = pixelrow_width (dest_row);  
   gfloat  db;
@@ -189,8 +189,8 @@ absdiff_row_float16  (
   guint16 *dest          = (guint16*) pixelrow_data (mask);
   guint16 *color         = (guint16*) pixelrow_data (col);
 
-  Tag     tag           = pixelrow_tag (image);
-  int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;
+  /*Tag     tag           = pixelrow_tag (image);*/
+  /*int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;*/
 
   gint    width         = pixelrow_width (image);  
 
@@ -286,13 +286,13 @@ blend_row_float16  (
                   gfloat blend
                   )
 {
-  gint alpha, b;
+  gint b;
   Tag     src1_tag     = pixelrow_tag (src1_row); 
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   guint16 *src1         = (guint16*)pixelrow_data (src1_row);
   guint16 *src2         = (guint16*)pixelrow_data (src2_row);
   gint    width        = pixelrow_width (dest_row);
-  gint    has_alpha    = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;
+  /*gint    has_alpha    = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;*/
   gint    num_channels = tag_num_channels (src1_tag);
   gfloat  blend_comp   = (1.0 - blend);
   gfloat  s1b, s2b, db;
@@ -514,8 +514,8 @@ hsv_only_row_float16 (
   gint    width         = pixelrow_width (dest_row);
   gint    num_channels1 = tag_num_channels (src1_tag);
   gint    num_channels2 = tag_num_channels (src2_tag);
-  gfloat  s1, s2, m1, m2;
-  gint b, alpha, n1, n2;
+  gfloat  s1, s2;
+  gint    alpha;
   ShortsFloat u;
 
   alpha = (ha1 || ha2) ? MAXIMUM (num_channels1, num_channels2) - 1 : num_channels1;
@@ -1207,7 +1207,6 @@ gray_to_rgb_row_float16 (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
   gint    width        = pixelrow_width (src_row);
-  ShortsFloat u;
 
   has_alpha = (num_channels == 2) ? 1 : 0;
   dest_num_channels = (has_alpha) ? 4 : 3;
@@ -1299,7 +1298,6 @@ copy_gray_to_inten_a_row_float16 (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   gint    num_channels = tag_num_channels (pixelrow_tag (dest_row));
   gint    width        = pixelrow_width (src_row);
-  ShortsFloat u;
 
   alpha = num_channels - 1;
   while (width --)
@@ -2672,7 +2670,6 @@ copy_row_rgb_to_float16_rgb  (
   Tag dtag = pixelrow_tag (dest_row);
   guint16 * s = (guint16*) pixelrow_data (src_row);
   guint16 * d = (guint16*) pixelrow_data (dest_row);
-  ShortsFloat u;
 
   if (tag_alpha (stag) == ALPHA_YES)
     {
@@ -3105,7 +3102,6 @@ copy_row_gray_to_float16_rgb  (
   Tag dtag = pixelrow_tag (dest_row);
   guint16 * s = (guint16*) pixelrow_data (src_row);
   guint16* d = (guint16*) pixelrow_data (dest_row);
-  ShortsFloat u;
 
   if (tag_alpha (stag) == ALPHA_YES)
     {
@@ -3157,7 +3153,6 @@ copy_row_gray_to_float16_gray  (
   Tag dtag = pixelrow_tag (dest_row);
   guint16 * s = (guint16*) pixelrow_data (src_row);
   guint16 * d = (guint16*) pixelrow_data (dest_row);
-  ShortsFloat u;
 
   if (tag_alpha (stag) == ALPHA_YES)
     {

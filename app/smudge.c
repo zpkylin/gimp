@@ -80,7 +80,6 @@ create_smudge_options(void)
   GtkWidget *hbox;
   GtkWidget *label;
   GtkWidget *scale;
-  GtkWidget *frame;
 
   /*  the new smudge tool options structure  */
   options = (SmudgeOptions *) g_malloc (sizeof (SmudgeOptions));
@@ -203,7 +202,7 @@ smudge_init ( PaintCore *paint_core,
   gint xc, yc, wc, hc;
 
   gint was_clipped;
-  Tag tag, linked_tag;
+  Tag tag, linked_tag = tag_null();
  
       tag = drawable_tag (drawable);
     if (paint_core->linked_drawable) 
@@ -289,9 +288,7 @@ smudge_painthit_setup (PaintCore * paint_core, Canvas * painthit)
 {
   PixelArea srcPR, destPR, tempPR;
   gfloat pressure;
-  gfloat brush_opacity;
-  /*Tag tag = drawable_tag(paint_core->drawable);
-  */gint x1, y1, x2, y2;
+  /*Tag tag = drawable_tag(paint_core->drawable);*/
   gint x, y, w, h;
   gint xc, yc, wc, hc; 
   gint was_clipped;

@@ -611,9 +611,6 @@ gimage_mask_stroke_paint_func (paint_core, drawable, state)
      GimpDrawable *drawable;
      int state;
 {
-  Canvas * painthit;
-  PixelArea a;
-      
   /* Get the working canvas */
   paint_core_16_area_setup (paint_core, drawable);
 

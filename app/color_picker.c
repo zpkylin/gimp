@@ -28,6 +28,7 @@
 #include "palette.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "paint_funcs_area.h"
 
 
 /* maximum information buffer size */

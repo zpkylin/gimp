@@ -209,10 +209,9 @@ info_window_update_xy (InfoDialog *info_win,
   Canvas *channel_canvas = NULL;
   guchar *d;
   guchar *channel_data; 
-  gint has_matte = FALSE;
   Alpha alpha;
   Tag tag;
-  ShortsFloat u, v, s, t;
+  ShortsFloat u, v, s;
   gint offset_x, offset_y;
   Channel *channel = NULL;
   Channel *active_channel = gimage_get_active_channel(gdisp->gimage);
@@ -224,7 +223,8 @@ info_window_update_xy (InfoDialog *info_win,
   sprintf (iwd->xy_values_str, "%d, %d",
 	   (int)x, (int)y);
   
-  sprintf (iwd->xy_color_values_str, "");
+  iwd->xy_color_values_str[0] = '\0'; //truncate string
+//  sprintf (iwd->xy_color_values_str, "");
 
   if (active_channel)
   {
@@ -252,7 +252,8 @@ info_window_update_xy (InfoDialog *info_win,
    }
   else
     {
-      sprintf (iwd->xy_color_values_str, "");
+      iwd->xy_color_values_str[0] = '\0'; //truncate string
+      //sprintf (iwd->xy_color_values_str, "");
       return;
     }
   
@@ -274,7 +275,8 @@ info_window_update_xy (InfoDialog *info_win,
 
   if (!d)
     {
-      sprintf (iwd->xy_color_values_str, "");
+      iwd->xy_color_values_str[0] = '\0'; //truncate string
+      //sprintf (iwd->xy_color_values_str, "");
       return;
     }
 
@@ -302,8 +304,9 @@ info_window_update_xy (InfoDialog *info_win,
 	    sprintf (iwd->xy_color_values_str, "%3d",
 		 (int)data[0]);
 	else if (format == FORMAT_INDEXED)
-	  sprintf (iwd->xy_color_values_str, "");
-      }
+      iwd->xy_color_values_str[0] = '\0'; //truncate string
+	   //sprintf (iwd->xy_color_values_str, "");
+     }
       break;
       
     case PRECISION_U16:
@@ -328,8 +331,9 @@ info_window_update_xy (InfoDialog *info_win,
 	    sprintf (iwd->xy_color_values_str, "%d",
 		 (int)data[0]);
 	else if (format == FORMAT_INDEXED)
-	  sprintf (iwd->xy_color_values_str, "");
-      }
+      iwd->xy_color_values_str[0] = '\0'; //truncate string
+	   //sprintf (iwd->xy_color_values_str, "");
+     }
       break;
 
     case PRECISION_FLOAT:
@@ -385,7 +389,8 @@ info_window_update_xy (InfoDialog *info_win,
     }
   }
   else 
-    sprintf (iwd->xy_color_values_str, "");
+    iwd->xy_color_values_str[0] = '\0'; //truncate string
+    //sprintf (iwd->xy_color_values_str, "");
 
   info_dialog_update (info_win);
 }

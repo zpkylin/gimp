@@ -192,7 +192,7 @@ gimp_brush_generated_load (const char *file_name)
 	basename++; 
 	if (strcmp(default_brush, basename) == 0) 
 	  {
-	    select_brush (brush);
+	    select_brush (GIMP_BRUSH(brush));
 	    set_have_default_brush (TRUE); 
 	  }
       } 
@@ -264,6 +264,9 @@ smoothstep(double a, double b, double x)
     return (x*x * (3 - 2*x));
 }
 
+/* This should be commented out to remove a compiler warning,
+ * but I want to leave it in just in case it's ever useful again. --jcohen */
+
 static
 double gauss(double f)
 { 
@@ -283,16 +286,14 @@ void
 gimp_brush_generated_generate(GimpBrushGenerated *brush)
 {
   register GimpBrush *gbrush = NULL;
-  register int x, y;
+  register int x;
   register double exponent;
-  register float a;
   register int length;
   register float *lookup;
   double buffer[OVERSAMPLING];
   gdouble d;
   register double sum, c, s, tx, ty;
   int width, height;
-  guchar *data;
   Tag tag;
 
   g_return_if_fail (brush != NULL);
@@ -705,10 +706,10 @@ gimp_brush_generated_increase_radius ()
 
   if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
     {
-      int radius = gimp_brush_generated_get_radius (get_active_brush ());
+      int radius = gimp_brush_generated_get_radius (GIMP_BRUSH_GENERATED(get_active_brush ()));
       radius = radius < 100 ? radius + 1 : radius;
 
-      gimp_brush_generated_set_radius (get_active_brush (), radius);
+      gimp_brush_generated_set_radius (GIMP_BRUSH_GENERATED(get_active_brush ()), radius);
       create_win_cursor (gdisplay_active ()->canvas->window, 
 	  radius*2*(SCALEDEST (gdisplay_active ()) / SCALESRC (gdisplay_active ()))); 
     }
@@ -721,9 +722,9 @@ gimp_brush_generated_decrease_radius ()
 {
   if (GIMP_IS_BRUSH_GENERATED(get_active_brush()))
     {
-      int radius = gimp_brush_generated_get_radius (get_active_brush ());
+      int radius = gimp_brush_generated_get_radius (GIMP_BRUSH_GENERATED(get_active_brush ()));
       radius = radius > 1 ? radius - 1 : radius;
-      gimp_brush_generated_set_radius (get_active_brush (), radius);
+      gimp_brush_generated_set_radius (GIMP_BRUSH_GENERATED(get_active_brush ()), radius);
       create_win_cursor (gdisplay_active ()->canvas->window, 
 	radius*2*(SCALEDEST (gdisplay_active ()) / SCALESRC (gdisplay_active ()))); 
     }

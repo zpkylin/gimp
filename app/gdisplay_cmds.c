@@ -302,8 +302,6 @@ ProcRecord gdisplay_delete_proc =
 static Argument *
 gdisplays_delete_image_invoker (Argument *args)
 {
-  GDisplay *gdisplay;
-
   success = TRUE;
 
   int_value = args[0].value.pdb_int;

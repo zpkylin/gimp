@@ -917,7 +917,7 @@ channel_is_empty (Channel *mask)
   void * pr;
 
   if (!mask)
-    return NULL;
+    return 0;
 
   if (mask->bounds_known)
   {

@@ -61,7 +61,7 @@ typedef enum
 
 /* structure definitions */
 typedef struct _PaintCore16 PaintCore16;
-typedef void (*PaintFunc16)(PaintCore16 *, struct _GimpDrawable *, int);
+typedef void *(*PaintFunc16)(PaintCore16 *, struct _GimpDrawable *, int);
 typedef void (*PainthitSetup)(PaintCore16 *, struct _Canvas *); 
 
 struct _PaintCore16
@@ -216,7 +216,7 @@ extern PaintCore16  non_gui_paint_core_16;
 
 
 /* minimize the context diffs */
-#define PaintCore PaintCore16
+typedef PaintCore16 PaintCore;
 #define paint_core_new paint_core_16_new
 #define paint_core_free paint_core_16_free
 #define paint_core_init paint_core_16_init

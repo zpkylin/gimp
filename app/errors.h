@@ -18,8 +18,8 @@
 #ifndef __ERRORS_H__
 #define __ERRORS_H__
 
-void message_func (char *);
-void fatal_error (char *, ...);
-void terminate (char *, ...);
+void message_func (const char *);
+void fatal_error (const char *, ...);
+void terminate (const char *, ...);
 
 #endif /* __ERRORS_H__ */

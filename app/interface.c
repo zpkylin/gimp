@@ -63,10 +63,6 @@ static GdkPixmap *create_pixmap    (GdkWindow  *parent,
 				    int         width,
 				    int         height);
 
-static gint  toolbox_check_device  (GtkWidget      *widget,
-    GdkEvent       *event,
-    gpointer        data);
-
 
 typedef struct _ToolButton ToolButton;
 
@@ -555,7 +551,6 @@ create_toolbox ()
   GtkWidget *vbox;
   GtkWidget *menubar;
   GtkAccelGroup *table;
-  GList     *list;
   
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_window_set_wmclass (GTK_WINDOW (window), "toolbox", "Gimp");
@@ -996,7 +991,7 @@ static void message_box_close_callback (GtkWidget *, gpointer);
 static gint message_box_delete_callback (GtkWidget *, GdkEvent *, gpointer);
 
 GtkWidget *
-message_box (char        *message,
+message_box (const char        *orig,
 	     GtkCallback  callback,
 	     gpointer     data)
 {
@@ -1006,10 +1001,11 @@ message_box (char        *message,
   GtkWidget *label_vbox;
   GtkWidget *label;
   GtkWidget *button;
-  char *str, *orig;
+  char *message = NULL;
+  char *str;
 
-  if (message)
-    message = orig = g_strdup (message);
+  if (orig)
+    message = g_strdup (orig);
   else
     return NULL;
 
@@ -1065,7 +1061,7 @@ message_box (char        *message,
       gtk_widget_show (label);
     }
 
-  g_free (orig);
+  g_free (message);
 
   msg_box->mbox = mbox;
   msg_box->callback = callback;
@@ -1176,11 +1172,4 @@ progress_end ()
     }
 }
 
-toolbox_check_device (GtkWidget *widget,
-    GdkEvent  *event,
-    gpointer   data)
-{
-
-  return FALSE;
-}
 

@@ -31,7 +31,6 @@ gint scrollbar_horz_update (GtkAdjustment *, gpointer);
 
 /*  routines for grabbing the image and scrolling via the pointer  */
 void start_grab_and_scroll (GDisplay *, GdkEventButton *);
-void end_grab_and_scroll (GDisplay *, GdkEventButton *);
 void grab_and_scroll (GDisplay *, GdkEventMotion *);
 void scroll_to_pointer_position (GDisplay *, GdkEventMotion *);
 

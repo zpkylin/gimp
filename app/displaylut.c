@@ -2,6 +2,7 @@
 #include "float16.h"
 #include "tag.h"
 #include <stdlib.h>
+#include <string.h>
 
 static gint IM_FilmMode = FALSE;
 static gint IM_OldWhitePoint = FALSE;
@@ -36,7 +37,7 @@ display_u8_init(void)
 	  /* for the moment just this r & h variable */
           if(getenv("WHITETURKEY"))
               IM_OldWhitePoint = TRUE;
-	  if (filmVar = getenv("FILM")) 
+	  if ((filmVar = getenv("FILM")))
 	  {
 	      if (strcmp(filmVar, "0") && strcasecmp(filmVar, "off")) 
 	      {

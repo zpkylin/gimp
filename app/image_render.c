@@ -2059,8 +2059,6 @@ render_image_rgb_a_float16 (RenderInfo *info)
 
 	  for (x = info->x; x < xe; x++)
 	    {
-	      ShortsFloat u; 
-	      
 	      a = alpha[ display_u8_alpha_from_float16 (src[ALPHA_PIX]) ];
 #if 0
 	      r = (guint8) (FLT (src[RED_PIX], u) * 255);

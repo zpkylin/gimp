@@ -59,8 +59,6 @@ static int          clone_line_image      (PaintCore *, Canvas *, GimpDrawable *
     						GimpDrawable *, int, int);
 static Argument *   clone_invoker         (Argument *);
 static void         clone_painthit_setup  (PaintCore *, Canvas *);
-static void	    create_dialog         (char type); 
-static void	    create_offset_dialog  (); 
 static gint	    clone_x_offset        (GtkWidget *, gpointer); 
 static gint	    clone_x_offset_down   (GtkWidget *, gpointer); 
 static gint	    clone_x_offset_up     (GtkWidget *, gpointer); 
@@ -72,13 +70,16 @@ static gint	    clone_y_scale         (GtkWidget *, gpointer);
 static gint	    clone_rotate          (GtkWidget *, gpointer); 
 static void         clone_set_offset      (CloneOptions*, int, int); 
 
-static GimpDrawable *non_gui_source_drawable;
 static GimpDrawable *source_drawable;
-static int 	    non_gui_offset_x;
-static int 	    non_gui_offset_y;
 static int  	    setup_successful;
 static char	    draw;
 static char	    clean_up = 0;
+
+#if 0
+static GimpDrawable *non_gui_source_drawable;
+static int 	    non_gui_offset_x;
+static int 	    non_gui_offset_y;
+#endif
 
 extern int middle_mouse_button;
 struct _CloneOptions
@@ -162,7 +163,6 @@ create_clone_options (void)
   GtkWidget *frame;
   GtkWidget *radio_box;
   GtkWidget *radio_button;
-  GtkWidget *separator; 
   GtkWidget *entry, *button; 
   GSList *group = NULL;
   int i;
@@ -348,15 +348,15 @@ clone_cursor_func (PaintCore *paint_core,
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
   if (middle_mouse_button)
-    return;
+    return NULL;
 
   if (!gdisp || !paint_core || !drawable)
     {
       clone_point_set = 0; 
-      return 0;
+      return NULL;
     }
   if (clean_up)
-    return 0; 
+    return NULL; 
   x1 = paint_core->curx;
   y1 = paint_core->cury;
  
@@ -447,7 +447,7 @@ clone_paint_func (PaintCore *paint_core,
 {
   GDisplay * gdisp;
   GDisplay * src_gdisp;
-  int x1, y1, x2, y2, e; 
+  int x1, y1, x2, y2; 
   float dist_x, dist_y;
   int dont_draw=0;
 
@@ -948,7 +948,7 @@ clone_line_image  (PaintCore * paint_core,
       Canvas * rot=NULL; 
       Canvas * orig;
       PixelArea srcPR, destPR;
-      int x1, y1, x11, y11, x2, y2, x22, y22;
+      int x1, y1, x2, y2;
 
       if (src_drawable != drawable) /* different windows */
 	{
@@ -1100,8 +1100,7 @@ clone_x_offset (GtkWidget *w, gpointer client_data)
   GSList *list = display_list; 
   GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
-  char *tmp;
-  offset_x = atoi (gtk_entry_get_text (co->x_offset_entry));
+  offset_x = atoi (gtk_entry_get_text (GTK_ENTRY(co->x_offset_entry)));
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1121,8 +1120,8 @@ clone_x_offset_down (GtkWidget *w, gpointer client_data)
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_x --;
-  sprintf (tmp, "%d\0", offset_x);  
-  gtk_entry_set_text (co->x_offset_entry, tmp);
+  sprintf (tmp, "%d", offset_x);  
+  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1142,8 +1141,8 @@ clone_x_offset_up (GtkWidget *w, gpointer client_data)
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_x ++;
-  sprintf (tmp, "%d\0", offset_x);  
-  gtk_entry_set_text (co->x_offset_entry, tmp);
+  sprintf (tmp, "%d", offset_x);  
+  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1161,8 +1160,7 @@ clone_y_offset (GtkWidget *w, gpointer client_data)
   GSList *list = display_list;
   GDisplay *d;
   CloneOptions *co = (CloneOptions*) client_data;
-  char *tmp;
-  offset_y = atoi (gtk_entry_get_text (co->y_offset_entry));
+  offset_y = atoi (gtk_entry_get_text (GTK_ENTRY(co->y_offset_entry)));
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1183,8 +1181,8 @@ clone_y_offset_down (GtkWidget *w, gpointer client_data)
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_y --;
-  sprintf (tmp, "%d\0", offset_y);  
-  gtk_entry_set_text (co->y_offset_entry, tmp);
+  sprintf (tmp, "%d", offset_y);  
+  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1204,8 +1202,8 @@ clone_y_offset_up (GtkWidget *w, gpointer client_data)
   char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
   offset_y ++;
-  sprintf (tmp, "%d\0", offset_y);  
-  gtk_entry_set_text (co->y_offset_entry, tmp);
+  sprintf (tmp, "%d", offset_y);  
+  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1219,9 +1217,7 @@ clone_y_offset_up (GtkWidget *w, gpointer client_data)
 static gint	    
 clone_x_scale (GtkWidget *w, gpointer client_data) 
 {
-  
-  CloneOptions *co = (CloneOptions*) client_data;
-  scale_x = atof (gtk_entry_get_text (w));
+  scale_x = atof (gtk_entry_get_text(GTK_ENTRY(w)));
   scale_x = scale_x == 0 ? 1 : scale_x;
   SCALE_X = (double) 1.0 / scale_x;   
   return TRUE; 
@@ -1230,8 +1226,7 @@ clone_x_scale (GtkWidget *w, gpointer client_data)
 static gint	    
 clone_y_scale (GtkWidget *w, gpointer client_data) 
 {
-  CloneOptions *co = (CloneOptions*) client_data;
-  scale_y = atof (gtk_entry_get_text (w));
+  scale_y = atof (gtk_entry_get_text (GTK_ENTRY(w)));
   scale_y = scale_y == 0 ? 1 : scale_y; 
   SCALE_Y = (double) 1.0 / scale_y;   
   return TRUE; 
@@ -1240,8 +1235,7 @@ clone_y_scale (GtkWidget *w, gpointer client_data)
 static gint	    
 clone_rotate (GtkWidget *w, gpointer client_data) 
 {
-  CloneOptions *co = (CloneOptions*) client_data;
-  rotate = (atof (gtk_entry_get_text (w)) / 180.0)  * M_PI;
+  rotate = (atof (gtk_entry_get_text (GTK_ENTRY(w))) / 180.0)  * M_PI;
   return TRUE; 
 }
 
@@ -1258,10 +1252,10 @@ static void
 clone_set_offset (CloneOptions *co, int x, int y)
 {
   char tmp[20];
-  sprintf (tmp, "%d\0", x); 
-  gtk_entry_set_text (co->x_offset_entry, tmp);
-  sprintf (tmp, "%d\0", y); 
-  gtk_entry_set_text (co->y_offset_entry, tmp);
+  sprintf (tmp, "%d", x); 
+  gtk_entry_set_text (GTK_ENTRY(co->x_offset_entry), tmp);
+  sprintf (tmp, "%d", y); 
+  gtk_entry_set_text (GTK_ENTRY(co->y_offset_entry), tmp);
 } 
 
 void
@@ -1272,9 +1266,9 @@ clone_x_offset_increase ()
   GDisplay *d;
   char tmp[20];
   offset_x ++; 
-  sprintf (tmp, "%d\0", offset_x);  
+  sprintf (tmp, "%d", offset_x);  
   if (clone_options)
-    gtk_entry_set_text (clone_options->x_offset_entry, tmp);
+    gtk_entry_set_text (GTK_ENTRY(clone_options->x_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1292,9 +1286,9 @@ clone_x_offset_decrease ()
   GDisplay *d;
   char tmp[20];
   offset_x --; 
-  sprintf (tmp, "%d\0", offset_x);  
+  sprintf (tmp, "%d", offset_x);  
   if (clone_options)
-    gtk_entry_set_text (clone_options->x_offset_entry, tmp);
+    gtk_entry_set_text (GTK_ENTRY(clone_options->x_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1313,9 +1307,9 @@ clone_y_offset_increase ()
   GDisplay *d;
   char tmp[20];
   offset_y ++;
-  sprintf (tmp, "%d\0", offset_y);
+  sprintf (tmp, "%d", offset_y);
   if (clone_options)
-    gtk_entry_set_text (clone_options->y_offset_entry, tmp);
+    gtk_entry_set_text (GTK_ENTRY(clone_options->y_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1332,9 +1326,9 @@ clone_y_offset_decrease ()
   GDisplay *d;
   char tmp[20];
   offset_y --;
-  sprintf (tmp, "%d\0", offset_y);
+  sprintf (tmp, "%d", offset_y);
   if (clone_options)
-    gtk_entry_set_text (clone_options->y_offset_entry, tmp);
+    gtk_entry_set_text (GTK_ENTRY(clone_options->y_offset_entry), tmp);
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
@@ -1373,20 +1367,19 @@ clone_get_y_offset ()
   return offset_y;
 }
 
-
+#if 0
 static void *
 clone_non_gui_paint_func (PaintCore *paint_core,
     GimpDrawable *drawable,
     int        state)
 {
-#if 0
   clone_type = non_gui_clone_type;
   source_drawable = non_gui_source_drawable;
 
   clone_motion (paint_core, drawable, non_gui_offset_x, non_gui_offset_y);
-#endif
   return NULL;
 }
+#endif
 
 
 /*  The clone procedure definition  */

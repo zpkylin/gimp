@@ -102,12 +102,6 @@ bucket_fill_scale_update (GtkAdjustment *adjustment,
   *scale_val = adjustment->value;
 }
 
-static void
-bucket_fill_mode_callback (GtkWidget *w,
-			   gpointer   client_data)
-{
-  bucket_options->fill_mode = (FillMode) client_data;
-}
 
 static void
 bucket_fill_paint_mode_callback (GtkWidget *w,
@@ -125,16 +119,11 @@ create_bucket_options (void)
   GtkWidget *label;
   GtkWidget *option_menu;
   GtkWidget *menu;
-  GtkWidget *radio_frame;
-  GtkWidget *radio_box;
-  GtkWidget *radio_button;
   GtkWidget *opacity_scale;
   GtkWidget *sample_merged_toggle;
   GtkWidget *threshold_scale;
   GtkObject *opacity_scale_data;
   GtkObject *threshold_scale_data;
-  GSList *group = NULL;
-  int i;
 
   /*  the new options structure  */
   options = (BucketOptions *) g_malloc (sizeof (BucketOptions));
@@ -432,7 +421,7 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
 
   {
     PixelArea bufPR, mbufPR;
-    Canvas * buf_tiles, *buf_m_tiles;;
+    Canvas * buf_tiles = NULL, *buf_m_tiles = NULL;
    
     buf_tiles = canvas_new (tag_set_alpha (drawable_tag (drawable), ALPHA_YES),
                             (x2 - x1), (y2 - y1),

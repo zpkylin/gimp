@@ -17,6 +17,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "appenv.h"
 #include "errors.h"
 #include "float16.h"
@@ -73,6 +74,7 @@ static void process_horiz_seg (int, int, int, int, int);
 static void make_horiz_segs (int, int, int, int *, int, int);
 static void generate_boundary (BoundaryType, int, int, int, int);
 
+/*
 void print_boundary (BoundSeg * b, int num_segs)
 {
 	int i;
@@ -82,7 +84,7 @@ void print_boundary (BoundSeg * b, int num_segs)
 		printf (" %d %d   %d %d \n", b[i].x1, b[i].y1, b[i].x2, b[i].y2);
 	}
 } 
-
+*/
 
 
 

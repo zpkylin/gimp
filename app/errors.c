@@ -33,7 +33,7 @@
 extern char *prog_name;
 
 void
-message_func (char *str)
+message_func (const char *str)
 {
   if ((console_messages == FALSE) && (message_handler == MESSAGE_BOX))
       message_box (str, NULL, NULL);
@@ -42,7 +42,7 @@ message_func (char *str)
 }
 
 void
-fatal_error (char *fmt, ...)
+fatal_error (const char *fmt, ...)
 {
   va_list args;
 
@@ -57,7 +57,7 @@ fatal_error (char *fmt, ...)
 }
 
 void
-terminate (char *fmt, ...)
+terminate (const char *fmt, ...)
 {
   va_list args;
 
@@ -74,3 +74,4 @@ terminate (char *fmt, ...)
   gdk_exit (1);
 
 }
+

@@ -24,6 +24,7 @@
 #include "info_window.h"
 #include "scale.h"
 #include "tools.h"
+#include "zoom.h"
 
 void
 bounds_checking (GDisplay *gdisp)

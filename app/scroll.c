@@ -75,24 +75,6 @@ start_grab_and_scroll (GDisplay       *gdisp,
 
 
 void
-end_grab_and_scroll (GDisplay       *gdisp,
-		     GdkEventButton *bevent)
-{
-  GdkCursor *cursor;
-  if (!gdisp || !gdisp->current_cursor)
-    return; 
-
-  /*
-  cursor = gdk_cursor_new (gdisp->current_cursor);
-  if (!cursor)
-    return; 
-  gdk_window_set_cursor (gdisp->canvas->window, cursor);
-  gdk_cursor_destroy (cursor);
-*/
-  }
-
-
-void
 grab_and_scroll (GDisplay       *gdisp,
 		 GdkEventMotion *mevent)
 {

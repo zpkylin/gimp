@@ -40,6 +40,7 @@
 #include "layer_pvt.h"
 #include "layout.h"
 #include "minimize.h"
+#include "frame_manager.h"
 
 typedef struct _OverwriteBox OverwriteBox;
 static GtkWidget *warning_dialog = NULL;
@@ -111,7 +112,6 @@ static int  file_check_magic_list (GSList *magics_list,
                                    unsigned char *head,
                                    FILE *ifp);
 
-static GString* append_ext (char * string, char *ext);
 
 static PlugInProcDef* file_proc_find         (GSList *procs,
 					 char   *filename);
@@ -849,14 +849,6 @@ file_update_name (PlugInProcDef *proc, GtkWidget *filesel)
     }
 }
 
-static GString* 
-append_ext (char * string, char *ext)
-{
-  GString *s = g_string_new (string);
-  g_string_append (s, ".");
-  g_string_append (s, (char*) ext);
-  return s;
-}
 
 static void
 file_load_type_callback (GtkWidget *w,
@@ -1087,11 +1079,7 @@ file_save (int   image_ID,
   int return_val;
   GImage *gimage;
   int i;
-  GString *filename_with_ext;
-  GString *raw_filename_with_ext;
-  char *last_dot;
-  char *extension;
-  Layer *merged_layer; 
+  Layer *merged_layer = NULL; 
   char temp_filename[250]; 
   char temp_raw_filename[250]; 
 
@@ -1152,13 +1140,13 @@ file_save (int   image_ID,
 	{
 	  i--;
 	}
-      sprintf (temp_raw_filename, "%s.tmp%s\0", raw_filename, &(raw_filename[i])); 
-      sprintf (temp_filename, "%s\0", filename);
+      sprintf (temp_raw_filename, "%s.tmp%s", raw_filename, &(raw_filename[i])); 
+      sprintf (temp_filename, "%s", filename);
       i = strlen (filename) - strlen (raw_filename);
       if (temp_raw_filename[0] == '~')
-	sprintf (&(temp_filename[i+1]), "%s\0", &(temp_raw_filename[1]));
+	sprintf (&(temp_filename[i+1]), "%s", &(temp_raw_filename[1]));
       else	
-      sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
+      sprintf (&(temp_filename[i]), "%s", temp_raw_filename);
       args[3].value.pdb_pointer = temp_filename;
       args[4].value.pdb_pointer = temp_raw_filename;
     }
@@ -1933,10 +1921,10 @@ file_save_invoker (Argument *args)
       while (filename[i] != '.')
 	  i --;
 	 
-      sprintf (temp_raw_filename, "%s.tmp%s\0", filename, &(filename[i])); 
-      sprintf (temp_filename, "%s\0", new_args[3].value.pdb_pointer);
+      sprintf (temp_raw_filename, "%s.tmp%s", filename, &(filename[i])); 
+      sprintf (temp_filename, "%s", (gchar *)(new_args[3].value.pdb_pointer));
       i = strlen (new_args[3].value.pdb_pointer) - strlen (new_args[4].value.pdb_pointer); 
-      sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
+      sprintf (&(temp_filename[i]), "%s", temp_raw_filename);
       new_args[3].value.pdb_pointer = temp_filename;
       new_args[4].value.pdb_pointer = temp_raw_filename;
 

@@ -170,9 +170,6 @@ eraser_motion  (
                 gboolean incremental
                 )
 {
-  Canvas * painthit;
-  PixelArea a;
-      
   /* Set up the working painthit */
   paint_core_16_area_setup (paint_core, drawable);
   

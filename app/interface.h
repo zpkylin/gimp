@@ -35,7 +35,7 @@ void         create_display_shell (int, int, int, char *, int);
 void         position_dialog (GtkWidget *, gpointer, gpointer);
 void         center_dialog (GtkWidget *, gpointer, gpointer);
 GtkWidget *  query_string_box (char *, char *, char *, QueryFunc, gpointer);
-GtkWidget *  message_box (char *, GtkCallback, gpointer);
+GtkWidget *  message_box (const char *, GtkCallback, gpointer);
 
 void tools_push_label (char *label);
 void tools_pop_label (void);

@@ -37,7 +37,7 @@
 #include "devices.h"
 
 void dodgeburn_area ( PixelArea *, PixelArea *, gint,gint,gfloat  );
-typedef void  (*DodgeburnRowFunc) (PixelArea*,PixelArea*,gint,gfloat);
+typedef void  (*DodgeburnRowFunc) (PixelRow*,PixelRow*,gint,gfloat);
 void dodge_highlights_row ( PixelRow *src_row, PixelRow *dest_row, 
 	gint type, gfloat exposure);
 void dodge_midtones_row ( PixelRow *src_row, PixelRow *dest_row, 
@@ -498,7 +498,7 @@ dodgeburn_row_func (
   switch (tag_precision (tag))
     {
     case PRECISION_U8:
-      return ;
+      return NULL;
     case PRECISION_U16:
       return NULL;
     case PRECISION_FLOAT:
@@ -528,10 +528,9 @@ void dodge_highlights_row (
   guint16 *src          = (guint16*) pixelrow_data (src_row);
   guint16 *dest         = (guint16*) pixelrow_data (dest_row);
   gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
-  gint    num_channels1 = tag_num_channels (pixelrow_tag (dest_row));
   Tag     tag = pixelrow_tag (dest_row);
   gint    width        = pixelrow_width (dest_row);  
-  gfloat  sb, db;
+  gfloat  sb;
   ShortsFloat u;
   gfloat factor = 1.0 + exposure * (.333333);
   gint    num_color_chans;
@@ -573,10 +572,9 @@ void dodge_midtones_row (
   guint16 *src          = (guint16*) pixelrow_data (src_row);
   guint16 *dest         = (guint16*) pixelrow_data (dest_row);
   gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
-  gint    num_channels1 = tag_num_channels (pixelrow_tag (dest_row));
   Tag     tag = pixelrow_tag (dest_row);
   gint    width        = pixelrow_width (dest_row);  
-  gfloat  sb, db;
+  gfloat  sb;
   ShortsFloat u;
   gfloat factor;
   gint    num_color_chans;
@@ -622,10 +620,9 @@ void dodge_shadows_row (
   guint16 *src          = (guint16*) pixelrow_data (src_row);
   guint16 *dest         = (guint16*) pixelrow_data (dest_row);
   gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
-  gint    num_channels1 = tag_num_channels (pixelrow_tag (dest_row));
   Tag     tag = pixelrow_tag (dest_row);
   gint    width        = pixelrow_width (dest_row);  
-  gfloat  sb, db;
+  gfloat  sb;
   ShortsFloat u;
   gfloat factor;
   gint    num_color_chans;

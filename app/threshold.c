@@ -920,7 +920,6 @@ void
 threshold_initialize (void *gdisp_ptr)
 {
   GDisplay *gdisp;
-  gint	    bins;
   Tag 	    tag;
   gint      start, end;
 
@@ -1465,7 +1464,7 @@ threshold_invoker (args)
   int low_threshold;
   int high_threshold;
   int int_value;
-  int max, bins;
+  int max=0, bins=0;
   int x1, y1, x2, y2;
   void *pr;
 

@@ -112,7 +112,7 @@ invert_row_u16  (
 {
   gint    b;
   guint16 *dest         = (guint16*) pixelrow_data (dest_row);
-  guint16 *mask         = (guint16*) pixelrow_data (mask_row);
+  /*guint16 *mask         = (guint16*) pixelrow_data (mask_row);*/
   gint    num_channels = tag_num_channels (pixelrow_tag (dest_row));
   gint    width        = pixelrow_width (dest_row);  
 
@@ -139,8 +139,8 @@ absdiff_row_u16  (
   guint16 *dest          = (guint16*) pixelrow_data (mask);
   guint16 *color         = (guint16*) pixelrow_data (col);
 
-  Tag     tag           = pixelrow_tag (image);
-  int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;
+  /*Tag     tag           = pixelrow_tag (image);*/
+  /*int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;*/
 
   gint    width         = pixelrow_width (image);  
 
@@ -428,115 +428,6 @@ lighten_row_u16 (
 	dest[alpha] = MIN (src1[alpha], src2[alpha]);
       else if (ha2)
 	dest[alpha] = src2[alpha];
-
-      src1 += num_channels1;
-      src2 += num_channels2;
-      dest += num_channels2;
-    }
-}
-
-
-void
-hsv_only_row_u16 (
-		    PixelRow *src1_row,
-		    PixelRow *src2_row,
-		    PixelRow *dest_row,
-		    int       mode
-		    )
-{
-  gint r1, g1, b1;
-  gint r2, g2, b2;
-  Tag     src1_tag      = pixelrow_tag (src1_row); 
-  Tag     src2_tag      = pixelrow_tag (src2_row); 
-  gint    ha1           = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;
-  gint    ha2           = (tag_alpha (src2_tag)==ALPHA_YES)? TRUE: FALSE;
-  guint16 *dest         = (guint16*)pixelrow_data (dest_row);
-  guint16 *src1         = (guint16*)pixelrow_data (src1_row);
-  guint16 *src2         = (guint16*)pixelrow_data (src2_row);
-  gint    width         = pixelrow_width (dest_row);
-  gint    num_channels1 = tag_num_channels (src1_tag);
-  gint    num_channels2 = tag_num_channels (src2_tag);
-
-  /*  assumes inputs are only 4 channel RGBA pixels  */
-  while (width--)
-    {
-      r1 = src1[0]; g1 = src1[1]; b1 = src1[2];
-      r2 = src2[0]; g2 = src2[1]; b2 = src2[2];
-      rgb_to_hsv (&r1, &g1, &b1);
-      rgb_to_hsv (&r2, &g2, &b2);
-
-      switch (mode)
-	{
-	case HUE_MODE:
-	  r1 = r2;
-	  break;
-	case SATURATION_MODE:
-	  g1 = g2;
-	  break;
-	case VALUE_MODE:
-	  b1 = b2;
-	  break;
-	}
-
-      /*  set the destination  */
-      hsv_to_rgb (&r1, &g1, &b1);
-
-      dest[0] = r1; dest[1] = g1; dest[2] = b1;
-
-      if (ha1 && ha2)
-	dest[3] = MIN (src1[3], src2[3]);
-      else if (ha2)
-	dest[3] = src2[3];
-
-      src1 += num_channels1;
-      src2 += num_channels2;
-      dest += num_channels2;
-    }
-}
-
-
-void
-color_only_row_u16 (
-		      PixelRow *src1_row,
-		      PixelRow *src2_row,
-		      PixelRow *dest_row,
-		      int       mode
-		     )
-{
-  gint r1, g1, b1;
-  gint r2, g2, b2;
-  Tag     src1_tag      = pixelrow_tag (src1_row); 
-  Tag     src2_tag      = pixelrow_tag (src2_row); 
-  gint    ha1           = (tag_alpha (src1_tag)==ALPHA_YES)? TRUE: FALSE;
-  gint    ha2           = (tag_alpha (src2_tag)==ALPHA_YES)? TRUE: FALSE;
-  guint16 *dest          = (guint16*)pixelrow_data (dest_row);
-  guint16 *src1          = (guint16*)pixelrow_data (src1_row);
-  guint16 *src2          = (guint16*)pixelrow_data (src2_row);
-  gint    width         = pixelrow_width (dest_row);
-  gint    num_channels1 = tag_num_channels (src1_tag);
-  gint    num_channels2 = tag_num_channels (src2_tag);
-
-  /*  assumes inputs are only 4 channel RGBA pixels  */
-  while (width--)
-    {
-      r1 = src1[0]; g1 = src1[1]; b1 = src1[2];
-      r2 = src2[0]; g2 = src2[1]; b2 = src2[2];
-      rgb_to_hls (&r1, &g1, &b1);
-      rgb_to_hls (&r2, &g2, &b2);
-
-      /*  transfer hue and saturation to the source pixel  */
-      r1 = r2;
-      b1 = b2;
-
-      /*  set the destination  */
-      hls_to_rgb (&r1, &g1, &b1);
-
-      dest[0] = r1; dest[1] = g1; dest[2] = b1;
-
-      if (ha1 && ha2)
-	dest[3] = MIN (src1[3], src2[3]);
-      else if (ha2)
-	dest[3] = src2[3];
 
       src1 += num_channels1;
       src2 += num_channels2;
@@ -928,7 +819,6 @@ scale_row_u16 (
   guint16 *dest  = (guint16*)pixelrow_data (dest_row);
   guint16 *src   = (guint16*)pixelrow_data (src_row);
   gint    width = pixelrow_width (dest_row);
-  guint16 sc = (guint16) scale;
   
   while (width --)
     *dest++ = INT_MULT_16 (*src++ , scale, t);

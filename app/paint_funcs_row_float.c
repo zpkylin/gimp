@@ -107,7 +107,7 @@ invert_row_float  (
 {
   gint    b;
   gfloat *dest         = (gfloat*) pixelrow_data (dest_row);
-  gfloat *mask         = (gfloat*) pixelrow_data (mask_row);
+  /*gfloat *mask         = (gfloat*) pixelrow_data (mask_row);*/
   gint    num_channels = tag_num_channels (pixelrow_tag (dest_row));
   gint    width        = pixelrow_width (dest_row);  
 
@@ -151,8 +151,8 @@ absdiff_row_float  (
   gfloat *dest          = (gfloat*) pixelrow_data (mask);
   gfloat *color         = (gfloat*) pixelrow_data (col);
 
-  Tag     tag           = pixelrow_tag (image);
-  int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;
+  /*Tag     tag           = pixelrow_tag (image);*/
+  /*int     has_alpha     = (tag_alpha (tag) == ALPHA_YES) ? 1 : 0;*/
 
   gint    width         = pixelrow_width (image);  
 

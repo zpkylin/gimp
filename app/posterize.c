@@ -229,7 +229,7 @@ posterize_float (PixelArea *src_area,
   gint has_alpha;
   gint s_num_channels = tag_num_channels (src_tag);
   gint d_num_channels = tag_num_channels (dest_tag);
-  int w, h, b, i;
+  int w, h, b;
   gfloat interval, half_interval;
 
   pd = (PosterizeDialog *) user_data;
@@ -283,7 +283,7 @@ posterize_float16 (PixelArea *src_area,
   gint has_alpha;
   gint s_num_channels = tag_num_channels (src_tag);
   gint d_num_channels = tag_num_channels (dest_tag);
-  int w, h, b, i;
+  int w, h, b;
   gfloat interval, half_interval;
   gfloat sb;
   ShortsFloat u;

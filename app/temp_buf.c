@@ -27,7 +27,8 @@
 #include "gdisplay.h"
 #include "general.h"
 #include "gimprc.h"
-#include "paint_funcs.h"
+#include "pixel_region.h"
+#include "paint_funcs_area.h"
 #include "temp_buf.h"
 
 

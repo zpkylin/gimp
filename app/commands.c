@@ -75,6 +75,9 @@
 #include "zoom.h"
 #include "zoombookmark.h"
 #include "minimize.h"
+#include "layout.h"
+#include "gimpbrushlist.h"
+#include "cursorutil.h"
 
 /*  external functions  */
 extern void layers_dialog_layer_merge_query (GImage *, int);

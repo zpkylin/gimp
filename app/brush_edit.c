@@ -99,7 +99,7 @@ static gint
 brush_edit_brush_dirty_callback(GimpBrush *brush,
 				BrushEditGeneratedWindow *begw)
 {
-  int x, y, width, yend, ystart, xo;
+  int y, width, yend, ystart, xo;
   int scale;
   guchar *buf;
   gint w, h;

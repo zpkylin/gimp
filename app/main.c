@@ -297,9 +297,9 @@ main (int argc, char **argv)
     gtk_main ();
 
   {
-    extern int ref_ro, ref_rw,ref_un, ref_fa , ref_uf;
-    
 #if 0
+    extern int ref_ro, ref_rw,ref_un, ref_fa , ref_uf;
+
     g_warning ("Refs:   %d+%d = %d", ref_ro, ref_rw, (ref_ro+ref_rw));
     g_warning ("Unrefs: %d", ref_un);
     

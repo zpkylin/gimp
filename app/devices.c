@@ -34,9 +34,8 @@ static void     input_dialog_able_callback     (GtkWidget *w, guint32 deviceid,
 static void     input_dialog_disable_callback     (GtkWidget *w, guint32 deviceid, 
 						gpointer data);
 
-static void     devices_close_callback         (GtkWidget *, gpointer);
 
-gint current_device = NULL;
+gint current_device = 0;
 
 /*  the gtk input dialog  */
 
@@ -44,13 +43,12 @@ void
 input_dialog_create (void)
 {
   static GtkWidget *inputd = NULL;
-  GtkWidget        *hbbox;
 
   if (!inputd)
     {
       inputd = gtk_input_dialog_new ();
      
-gtk_signal_connect (GTK_OBJECT(inputd), "destroy",
+      gtk_signal_connect (GTK_OBJECT(inputd), "destroy",
                           (GtkSignalFunc)input_dialog_destroy, &inputd);
       gtk_signal_connect_object (GTK_OBJECT(GTK_INPUT_DIALOG(inputd)->close_button),
                           "clicked",
@@ -86,7 +84,7 @@ input_dialog_disable_callback (GtkWidget *widget,
 			    guint32    deviceid,
 			    gpointer   data)
 {
-  current_device = NULL;
+  current_device = 0;
 }
 
 

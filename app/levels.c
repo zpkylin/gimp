@@ -123,7 +123,9 @@ static void            levels_red_callback            (GtkWidget *, gpointer);
 static void            levels_green_callback          (GtkWidget *, gpointer);
 static void            levels_blue_callback           (GtkWidget *, gpointer);
 static void            levels_alpha_callback          (GtkWidget *, gpointer);
+#if 0
 static void            levels_auto_levels_callback    (GtkWidget *, gpointer);
+#endif
 static void            levels_ok_callback             (GtkWidget *, gpointer);
 static void            levels_cancel_callback         (GtkWidget *, gpointer);
 static gint            levels_delete_callback         (GtkWidget *, GdkEvent *, gpointer);
@@ -144,8 +146,10 @@ static gfloat compute_output(gfloat val, gfloat low, gfloat high, gint clip);
 static void *levels_options = NULL;
 static LevelsDialog *levels_dialog = NULL;
 
+#if 0
 static void       levels_histogram_info (PixelArea *, PixelArea *, HistogramValues, void *);
 static void       levels_histogram_range (int, int, int, HistogramValues, void *);
+#endif
 static Argument * levels_invoker (Argument *);
 
 static void  levels_funcs (Tag);
@@ -378,7 +382,6 @@ levels_init_high_low_input_output_u8 (LevelsDialog *ld)
 static void
 levels_calculate_transfers_u8 (LevelsDialog *ld)
 {
-  gfloat inten;
   int i, j;
   guint8* low_input = (guint8*)pixelrow_data (&ld->low_input_pr);
   guint8* high_input = (guint8*)pixelrow_data (&ld->high_input_pr);
@@ -670,7 +673,7 @@ levels_float (PixelArea *src_area,
   gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
   gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
   gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
-  gfloat input, output;
+  gfloat input;
 
 
   src = pixelarea_data (src_area);
@@ -2102,7 +2105,7 @@ levels_free_transfers (LevelsDialog *ld)
   }
 }
 
-
+#if 0
 static void
 levels_histogram_info (PixelArea     *src_area,
 		       PixelArea     *mask_area,
@@ -2215,6 +2218,7 @@ levels_histogram_range (int              start,
 
   histogram_range (ld->histogram, -1, -1);
 }
+#endif
 
 /*  levels action functions  */
 
@@ -2913,6 +2917,7 @@ levels_alpha_callback (GtkWidget *w,
     }
 }
 
+#if 0
 static void
 levels_adjust_channel (LevelsDialog    *ld,
 		       HistogramValues *values,
@@ -3007,6 +3012,7 @@ levels_auto_levels_callback (GtkWidget *widget,
   if (ld->preview)
     levels_preview (ld);
 }
+#endif
 
 static void
 levels_ok_callback (GtkWidget *widget,

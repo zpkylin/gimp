@@ -110,13 +110,13 @@ static GHashTable *drawable_table = NULL;
 /*  Function definitions  */
 
 static guint
-drawable_hash (gpointer v)
+drawable_hash (gconstpointer v)
 {
   return (guint) v;
 }
 
 static gint
-drawable_hash_compare (gpointer v1, gpointer v2)
+drawable_hash_compare (gconstpointer v1, gconstpointer v2)
 {
   return ((guint) v1) == ((guint) v2);
 }

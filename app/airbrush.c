@@ -42,7 +42,7 @@ struct _AirbrushTimeout
 };
 
 /*  forward function declarations  */
-static void         airbrush_motion   (PaintCore *, GimpDrawable *, double);
+static void         airbrush_motion   (PaintCore16 *, GimpDrawable *, double);
 static gint         airbrush_time_out (gpointer);
 static Argument *   airbrush_invoker  (Argument *);
 static void         airbrush_painthit_setup (PaintCore *,Canvas *);
@@ -144,7 +144,7 @@ create_airbrush_options (void)
 }
 
 static void *
-airbrush_paint_func (PaintCore *paint_core,
+airbrush_paint_func (PaintCore16 *paint_core,
 		     GimpDrawable *drawable,
 		     int        state)
 {
@@ -238,14 +238,11 @@ airbrush_time_out (gpointer client_data)
 }
 
 static void 
-airbrush_motion  (PaintCore * paint_core,
+airbrush_motion  (PaintCore16 * paint_core,
                   GimpDrawable * drawable,
                   double pressure
                   )
 {
-  Canvas * painthit;
-  PixelArea a;
-      
   /* Get the working canvas */
 
   /* Set up the painthit canvas */

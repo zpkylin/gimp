@@ -36,6 +36,7 @@
 #include "clone.h"
 #include "frame_manager.h"
 #include "zoom.h"
+#include "info_window.h"
 
 
 #define HORIZONTAL  1
@@ -365,9 +366,6 @@ gdisplay_canvas_events (GtkWidget *canvas,
 	  state &= ~GDK_BUTTON2_MASK;
           scrolled = FALSE;
           gtk_grab_remove (canvas);
-          /*
-	     end_grab_and_scroll (gdisp, bevent);
-	  */
 	  break;
 
 

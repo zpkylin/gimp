@@ -168,7 +168,6 @@ histogram_tool_histogram_info_u8 (PixelArea       *src_area,
   gfloat  scale = 1./255.;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
-  gint                 alpha = tag_alpha (src_tag);
   Tag                  mask_tag = pixelarea_tag (mask_area);
   gint                 m_num_channels = tag_num_channels (mask_tag);
 
@@ -249,10 +248,9 @@ histogram_tool_histogram_info_u16 (PixelArea       *src_area,
   gfloat  scale = 1./65535.;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
-  gint                 alpha = tag_alpha (src_tag);
   Tag                  mask_tag = pixelarea_tag (mask_area);
   gint                 m_num_channels = tag_num_channels (mask_tag);
-  gint 		       value_bin, red_bin, green_bin, blue_bin;
+  gint 		       value_bin=0, red_bin, green_bin, blue_bin;
 
   h = pixelarea_height (src_area);
   src = (guchar*)pixelarea_data (src_area);
@@ -336,10 +334,9 @@ histogram_tool_histogram_info_float (PixelArea *src_area,
   gfloat    value, red, green, blue;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
-  gint                 alpha = tag_alpha (src_tag);
   Tag                  mask_tag = pixelarea_tag (mask_area);
   gint                 m_num_channels = tag_num_channels (mask_tag);
-  gint value_bin, red_bin, green_bin, blue_bin;
+  gint value_bin=0, red_bin, green_bin, blue_bin;
 
   htd = (HistogramToolDialog *) user_data;
   h = pixelarea_height (src_area);
@@ -420,17 +417,15 @@ histogram_tool_histogram_info_float16 (PixelArea *src_area,
 			       void            *user_data)
 {
   HistogramToolDialog *htd = (HistogramToolDialog *) user_data;
-  gint bins = histogram_bins (htd->histogram); 
   int                  w, h;
   guchar *src, *mask = NULL;
   guint16 *s, *m = NULL;
   gfloat    value, red, green, blue;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
-  gint                 alpha = tag_alpha (src_tag);
   Tag                  mask_tag = pixelarea_tag (mask_area);
   gint                 m_num_channels = tag_num_channels (mask_tag);
-  gint value_bin, red_bin, green_bin, blue_bin;
+  gint value_bin = 0, red_bin, green_bin, blue_bin;
   ShortsFloat u;
   gfloat m_val;
   htd = (HistogramToolDialog *) user_data;
@@ -1304,7 +1299,7 @@ histogram_invoker (Argument *args)
   int high_range;
   int int_value;
   int no_mask;
-  int max, bins;
+  int max=0, bins = 0;
   int x1, y1, x2, y2;
   int off_x, off_y;
   void *pr;

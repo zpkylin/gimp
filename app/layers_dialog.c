@@ -166,7 +166,9 @@ static void layers_dialog_apply_layer_mask_callback (GtkWidget *, gpointer);
 static void layers_dialog_anchor_layer_callback (GtkWidget *, gpointer);
 static void layers_dialog_merge_layers_callback (GtkWidget *, gpointer);
 static void layers_dialog_flatten_image_callback (GtkWidget *, gpointer);
+#if 0
 static void layers_dialog_alpha_select_callback (GtkWidget *, gpointer);
+#endif
 static void layers_dialog_mask_select_callback (GtkWidget *, gpointer);
 static void layers_dialog_add_alpha_channel_callback (GtkWidget *, gpointer);
 static void layers_dialog_save_layer_callback (GtkWidget *, gpointer);
@@ -275,12 +277,6 @@ static MenuItem option_items[] =
   { "Subtract", 0, 0, paint_mode_menu_callback, (gpointer) SUBTRACT_MODE, NULL, NULL },
   { "Darken Only", 0, 0, paint_mode_menu_callback, (gpointer) DARKEN_ONLY_MODE, NULL, NULL },
   { "Lighten Only", 0, 0, paint_mode_menu_callback, (gpointer) LIGHTEN_ONLY_MODE, NULL, NULL },
-#if 0
-  { "Hue", 0, 0, paint_mode_menu_callback, (gpointer) HUE_MODE, NULL, NULL },
-  { "Saturation", 0, 0, paint_mode_menu_callback, (gpointer) SATURATION_MODE, NULL, NULL },
-  { "Color", 0, 0, paint_mode_menu_callback, (gpointer) COLOR_MODE, NULL, NULL },
-  { "Value", 0, 0, paint_mode_menu_callback, (gpointer) VALUE_MODE, NULL, NULL },
-#endif
   { NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
@@ -1069,8 +1065,7 @@ render_preview (Canvas    *preview_buf,
   /* dump it to screen */
   canvas_portion_refro (display_buf, 0, 0);
   {
-    int i, j, b;
-    int num_channels = tag_num_channels (canvas_tag (display_buf));
+    int i;
     for (i = 0; i < height; i++)
       {
         guchar * t = canvas_portion_data (display_buf, 0, i);
@@ -1836,7 +1831,7 @@ layers_dialog_flatten_image_callback (GtkWidget *w,
   gdisplays_flush ();
 }
 
-
+#if 0
 static void
 layers_dialog_alpha_select_callback (GtkWidget *w,
 				     gpointer   client_data)
@@ -1853,6 +1848,7 @@ layers_dialog_alpha_select_callback (GtkWidget *w,
   gimage_mask_layer_alpha (gimage, gimage->active_layer);
   gdisplays_flush ();
 }
+#endif
 
 
 static void
@@ -1901,8 +1897,6 @@ layers_dialog_save_layer_callback (GtkWidget *w,
     				   gpointer   client_data)
 {
   GImage *gimage;
-  Layer *active_layer;
-  Layer *new_layer;
 
   /*  if there is a currently selected gimage, request a new layer
    */
@@ -1923,8 +1917,6 @@ layers_dialog_load_layer_callback (GtkWidget *w,
     				   gpointer   client_data)
 {
   GImage *gimage;
-  Layer *active_layer;
-  Layer *new_layer;
 
   /*  if there is a currently selected gimage, request a new layer
    */
@@ -2173,7 +2165,6 @@ layer_widget_button_events (GtkWidget *widget,
   GtkWidget *event_widget;
   GdkEventButton *bevent;
   gint return_val;
-  GImage * gimage; 
 
   layer_widget = (LayerWidget *) gtk_object_get_user_data (GTK_OBJECT (widget));
   return_val = FALSE;

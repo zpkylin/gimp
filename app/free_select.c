@@ -569,7 +569,7 @@ scan_convert (int gimage_ID, int num_pts, FreeSelectPoint *pts,
   Channel * mask;
   GImage * gimage;
   GSList **scanlines;
-  int i, j;
+  int i;
 
   if (num_pts < 3)
     return NULL;

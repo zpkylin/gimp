@@ -1320,12 +1320,11 @@ convolve_area_u8 (
                   gint          offset
 		  )
 {
-  guint8 *src, *s_row, * s;
-  guint8 *dest, * d;
+  guint8 *src, * s;
+  guint8 *dest;
   gfloat * m;
   gfloat total [4];
   gint b, num_channels;
-  gint wraparound;
   gint margin;      /*  margin imposed by size of conv. matrix  */
   gint i, j;
   gint x, y;
@@ -1431,12 +1430,11 @@ convolve_area_u16 (
                    gint          offset
 		   )
 {
-  guint16 *src, *s_row, * s;
-  guint16 *dest, * d;
+  guint16 *src, * s;
+  guint16 *dest;
   gfloat * m;
   gfloat total [4];
   gint b, num_channels;
-  gint wraparound;
   gint margin;      /*  margin imposed by size of conv. matrix  */
   gint i, j;
   gint x, y;
@@ -1540,12 +1538,11 @@ convolve_area_float (PixelArea *src_area,
 		 gint          mode,
                  gint          offset)
 {
-  gfloat *src, *s_row, * s;
-  gfloat *dest, * d;
+  gfloat *src, * s;
+  gfloat *dest;
   gfloat * m;
   gfloat total [4];
   gint b, num_channels;
-  gint wraparound;
   gint margin;      /*  margin imposed by size of conv. matrix  */
   gint i, j;
   gint x, y;
@@ -1645,12 +1642,11 @@ convolve_area_float16 (PixelArea *src_area,
 		 gint          mode,
                  gint          offset)
 {
-  guint16 *src, *s_row, * s;
-  guint16 *dest, * d;
+  guint16 *src, * s;
+  guint16 *dest;
   gfloat * m;
   gfloat total [4];
   gint b, num_channels;
-  gint wraparound;
   gint margin;      /*  margin imposed by size of conv. matrix  */
   gint i, j;
   gint x, y;
@@ -2668,7 +2664,6 @@ scale_area  (
   guchar *src_row_data, *src_m1_row_data, *src_p1_row_data, *src_p2_row_data;
   PixelRow src_row, src_m1_row, src_p1_row, src_p2_row;
   /* guchar *dest_row_data; */
-  PixelRow dest_row;
   guchar *src, *src_m1, *src_p1, *src_p2, *s;
   gint orig_width = pixelarea_areawidth (src_area);
   gint orig_height = pixelarea_areaheight (src_area);
@@ -4913,8 +4908,6 @@ typedef void (*AddRowFunc) (PixelRow *, PixelRow *, PixelRow *);
 typedef void (*SubtractRowFunc) (PixelRow *, PixelRow *, PixelRow *);
 typedef void (*DarkenRowFunc) (PixelRow *, PixelRow *, PixelRow *);
 typedef void (*LightenRowFunc) (PixelRow *, PixelRow *, PixelRow *);
-typedef void (*HsvOnlyRowFunc) (PixelRow *, PixelRow *, PixelRow *, gint);
-typedef void (*ColorOnlyRowFunc) (PixelRow *, PixelRow *, PixelRow *, gint);
 static AddAlphaRowFunc add_alpha_row;
 static MultiplyRowFunc multiply_row;
 static ScreenRowFunc screen_row;
@@ -4924,8 +4917,6 @@ static AddRowFunc add_row;
 static SubtractRowFunc subtract_row;
 static DarkenRowFunc darken_row;
 static LightenRowFunc lighten_row;
-static HsvOnlyRowFunc hsv_only_row;
-static ColorOnlyRowFunc color_only_row;
 
 static void 
 apply_layer_mode_funcs (
@@ -4946,8 +4937,6 @@ apply_layer_mode_funcs (
     subtract_row = subtract_row_u8; 
     darken_row = darken_row_u8; 
     lighten_row = lighten_row_u8; 
-    hsv_only_row = hsv_only_row_u8; 
-    color_only_row = color_only_row_u8; 
     break;
   case PRECISION_U16:
     add_alpha_row = add_alpha_row_u16;
@@ -4960,8 +4949,6 @@ apply_layer_mode_funcs (
     subtract_row = subtract_row_u16; 
     darken_row = darken_row_u16; 
     lighten_row = lighten_row_u16; 
-    hsv_only_row = hsv_only_row_u16; 
-    color_only_row = color_only_row_u16; 
     break;
   case PRECISION_FLOAT:
     add_alpha_row = add_alpha_row_float;
@@ -4974,8 +4961,6 @@ apply_layer_mode_funcs (
     subtract_row = subtract_row_float; 
     darken_row = darken_row_float; 
     lighten_row = lighten_row_float; 
-    hsv_only_row = hsv_only_row_float; 
-    color_only_row = color_only_row_float; 
     break;
   case PRECISION_FLOAT16:
     add_alpha_row = add_alpha_row_float16;
@@ -4988,8 +4973,6 @@ apply_layer_mode_funcs (
     subtract_row = subtract_row_float16; 
     darken_row = darken_row_float16; 
     lighten_row = lighten_row_float16; 
-    hsv_only_row = hsv_only_row_float16; 
-    color_only_row = color_only_row_float16; 
     break;
   default:
     add_alpha_row = NULL;
@@ -5002,8 +4985,6 @@ apply_layer_mode_funcs (
     subtract_row = NULL; 
     darken_row = NULL; 
     lighten_row = NULL; 
-    hsv_only_row = NULL; 
-    color_only_row = NULL; 
     break;
   } 
 }
@@ -5029,7 +5010,6 @@ apply_layer_mode  (
   gint ha2  = (tag_alpha (src2_tag)==ALPHA_YES)? TRUE: FALSE;
   guchar *src2_data = pixelrow_data (src2_row); 
   gint width = pixelrow_width (dest_row); 
-  Format src1_format = tag_format (src1_tag);
   
   apply_layer_mode_funcs (src1_tag);
  
@@ -5099,28 +5079,6 @@ apply_layer_mode  (
     case LIGHTEN_ONLY_MODE:
       /*lighten_pixels (src1, src2, *dest, length, b1, b2, ha1, ha2);*/
       (*lighten_row) (src1_row, src2_row, dest_row);
-      break;
-
-    case HUE_MODE: case SATURATION_MODE: case VALUE_MODE:
-      /*  only works on RGB color images  */
-      /*if (b1 > 2) */
-	/*hsv_only_pixels (src1, src2, *dest, mode, length, b1, b2, ha1, ha2);*/
-      if( src1_format == FORMAT_RGB )
-        (*hsv_only_row) (src1_row, src2_row, dest_row, mode);
-      /*else*/
-	/* *dest = src2; */
-         /*pixelrow_init (dest_row, dest_tag, src2_data, width);
-      */break;
-
-    case COLOR_MODE:
-      /*  only works on RGB color images  */
-      /* if (b1 > 2) */
-	 /* color_only_pixels (src1, src2, *dest, mode, length, b1, b2, ha1, ha2); */
-      if( src1_format == FORMAT_RGB )
-        (*color_only_row) (src1_row, src2_row, dest_row, mode);
-      else
-         /* *dest = src2; */
-         pixelrow_init (dest_row, dest_tag, src2_data, width);
       break;
 
     case BEHIND_MODE:

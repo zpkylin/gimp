@@ -65,13 +65,6 @@ brush_to_canvas_tiles(
 			);
 
 static void
-canvas_tiles_to_brush(
-                          PaintCore16 * paint_core,
-                          Canvas * brush_mask,
-                          gfloat brush_opacity 
-			);
-
-static void
 canvas_tiles_to_canvas_buf(
                           PaintCore16 * paint_core);
 static void
@@ -281,7 +274,7 @@ paint_core_16_interpolate  (PaintCore16 * paint_core,
                             GimpDrawable *drawable)
 {
 #define    EPSILON  0.00001
-  int n, i;
+  int n;
   double dx, dy;
   double left;
   double t;
@@ -976,8 +969,8 @@ paint_core_16_area_paste  (
                            )
 {
   Canvas *brush_mask;
-  Canvas *undo_canvas;
-  Canvas *undo_linked_canvas;
+  Canvas *undo_canvas = NULL;
+  Canvas *undo_linked_canvas = NULL;
 
   if (! drawable_gimage (drawable))
     {
@@ -1133,33 +1126,6 @@ painthit_init  (
     }
 }
 
-static void
-canvas_tiles_to_brush(
-                             PaintCore16 * paint_core,
-                             Canvas * brush_mask,
-                             gfloat brush_opacity 
-                             )
-{
-  PixelArea srcPR, maskPR;
-    int xoff, yoff;
-    int x, y;
-      
-    x = (int) paint_core->curx - (canvas_width (brush_mask) >> 1);
-    y = (int) paint_core->cury - (canvas_height (brush_mask) >> 1);
-    xoff = (x < 0) ? -x : 0;
-    yoff = (y < 0) ? -y : 0;
-    
-    pixelarea_init (&srcPR, paint_core->canvas_tiles,
-                    paint_core->x, paint_core->y,
-                    paint_core->canvas_buf_width, paint_core->canvas_buf_height,
-                    FALSE);      
-    pixelarea_init (&maskPR, brush_mask,
-                    xoff, yoff,
-                    canvas_width (brush_mask), canvas_height (brush_mask),
-                    TRUE);
-
-    copy_area (&srcPR, &maskPR);
-}
 
 static void
 brush_to_canvas_tiles(
@@ -1635,8 +1601,6 @@ static void brush_mask_noise_float16 (
   ShortsFloat u;
   float x,y;
   gint i, j;
-  gint draw_w = drawable_width (paint_core->drawable);
-  gint draw_h = drawable_height (paint_core->drawable);
   BrushNoiseInfo  info;
   float f;
   float start;

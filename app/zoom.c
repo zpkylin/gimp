@@ -54,10 +54,6 @@ static gboolean zoom_preview_button_release_event(
    GtkWidget *widget,
    GdkEventButton *event,
    gpointer user_data);
-static gboolean zoom_preview_general_event(
-   GtkWidget *widget,
-   GdkEvent *event,
-   gpointer user_data);
 static void zoom_preview_draw();
 static void zoom_preview_clear_pixmap();
 static void zoom_preview_render_image();
@@ -816,23 +812,5 @@ static void zoom_control_jump_event(GtkButton *button, gpointer user_data)
 
    if (zoom_bookmarks[i].is_set)
       zoom_bookmark_jump_to(&zoom_bookmarks[i], zoom_control->gdisp);
-}
-
-/**********************************************/
-/*  This handler is not used                  */
-/**********************************************/
-static gboolean zoom_preview_general_event(
-   GtkWidget *widget,
-   GdkEvent *event,
-   gpointer user_data)
-{
-   if (event->type == GDK_BUTTON_PRESS) {
-      return zoom_preview_button_press_event(widget, (GdkEventButton *)event, user_data);
-   }
-   else if (event->type == GDK_MOTION_NOTIFY) {
-      return zoom_preview_motion_notify_event(widget, (GdkEventMotion *)event, user_data);
-   }
-
-   return FALSE;
 }
 

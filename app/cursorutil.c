@@ -15,12 +15,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-#include "appenv.h"
-#include "cursorutil.h"
-#include "gimpbrushlist.h" 
+#include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "appenv.h"
+#include "cursorutil.h"
+#include "gimpbrushlist.h" 
 #include "gdisplay.h"
 
 void

@@ -123,7 +123,10 @@ static ColorBalanceDialog *color_balance_dialog = NULL;
 static void       color_balance (PixelArea *, PixelArea *, void *);
 static Argument * color_balance_invoker (Argument *);
 
+#if 0
 static gdouble f0_u8 (gdouble);
+#endif
+
 static gdouble f1_u8 (gdouble);
 static gdouble f2_u8 (gdouble);
 static gdouble f0 (gdouble);
@@ -664,6 +667,8 @@ color_balance_init_transfers_float16 (void)
 {
 }
 
+#if 0
+/* Should this be used somewhere? --jcohen */
 static 
 gdouble f0_u8(
 		gdouble x
@@ -671,6 +676,7 @@ gdouble f0_u8(
 {
   return 1.075 - 1/((255.0-x)/16.0 + 1);
 }
+#endif
 
 static 
 gdouble f1_u8(

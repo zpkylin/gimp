@@ -457,7 +457,7 @@ tag_to_image_type (
   switch (p)
     {
     case PRECISION_U8:
-      printf ("8\n"); 
+//      printf ("8\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -472,7 +472,7 @@ tag_to_image_type (
       break;
     
     case PRECISION_U16:
-      printf ("16\n"); 
+//      printf ("16\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -487,7 +487,7 @@ tag_to_image_type (
       break;
     
     case PRECISION_FLOAT:
-      printf ("float\n"); 
+//      printf ("float\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -501,7 +501,7 @@ tag_to_image_type (
     
     case PRECISION_FLOAT16:
 
-      printf ("float16\n"); 
+//      printf ("float16\n"); 
       switch (f)
 	{
         case FORMAT_RGB:

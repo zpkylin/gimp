@@ -64,7 +64,6 @@ struct _ConvolveOptions
 };
 
 /*  local variables  */
-static gfloat       matrix [25];
 static int          matrix_size;
 static gfloat       matrix_divisor;
 static ConvolveOptions *convolve_options = NULL;

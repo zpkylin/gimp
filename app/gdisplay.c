@@ -182,7 +182,6 @@ gdisplay_format_title (GImage *gimage,
 		       GDisplay *gdisp)
 {
   int empty = gimage_is_empty (gimage);
-  Layer *layer = gimage_get_active_layer(gimage);
   Tag t = gimage_tag (gimage);
 
   sprintf (title, "%s-%d.%d (%s - %s - %s)%s %d%%",

@@ -145,9 +145,12 @@ static void   gradient_type_callback    (GtkWidget *, gpointer);
 static void   blend_mode_callback       (GtkWidget *, gpointer);
 static void   paint_mode_callback       (GtkWidget *, gpointer);
 static void   repeat_type_callback      (GtkWidget *, gpointer);
+
+#if 0
 static void   supersample_toggle_update (GtkWidget *, gpointer);
 static void   max_depth_scale_update    (GtkAdjustment *, int *);
 static void   threshold_scale_update    (GtkAdjustment *, double *);
+#endif
 
 static void   blend_button_press            (Tool *, GdkEventButton *, gpointer);
 static void   blend_button_release          (Tool *, GdkEventButton *, gpointer);
@@ -292,6 +295,7 @@ repeat_type_callback(GtkWidget *widget,
   blend_options->repeat = (RepeatMode) client_data;
 }
 
+#if 0
 static void
 supersample_toggle_update(GtkWidget *widget,
 			  gpointer   client_data)
@@ -323,13 +327,13 @@ threshold_scale_update(GtkAdjustment *adjustment,
 {
   *scale_val = adjustment->value;
 }
+#endif
 
 static BlendOptions *
 create_blend_options ()
 {
   BlendOptions *options;
   GtkWidget *vbox;
-  GtkWidget *frame;
   GtkWidget *label;
   GtkWidget *bm_option_menu;
   GtkWidget *bm_menu;
@@ -344,11 +348,14 @@ create_blend_options ()
   GtkWidget *offset_scale;
   GtkObject *opacity_scale_data;
   GtkObject *offset_scale_data;
+#if 0
+  GtkWidget *frame;
   GtkWidget *button;
   GtkObject *depth_scale_data;
   GtkWidget *depth_scale;
   GtkObject *threshold_scale_data;
   GtkWidget *threshold_scale;
+#endif
 
   /*  the new options structure  */
   options = (BlendOptions *) g_malloc (sizeof (BlendOptions));

@@ -61,12 +61,14 @@ selection_scale_update (GtkAdjustment *adjustment,
   *scale_val = adjustment->value;
 }
 
+#if 0
 static void
 threshold_scale_update (GtkAdjustment *adjustment,
 			double        *scale_val)
 {
   *scale_val = adjustment->value;
 }
+#endif
 
 static void
 threshold_text_update (GtkWidget *w,
@@ -92,8 +94,6 @@ create_selection_options (ToolType tool_type)
   GtkWidget *feather_scale;
   GtkWidget *sample_merged_toggle;
   GtkObject *feather_scale_data;
-  GtkWidget *threshold_scale;
-  GtkObject *threshold_scale_data;
 
   label = NULL;
 

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <gtk/gtk.h>
@@ -64,6 +65,7 @@
 #include "gimpbrush.h"
 #include "layout.h"
 #include "minimize.h"
+#include "displaylut.h"
 
 #include "config.h"
 
@@ -78,7 +80,7 @@
 #define SHOW_NOW 2
 
 /*  Function prototype for affirmation dialog when exiting application  */
-static void      really_quit_dialog (void);
+static void      really_quit_dialog ();
 static Argument* quit_invoker       (Argument *args);
 static void make_initialization_status_window(void);
 static void destroy_initialization_status_window(void);
@@ -626,38 +628,33 @@ app_exit (int kill_it)
  ********************************************************/
 
 static void
-really_quit_callback (GtkButton *button,
-		      GtkWidget *dialog)
+really_quit_callback (GtkWidget *button,
+		      gpointer user_data)
 {
+  GtkWidget *dialog;
+  dialog = (GtkWidget *)user_data;
   gtk_widget_destroy (dialog);
   toolbox_free ();
 }
 
 static void
 really_quit_cancel_callback (GtkWidget *widget,
-			     GtkWidget *dialog)
+			     gpointer user_data)
 {
+  GtkWidget *dialog;
+  dialog = (GtkWidget *)user_data;
   menus_set_sensitive ("<Toolbox>/File/Quit", TRUE);
   menus_set_sensitive ("<Image>/File/Quit", TRUE);
   gtk_widget_destroy (dialog);
 }
 
-static gint
-really_quit_delete_callback (GtkWidget *widget,
-			     GdkEvent  *event,
-			     gpointer client_data)
-{
-  really_quit_cancel_callback (widget, (GtkWidget *) client_data);
-
-  return TRUE;
-}
 
 static GtkWidget *dialog;
 
 static ActionAreaItem quit_action_items[] =
 {
     { "No", really_quit_cancel_callback, NULL, NULL },   
-        { "Yes", really_quit_callback, NULL, NULL }  
+    { "Yes", really_quit_callback, NULL, NULL }  
 };
 
 static void
@@ -679,11 +676,6 @@ really_quit_dialog ()
   minimize_register(dialog);
 
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dialog)->action_area), 2);
-  /*
-     gtk_signal_connect (GTK_OBJECT (dialog), "delete_event",
-     (GtkSignalFunc) really_quit_delete_callback,
-     dialog);
-   */
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (vbox), 1);
   gtk_box_pack_start (GTK_BOX (GTK_DIALOG (dialog)->vbox),

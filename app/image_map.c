@@ -63,7 +63,6 @@ image_map_do (gpointer data)
 {
   _ImageMap *_image_map;
   GImage *gimage;
-  PixelArea shadow_area;
   int x, y, w, h;
 
   _image_map = (_ImageMap *) data;

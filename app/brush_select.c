@@ -31,7 +31,8 @@
 #include "disp_callbacks.h"
 #include "errors.h"
 #include "float16.h"
-#include "paint_funcs.h"
+//#include "paint_funcs.h"
+#include "paint_funcs_area.h"
 #include "layout.h"
 #include "minimize.h"
 #include "gimprc.h"
@@ -679,7 +680,7 @@ brush_popup_open (BrushSelectP bsp,
 {
   gint x_org, y_org;
   gint scr_w, scr_h;
-  gchar *src, *buf;
+  gchar *buf;
   gint w, h;
   Tag tag = canvas_tag (brush->mask);
 
@@ -749,13 +750,12 @@ display_brush (BrushSelectP bsp,
 	       int          row)
 {
   Canvas * brush_buf;
-  unsigned char * src, *s;
-  unsigned char * buf, *b;
+  unsigned char * buf;
   int width, height;
   int offset_x, offset_y;
   int yend;
   int ystart;
-  int i, j;
+  int i;
   Tag tag = canvas_tag (brush->mask);
 
   buf = (unsigned char *) g_malloc (sizeof (char) * bsp->cell_width);
@@ -1096,7 +1096,6 @@ brush_select_resize (GtkWidget    *widget,
 {
   /*  calculate the best-fit approximation...  */  
   gint wid;
-  gint now;
   gint cell_size;
 
   wid = widget->allocation.width;

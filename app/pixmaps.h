@@ -405,6 +405,7 @@ static char *horizflip_bits [] =
 /*  Image name: iscissors  */
 
 
+#if 0
 #define iscissors_width 22
 #define iscissors_height 22
 static char *iscissors_bits [] =
@@ -432,6 +433,8 @@ static char *iscissors_bits [] =
   "...........ee.........",
   "......................"
 };
+#endif
+
 /*  GIMP icon image format -- S. Kimball, P. Mattis  */
 /*  Image name: magnify  */
 
@@ -820,6 +823,7 @@ static char *skew_bits [] =
 /*  Image name: text  */
 
 
+#if 0
 #define text_width 22
 #define text_height 22
 static char *text_bits [] =
@@ -847,6 +851,8 @@ static char *text_bits [] =
   "......................",
   "......................"
 };
+#endif
+
 /*  GIMP icon image format -- S. Kimball, P. Mattis  */
 /*  Image name: vertflip  */
 

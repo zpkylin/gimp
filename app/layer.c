@@ -1018,8 +1018,8 @@ layer_pick_correlate (layer, x, y)
      Layer *layer;
      int x, y;
 {
-  Canvas * canvas, * mask;
-  guchar * c_data, * m_data;
+  Canvas * canvas, * mask=NULL;
+  guchar * c_data, * m_data=NULL;
   gint alpha;
   guint rc = FALSE;
 

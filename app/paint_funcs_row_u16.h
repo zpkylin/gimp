@@ -105,23 +105,6 @@ lighten_row_u16 (
 		   struct _PixelRow *src2_row,
                    struct _PixelRow *dest_row
 		   );
-
-void
-hsv_only_row_u16 (
-		    struct _PixelRow *src1_row,
-		    struct _PixelRow *src2_row,
-		    struct _PixelRow *dest_row,
-		    gint       mode
-		    );
-
-void
-color_only_row_u16 (
-		      struct _PixelRow *src1_row,
-		      struct _PixelRow *src2_row,
-		      struct _PixelRow *dest_row,
-		      gint       mode
-		     );
-
 void
 multiply_row_u16 (
 		 struct _PixelRow *src1_row,

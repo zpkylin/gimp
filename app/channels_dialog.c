@@ -145,7 +145,6 @@ static void channel_widget_channel_flush (GtkWidget *, gpointer);
 /*  assorted query dialogs  */
 static void channels_dialog_new_channel_query (int);
 static void channels_dialog_edit_channel_query (ChannelWidget *);
-static void edit_channel_use_opacity_clicked (ChannelWidget *);
 
 /*  Only one channels dialog  */
 static ChannelsDialog *channelsD = NULL;
@@ -154,9 +153,6 @@ static GdkPixmap *eye_pixmap[3] = { NULL, NULL, NULL };
 static GdkPixmap *channel_pixmap[3] = { NULL, NULL, NULL };
 
 static int suspend_gimage_notify = 0;
-
-static guint32 button_click_time = 0;
-static int button_last_id = 0;
 
 static MenuItem channels_ops[] =
 {
@@ -645,6 +641,7 @@ channels_dialog_set_channel (ChannelWidget *channel_widget)
 	      gtk_list_select_item (GTK_LIST (channelsD->channel_list), 2);
 	      break;
 	    case Auxillary:
+       case Matte:
 	      g_error ("error in %s at %d: this shouldn't happen.",
 		       __FILE__, __LINE__);
 	      break;
@@ -699,6 +696,7 @@ channels_dialog_unset_channel (ChannelWidget * channel_widget)
 	      gtk_list_unselect_item (GTK_LIST (channelsD->channel_list), 2);
 	      break;
 	    case Auxillary:
+       case Matte:
 	      g_error ("error in %s at %d: this shouldn't happen.",
 		       __FILE__, __LINE__);
 	      break;
@@ -809,26 +807,12 @@ channel_list_events (GtkWidget *widget,
 	      gtk_menu_popup (GTK_MENU (channelsD->ops_menu), NULL, NULL, NULL, NULL, 3, bevent->time);
 	      return TRUE;
 	    }
-	  /* Grumble - we have to handle double clicks ourselves because channels_dialog_flush is broken */
-#if 0 
-	  if (channel_widget->type == Auxillary) {
-	    if ((event->button.time < (button_click_time + 250)) && (channel_widget->ID == button_last_id)) {
-	      channels_dialog_edit_channel_query (channel_widget);
-	      return TRUE;
-	    } else {
-	      button_click_time = event->button.time;
-	      button_last_id = channel_widget->ID;
-	    }
-	  }
-#endif
 	  break;
-#if 1 
 	case GDK_2BUTTON_PRESS:
 	  if (channel_widget->type == Auxillary)
 	    channels_dialog_edit_channel_query (channel_widget);
 	  return TRUE;
 	  break;
-#endif
 
 	case GDK_KEY_PRESS:
 	  kevent = (GdkEventKey *) event;
@@ -1110,6 +1094,7 @@ create_channel_widget (GImage      *gimage,
     case Blue:      channel_widget->label = gtk_label_new ("Blue"); break;
     case Gray:      channel_widget->label = gtk_label_new ("Gray"); break;
     case Indexed:   channel_widget->label = gtk_label_new ("Indexed"); break;
+    case Matte:     channel_widget->label = gtk_label_new ("Matte"); break;
     case Auxillary: channel_widget->label = gtk_label_new (GIMP_DRAWABLE(channel)->name); break;
     }
 
@@ -1831,7 +1816,6 @@ channels_dialog_new_channel_query (int gimage_id)
   GtkWidget *label;
   GtkWidget *opacity_scale;
   GtkObject *opacity_scale_data;
-  gint index;
 
   gimage = gimage_get_ID (gimage_id);
 

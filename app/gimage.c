@@ -53,7 +53,6 @@ static void     gimage_allocate_projection   (GImage *);
 static void     gimage_free_layers           (GImage *);
 static void     gimage_free_channels         (GImage *);
 static void     gimage_construct_layers      (GImage *, int, int, int, int);
-static void     gimage_construct_channels    (GImage *, int, int, int, int);
 static void     gimage_initialize_projection (GImage *, int, int, int, int);
 static void     gimage_get_active_channels   (GImage *, GimpDrawable *, int *);
 static int      gimage_is_flat               (GImage *gimage);
@@ -64,8 +63,6 @@ static void     project_intensity            (GImage *, Layer *, PixelArea *,
 static void     project_intensity_alpha      (GImage *, Layer *, PixelArea *,
 					      PixelArea *, PixelArea *);
 static void     project_indexed              (GImage *, Layer *, PixelArea *,
-					      PixelArea *);
-static void     project_channel              (GImage *, Channel *, PixelArea *,
 					      PixelArea *);
 
 static guint    gimage_validate              (Canvas * c, int x, int y, int w, int h, void * data);
@@ -1062,28 +1059,6 @@ project_indexed_alpha (GImage *gimage, Layer *layer,
 }
 
 
-static void
-project_channel (GImage *gimage, Channel *channel,
-		 PixelArea *src, PixelArea *src2)
-{
-  int type;
-  if (! gimage->construct_flag)
-    {
-      type = (channel->show_masked) ?
-	INITIAL_CHANNEL_MASK : INITIAL_CHANNEL_SELECTION;
-      initial_area (src2, src, NULL, (unsigned char *)&channel->col, channel->opacity,
-		      NORMAL, NULL, type);
-    }
-  else
-    {
-      type = (channel->show_masked) ?
-	COMBINE_INTEN_A_CHANNEL_MASK : COMBINE_INTEN_A_CHANNEL_SELECTION;
-      combine_areas (src, src2, src, NULL, (unsigned char*)&channel->col, channel->opacity,
-		       NORMAL, NULL, type);
-    }
-}
-
-
 /************************************************************/
 /*  Layer/Channel functions                                 */
 /************************************************************/
@@ -1261,44 +1236,6 @@ gimage_construct_layers (GImage *gimage, int x, int y, int w, int h)
 
 
 static void
-gimage_construct_channels (GImage *gimage, int x, int y, int w, int h)
-{
-  Channel * channel;
-  PixelArea src1PR, src2PR;
-  GSList *list = gimage->channels;
-  GSList *reverse_list = NULL;
-
-  /*  reverse the channel list  */
-  while (list)
-    {
-      reverse_list = g_slist_prepend (reverse_list, list->data);
-      list = g_slist_next (list);
-    }
-
-  while (reverse_list)
-    {
-      channel = (Channel *) reverse_list->data;
-
-      if (drawable_visible (GIMP_DRAWABLE(channel)))
-	{
-	  /* configure the pixel regions  */
-	  pixelarea_init (&src1PR, gimage_projection (gimage), 
-		x, y, w, h, TRUE);
-	  pixelarea_init (&src2PR, drawable_data (GIMP_DRAWABLE(channel)), 
-		x, y, w, h, FALSE);
-	  project_channel (gimage, channel, &src1PR, &src2PR);
-
-	  gimage->construct_flag = 1;
-	}
-
-      reverse_list = g_slist_next (reverse_list);
-    }
-
-  g_slist_free (reverse_list);
-}
-
-
-static void
 gimage_initialize_projection (GImage *gimage, int x, int y, int w, int h)
 {
   /*  this function determines whether a visible layer
@@ -1446,8 +1383,6 @@ gimage_get_active_layer (GImage *gimage)
 Layer *
 gimage_get_first_layer (GImage *gimage)
 {
-  Layer *layer;
-
   GSList *layers = gimage->layer_stack;
   return (Layer*)layers->data;
 }
