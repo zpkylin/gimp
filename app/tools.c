@@ -657,6 +657,7 @@ tools_options_dialog_new ()
   gtk_window_set_policy (GTK_WINDOW (options_shell), FALSE, TRUE, TRUE);
   gtk_widget_set_uposition (options_shell, tool_options_x, tool_options_y);
   layout_connect_window_position(options_shell, &tool_options_x, &tool_options_y);
+  layout_connect_window_visible(options_shell, &tool_options_visible);
 
   options_vbox = gtk_vbox_new (FALSE, 2);
   gtk_container_border_width (GTK_CONTAINER (options_vbox), 2);

@@ -5,6 +5,7 @@
 
 int  layout_save();
 void layout_connect_window_position(GtkWidget *widget, int *x_var, int *y_var);
+void layout_connect_window_visible(GtkWidget *widget, int *visible);
 
 
 #endif

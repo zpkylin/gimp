@@ -204,6 +204,7 @@ brush_edit_generated_new ()
   gtk_window_set_policy(GTK_WINDOW(begw->shell), FALSE, TRUE, FALSE);
   gtk_widget_set_uposition(begw->shell, brush_edit_x, brush_edit_y);
   layout_connect_window_position(begw->shell, &brush_edit_x, &brush_edit_y);
+  layout_connect_window_visible(begw->shell, &brush_edit_visible);
 
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_border_width (GTK_CONTAINER (vbox), 2);

@@ -67,6 +67,9 @@ extern int       brush_select_x, brush_select_y;
 extern int       brush_edit_x, brush_edit_y;
 extern int       layer_channel_x, layer_channel_y;
 extern int       palette_x, palette_y;
+extern int       gradient_x, gradient_y;
+extern int       image_x, image_y;
+extern int       generic_window_x, generic_window_y;
 extern int       confirm_on_close;
 extern int       default_width, default_height;
 extern Format    default_format;
@@ -83,6 +86,14 @@ extern int       enable_layer_dialog;
 extern int       enable_paste_c_disp;
 extern int       enable_tmp_saving;
 extern int       enable_channel_revert;
+extern int       tool_options_visible; 
+extern int       zoom_window_visible; 
+extern int       brush_select_visible; 
+extern int       brush_edit_visible; 
+extern int       layer_channel_visible; 
+extern int       color_visible; 
+extern int       palette_visible; 
+extern int       gradient_visible; 
 
 /*  function prototypes  */
 char *  gimp_directory (void);

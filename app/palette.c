@@ -226,6 +226,7 @@ palette_create ()
       gtk_window_set_title (GTK_WINDOW (palette->shell), "Color Palette");
       gtk_widget_set_uposition(palette->shell, palette_x, palette_y);
       layout_connect_window_position(palette->shell, &palette_x, &palette_y);
+      layout_connect_window_visible(palette->shell, &palette_visible);
 
       vbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);

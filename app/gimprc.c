@@ -136,6 +136,18 @@ int       brush_select_x = 700, brush_select_y = 700;
 int       brush_edit_x = 400, brush_edit_y = 400;
 int       layer_channel_x = 300, layer_channel_y = 300;
 int       palette_x = 200, palette_y = 200;
+int       gradient_x = 100, gradient_y = 100;
+int       generic_window_x = 0, generic_window_y = 0;
+int       image_x = 100, image_y = 100;
+int       tool_options_visible = FALSE; 
+int       zoom_window_visible = FALSE; 
+int       brush_select_visible = FALSE; 
+int       brush_edit_visible = FALSE; 
+int       layer_channel_visible = FALSE; 
+int       color_visible = FALSE; 
+int       palette_visible = FALSE; 
+int       gradient_visible = FALSE; 
+
 
 static int get_next_token (void);
 static int peek_next_token (void);
@@ -216,6 +228,14 @@ static ParseFunc funcs[] =
   { "default-threshold",     TT_DOUBLE,     &default_threshold, NULL },
   { "stingy-memory-use",     TT_BOOLEAN,    &stingy_memory_use, NULL },
   { "allow-resize-windows",  TT_BOOLEAN,    &allow_resize_windows, NULL },
+  { "tooloptions-visible",   TT_BOOLEAN,    &tool_options_visible, NULL },
+  { "zoomwindow-visible",    TT_BOOLEAN,    &zoom_window_visible, NULL },
+  { "brushselect-visible",   TT_BOOLEAN,    &brush_select_visible, NULL },
+  { "brushedit-visible",     TT_BOOLEAN,    &brush_edit_visible, NULL },
+  { "layerchannel-visible",  TT_BOOLEAN,    &layer_channel_visible, NULL },
+  { "color-visible",         TT_BOOLEAN,    &color_visible, NULL },
+  { "palette-visible",       TT_BOOLEAN,    &palette_visible , NULL },
+  { "gradient-visible",      TT_BOOLEAN,    &gradient_visible , NULL },
   { "cursor-updating",       TT_BOOLEAN,    NULL, &no_cursor_updating },
   { "no-cursor-updating",    TT_BOOLEAN,    &no_cursor_updating, NULL },
   { "preview-size",          TT_XPREVSIZE,  NULL, NULL },
@@ -233,7 +253,10 @@ static ParseFunc funcs[] =
   { "layerchannel-position", TT_POSITION,   &layer_channel_x, &layer_channel_y},
   { "toolbox-position",      TT_POSITION,   &toolbox_x, &toolbox_y },
   { "progress-position",     TT_POSITION,   &progress_x, &progress_y },
+  { "generic-position",      TT_POSITION,   &generic_window_x, &generic_window_y},
+  { "gradient-position",     TT_POSITION,   &gradient_x, &gradient_y },
   { "info-position",         TT_POSITION,   &info_x, &info_y },
+  { "image-position",        TT_POSITION,   &image_x, &image_y },
   { "color-select-position", TT_POSITION,   &color_select_x, &color_select_y },
   { "tool-options-position", TT_POSITION,   &tool_options_x, &tool_options_y },
   { "confirm-on-close",      TT_BOOLEAN,    &confirm_on_close, NULL },

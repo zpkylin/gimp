@@ -164,6 +164,7 @@
 #include "interface.h"
 #include "palette.h"
 #include "pixelrow.h"
+#include "layout.h"
 
 
 /***** Magic numbers *****/
@@ -792,6 +793,9 @@ grad_create_gradient_editor(void)
 	/* Shell and main vbox */
 
 	g_editor->shell = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
+        layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
+        layout_connect_window_visible(g_editor->shell, &gradient_visible);
 	gtk_window_set_wmclass (GTK_WINDOW(g_editor->shell), "gradient_editor", "Gimp");
 	gtk_container_border_width(GTK_CONTAINER(g_editor->shell), 0);
 	gtk_window_set_title(GTK_WINDOW(g_editor->shell), "Gradient Editor");

@@ -318,6 +318,7 @@ lc_dialog_create (int gimage_id)
       gtk_window_set_wmclass (GTK_WINDOW (lc_shell), "layers_and_channels", "Gimp");
       gtk_widget_set_uposition(lc_shell, layer_channel_x, layer_channel_y);
       layout_connect_window_position(lc_shell, &layer_channel_x, &layer_channel_y);
+      layout_connect_window_visible(lc_shell, &layer_channel_visible);
 
       gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (lc_shell)->vbox), 2);
       gtk_signal_connect (GTK_OBJECT (lc_shell),
