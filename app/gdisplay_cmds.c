@@ -71,7 +71,12 @@ ProcArg gdisplay_new_args[] =
   { PDB_IMAGE,
     "image",
     "the image"
-  }
+  },
+    { PDB_DISPLAY,
+      "display",
+      "the new display"
+    }
+
 };
 
 ProcArg gdisplay_new_out_args[] =
@@ -80,6 +85,7 @@ ProcArg gdisplay_new_out_args[] =
     "display",
     "the new display"
   }
+
 };
 
 ProcRecord gdisplay_new_proc =
@@ -111,7 +117,7 @@ static Argument *
 gdisplay_fm_invoker (Argument *args)
 {
   GImage *gimage;
-  GDisplay *gdisp;
+  GDisplay *gdisp, *disp;
   unsigned int scale = 0x101;
 
   gdisp = NULL;
@@ -122,6 +128,10 @@ gdisplay_fm_invoker (Argument *args)
       int_value = args[0].value.pdb_int;
       if ((gimage = gimage_get_ID (int_value)) == NULL)
 	success = FALSE;
+      
+      int_value = args[1].value.pdb_int;
+      if ((disp = gdisplay_get_ID (int_value)) == NULL)
+	success = FALSE;
 
       /*  make sure the image has layers before displaying it  */
       if (success && gimage->layers == NULL)
@@ -129,7 +139,7 @@ gdisplay_fm_invoker (Argument *args)
     }
 
   if (success)
-    success = ((gdisp = gdisplay_fm (gimage, scale)) != NULL);
+    success = ((gdisp = gdisplay_fm (gimage, scale, disp)) != NULL);
 
   /*  create the new image  */
   return_args = procedural_db_return_args (&gdisplay_new_proc, success);
@@ -178,6 +188,61 @@ ProcRecord gdisplay_fm_proc =
 
   /*  Exec method  */
   { { gdisplay_fm_invoker } },
+};
+
+
+/******************/
+/*GDISPLAY_ACTIVE */
+
+static Argument *
+gdisplay_active_invoker (Argument *args)
+{
+  GDisplay *gdisp;
+
+  gdisp = NULL;
+
+  success = ((gdisp = gdisplay_active ()) != NULL);
+
+  
+  /*  create the new image  */
+  return_args = procedural_db_return_args (&gdisplay_new_proc, success);
+
+
+  if (success)
+    return_args[0].value.pdb_int = gdisp->ID;
+
+  return return_args;
+}
+
+
+ProcArg gdisplay_active_out_args[] =
+{
+  { PDB_DISPLAY,
+    "display",
+    "the new display"
+  }
+};
+
+ProcRecord gdisplay_active_proc =
+{
+  "gimp_display_active",
+  "Creates a new display for the specified image",
+  "Creates a new display for the specified image.  If the image already has a display, another is added.  Multiple displays are handled transparently by the GIMP.  The newly created display is returned and can be subsequently destroyed with a call to 'gimp_display_delete'.  This procedure only makes sense for use with the GIMP UI.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  0,
+  NULL,
+
+  /*  Output arguments  */
+  1,
+  gdisplay_active_out_args,
+
+  /*  Exec method  */
+  { { gdisplay_active_invoker } },
 };
 
 

@@ -200,7 +200,7 @@ equalize(gimage, drawable, mask_only)
 		      {
 			for (b = 0; b < alpha; b++)
 			  {
-		            value_bin = (int) (s[b] * 255); 
+		            value_bin = (int) (s[b] * 255);
 			    hist[b][value_bin] += 1.0;
 			  }
 			count += 1.0;
@@ -224,6 +224,7 @@ equalize(gimage, drawable, mask_only)
 			for (b = 0; b < alpha; b++)
 			  {
 		            value_bin = (int) (FLT(s[b], u) * 255); 
+			    value_bin = BOUNDS (value_bin, 0, 255); 
 			    hist[b][value_bin] += (double) *m;
 			  }
 			count += (double) *m;
@@ -232,8 +233,9 @@ equalize(gimage, drawable, mask_only)
 		      {
 			for (b = 0; b < alpha; b++)
 			  {
-		            value_bin = (int) (FLT (s[b], u) * 255); 
-			    hist[b][value_bin] += 1.0;
+			       value_bin = (int) (FLT (s[b], u) * 255);
+			       value_bin = BOUNDS (value_bin, 0, 255); 
+			       hist[b][value_bin] += 1.0;
 			  }
 			count += 1.0;
 		      }

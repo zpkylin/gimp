@@ -32,8 +32,8 @@ void copy_row (struct _PixelRow *, struct _PixelRow *);
 #define TRANSPARENT_OPACITY 0.0
 
 /*  Color conversion routines  */
-void  rgb_to_hsv            (int *, int *, int *);
-void  hsv_to_rgb            (int *, int *, int *);
+void  rgb_to_hsv            (gfloat *, gfloat *, gfloat *);
+void  hsv_to_rgb            (gfloat *, gfloat *, gfloat *);
 void  rgb_to_hls            (int *, int *, int *);
 void  hls_to_rgb            (int *, int *, int *);
 

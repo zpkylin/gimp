@@ -193,6 +193,7 @@ frame_manager_create (GDisplay *gdisplay)
   GtkWidget *vbox, *hbox, *lvbox, *rvbox, *label, *separator, *button_box, *listbox,
   *utilbox, *slider, *button, *abox;
 
+  double scale;
   char tmp[256], *temp;
 
   if (!gdisplay->frame_manager)
@@ -222,10 +223,11 @@ frame_manager_create (GDisplay *gdisplay)
       gdisplay->frame_manager->warning = NULL;
       gdisplay->frame_manager->onionskin = 0;
 
+      scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST (gdisplay));
       s_x = 0;
       s_y = 0;
-      e_x = gdisplay->disp_width;
-      e_y = gdisplay->disp_height;
+      e_x = gdisplay->disp_width*scale;
+      e_y = gdisplay->disp_height*scale;
 
       /* the shell */
       gdisplay->frame_manager->shell = gtk_dialog_new ();
@@ -1119,6 +1121,7 @@ static gint
 frame_manager_flip_area (GtkWidget *w, gpointer client_data)
 {
   RectSelect * rect_sel;
+  double scale;
   GDisplay *gdisplay = (GDisplay*) client_data;
   frame_manager_t *fm = gdisplay->frame_manager; 
   if (!frame_manager_check (gdisplay))
@@ -1134,19 +1137,21 @@ frame_manager_flip_area (GtkWidget *w, gpointer client_data)
 
       if (!s_x && !s_y && !e_x && !e_y)
 	{
+          scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST (gdisplay));
 	  s_x = 0;
 	  s_y = 0;
-	  e_x = gdisplay->disp_width;
-	  e_y = gdisplay->disp_height;
+	  e_x = gdisplay->disp_width*scale;
+	  e_y = gdisplay->disp_height*scale;
 
 	}  
     }
   else
     {
+      scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST (gdisplay));
       s_x = 0;
       s_y = 0;
-      e_x = gdisplay->disp_width;
-      e_y = gdisplay->disp_height;  
+      e_x = gdisplay->disp_width * scale;
+      e_y = gdisplay->disp_height *scale;  
     }
 
   return TRUE;
@@ -1155,14 +1160,16 @@ frame_manager_flip_area (GtkWidget *w, gpointer client_data)
 static gint 
 frame_manager_update_whole_area (GtkWidget *w, gpointer client_data)
 {
+  double scale;
   RectSelect * rect_sel;
   GDisplay *gdisplay = (GDisplay*) client_data;
   frame_manager_t *fm = gdisplay->frame_manager; 
   if (!frame_manager_check (gdisplay))
     return FALSE; 
 
+  scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST(gdisplay));
   gdisplay_add_update_area (gdisplay, 0, 0, 
-      gdisplay->disp_width, gdisplay->disp_height);
+      gdisplay->disp_width*scale, gdisplay->disp_height*scale);
   gdisplays_flush ();
 
   return TRUE;
@@ -1234,7 +1241,6 @@ frame_manager_close (GtkWidget *w, gpointer client_data)
 static void
 frame_manager_update_menu (GDisplay *gdisplay)
 {
-  printf ("yyyyy\n"); 
   gdisplay->frame_manager->link_menu = 
     frame_manager_create_menu (gdisplay->gimage);
   gtk_option_menu_set_menu (GTK_OPTION_MENU (
@@ -1322,10 +1328,8 @@ frame_manager_link_menu (GtkWidget *w, GdkEvent *event, gpointer client_data)
 {
   GDisplay *gdisplay = (GDisplay*) client_data; 
  
-  printf ("uuuu\n"); 
   if (!frame_manager_check (gdisplay))
     return; 
-  printf ("000uuuu\n"); 
   frame_manager_rm_onionskin (gdisplay); 
   frame_manager_update_menu (gdisplay);
   
@@ -1671,7 +1675,6 @@ frame_manager_store_add_stores (GDisplay *gdisplay)
     whole = (char*) malloc (sizeof(char)*255);
     raw = (char*) malloc (sizeof(char)*255);
 
-    printf ("%s %d\n", item->gimage->filename, l);
     for (i=0; i<num; i++)
       {
 	
@@ -1755,8 +1758,12 @@ frame_manager_load (GDisplay *gdisplay, GImage *gimage)
   GSList *item_list=NULL;
   int i;
 
+  printf ("frame_manager_load\n");
   if (!gdisplay || !gdisplay->frame_manager)
-    return NULL;
+    {
+      printf ("Problem\n");
+      return NULL;
+    }
 
   /* get the selected item */
   /* make sure it if inactive */
@@ -3170,7 +3177,6 @@ frame_manager_link_forward (GDisplay *gdisplay)
   int num=1;
   frame_manager_t *fm = gdisplay->frame_manager;
 
-  printf ("lsdkjf\n");
 
   if (fm->linked_display)
     {

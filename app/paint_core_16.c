@@ -1044,16 +1044,17 @@ paint_core_16_area_replace  (
   if (! drawable_gimage (drawable))
     return;
   
-  if (! drawable_has_alpha (drawable))
+  if (1 || ! drawable_has_alpha (drawable))
     {
       paint_core_16_area_paste (paint_core, drawable,
                                 brush_opacity, image_opacity,
                                 brush_hardness, apply_mode, NORMAL_MODE);
+  /*printf ("1\n");
       if (paint_core->linked_drawable)
 	paint_core_16_area_paste (paint_core, paint_core->linked_drawable,
 				  brush_opacity, image_opacity,
 				  brush_hardness, apply_mode, NORMAL_MODE);
-      return;
+   */   return;
     }
   
   painthit_init (paint_core, drawable, paint_core->undo_tiles);

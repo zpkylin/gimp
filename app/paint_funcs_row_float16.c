@@ -17,6 +17,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include "appenv.h"
@@ -513,8 +514,11 @@ hsv_only_row_float16 (
   gint    width         = pixelrow_width (dest_row);
   gint    num_channels1 = tag_num_channels (src1_tag);
   gint    num_channels2 = tag_num_channels (src2_tag);
-  gfloat  s1, s2;
+  gfloat  s1, s2, m1, m2;
+  gint b, alpha, n1, n2;
   ShortsFloat u;
+
+  alpha = (ha1 || ha2) ? MAXIMUM (num_channels1, num_channels2) - 1 : num_channels1;
 
   /*  assumes inputs are only 4 channel RGBA pixels  */
   while (width--)
@@ -522,9 +526,10 @@ hsv_only_row_float16 (
       r1 = FLT (src1[0], u); g1 = FLT (src1[1], u); b1 = FLT (src1[2], u);
       r2 = FLT (src2[0], u); g2 = FLT (src2[1], u); b2 = FLT (src2[2], u);
 
-/*    rgb_to_hsv (&r1, &g1, &b1); */
-/*    rgb_to_hsv (&r2, &g2, &b2); */
+    rgb_to_hsv (&r1, &g1, &b1);
+    rgb_to_hsv (&r2, &g2, &b2); 
 
+#if 1
       switch (mode)
 	{
 	case HUE_MODE:
@@ -537,9 +542,10 @@ hsv_only_row_float16 (
 	  b1 = b2;
 	  break;
 	}
-
+#endif 
       /*  set the destination  */
-/*    hsv_to_rgb (&r1, &g1, &b1); */
+    hsv_to_rgb (&r1, &g1, &b1); 
+    hsv_to_rgb (&r2, &g2, &b2); 
 
       dest[0] = FLT16 (r1, u); dest[1] = FLT16 (g1, u); dest[2] = FLT16 (b1, u);
 
@@ -556,6 +562,7 @@ hsv_only_row_float16 (
       src2 += num_channels2;
       dest += num_channels2;
     }
+
 }
 
 

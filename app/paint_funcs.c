@@ -3970,15 +3970,14 @@ combine_regions_replace (PixelRegion   *src1,
  *   color conversion routines   *
  *********************************/
 
-void
-rgb_to_hsv (int *r,
-	    int *g,
-	    int *b)
+rgb_to_hsv (float *r,
+    float *g,
+    float *b)
 {
-  int red, green, blue;
+  float red, green, blue;
   float h, s, v;
-  int min, max;
-  int delta;
+  float min, max;
+  float delta;
 
   h = 0.0;
 
@@ -3986,37 +3985,16 @@ rgb_to_hsv (int *r,
   green = *g;
   blue = *b;
 
-  if (red > green)
-    {
-      if (red > blue)
-	max = red;
-      else
-	max = blue;
-
-      if (green < blue)
-	min = green;
-      else
-	min = blue;
-    }
-  else
-    {
-      if (green > blue)
-	max = green;
-      else
-	max = blue;
-
-      if (red < blue)
-	min = red;
-      else
-	min = blue;
-    }
+  max = red;
+  max = max < green ? green : max;
+  max = max < blue ? blue : max;
+  min = red;
+  min = min > green ? green : min;
+  min = min > blue ? blue : min;
 
   v = max;
 
-  if (max != 0)
-    s = ((max - min) * 255) / (float) max;
-  else
-    s = 0;
+  s = max ? max : (max - min) / max;
 
   if (s == 0)
     h = 0;
@@ -4024,17 +4002,17 @@ rgb_to_hsv (int *r,
     {
       delta = max - min;
       if (red == max)
-	h = (green - blue) / (float) delta;
+	h = (green - blue) / delta;
       else if (green == max)
-	h = 2 + (blue - red) / (float) delta;
+	h = 2.0 + (blue - red) / delta;
       else if (blue == max)
-	h = 4 + (red - green) / (float) delta;
-      h *= 42.5;
+	h = 4.0 + (red - green) / delta;
+      h *= 60.0;
 
       if (h < 0)
-	h += 255;
-      if (h > 255)
-	h -= 255;
+	h += 360;
+      if (h > 360)
+	h -= 360;
     }
 
   *r = h;
@@ -4044,9 +4022,10 @@ rgb_to_hsv (int *r,
 
 
 void
-hsv_to_rgb (int *h,
-	    int *s,
-	    int *v)
+hsv_to_rgb (float *h,
+    float *s,
+    float *v)
+
 {
   float hue, saturation, value;
   float f, p, q, t;
@@ -4059,7 +4038,7 @@ hsv_to_rgb (int *h,
     }
   else
     {
-      hue = *h * 6.0 / 255.0;
+      hue = *h / 60.0; 
       saturation = *s / 255.0;
       value = *v / 255.0;
 
@@ -4071,34 +4050,34 @@ hsv_to_rgb (int *h,
       switch ((int) hue)
 	{
 	case 0:
-	  *h = value * 255;
-	  *s = t * 255;
-	  *v = p * 255;
+	  *h = value;
+	  *s = t;
+	  *v = p;
 	  break;
 	case 1:
-	  *h = q * 255;
-	  *s = value * 255;
-	  *v = p * 255;
+	  *h = q;
+	  *s = value;
+	  *v = p;
 	  break;
 	case 2:
-	  *h = p * 255;
-	  *s = value * 255;
-	  *v = t * 255;
+	  *h = p;
+	  *s = value;
+	  *v = t;
 	  break;
 	case 3:
-	  *h = p * 255;
-	  *s = q * 255;
-	  *v = value * 255;
+	  *h = p;
+	  *s = q;
+	  *v = value;
 	  break;
 	case 4:
-	  *h = t * 255;
-	  *s = p * 255;
-	  *v = value * 255;
+	  *h = t;
+	  *s = p;
+	  *v = value;
 	  break;
 	case 5:
-	  *h = value * 255;
-	  *s = p * 255;
-	  *v = q * 255;
+	  *h = value;
+	  *s = p;
+	  *v = q;
 	  break;
 	}
     }
@@ -4322,10 +4301,10 @@ apply_layer_mode (unsigned char  *src1,
 
     case HUE_MODE: case SATURATION_MODE: case VALUE_MODE:
       /*  only works on RGB color images  */
-      if (b1 > 2)
-	hsv_only_pixels (src1, src2, *dest, mode, length, b1, b2, ha1, ha2);
-      else
-	*dest = src2;
+      /*if (b1 > 2)
+	*/hsv_only_pixels (src1, src2, *dest, mode, length, b1, b2, ha1, ha2);
+      /*else
+	*dest = src2;*/
       break;
 
     case COLOR_MODE:

@@ -1193,8 +1193,6 @@ gimage_construct_layers (GImage *gimage, int x, int y, int w, int h)
     d_x1 = CLAMP (x0, 0, canvas_width (c));                               
     d_y1 = CLAMP (y0, 0, canvas_height (c));                              
 
-    if (d_x2 < d_x1 || d_y2 < d_y1)
-      printf("src2 pixel_init inside: x1 y1 x2 y2 %d %d %d %d for src2\n", d_x1, d_y1, d_x2, d_y2);
 	
 	  pixelarea_init (&src2PR, drawable_data (GIMP_DRAWABLE(layer)),
                           (x1 - off_x), (y1 - off_y),

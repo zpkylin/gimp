@@ -58,13 +58,16 @@ int main (int argc, char *argv[])
   return gimp_main (argc, argv); 
 }
 
+static gint32 disp_ID;
+
 static void
 query ()
 {
 	/* load args */
  static GParamDef load_args[] =
   {
-    { PARAM_INT32 }
+    { PARAM_INT32 },
+      { PARAM_DISPLAY, "display", "Input display"}
   };
   static gint load_nargs = sizeof (load_args) / sizeof (load_args[0]);
 
@@ -131,9 +134,10 @@ run (char    *name,
 	strcmp (name, "rhythm_and_hues_image_fm_load_extension") == 0 )
   {
 #if 0 
-      printf("process %d ", getpid());
+    printf("process %d ", getpid());
     printf("pts run rhythm_and_hues_load_extension\n");
 #endif
+    disp_ID = param[1].data.d_int32;
     dialog_in_use = TRUE;
     vk_main(0);
   }
@@ -219,6 +223,7 @@ int file_load (const char * filename)
       printf("process %d ", getpid());
    printf("in file_load\n");
 #endif
+
    return_vals = gimp_run_procedure ("gimp_file_load",
 			&nreturn_vals,
 			PARAM_INT32, 1,
@@ -235,7 +240,7 @@ int file_load (const char * filename)
       image_ID = return_vals[1].data.d_image;
       gimp_image_enable_undo( image_ID);
       gimp_image_clean_all( image_ID);
-      gimp_display_fm (image_ID);
+      gimp_display_fm (image_ID, disp_ID);
       return 0; 
     }
   else

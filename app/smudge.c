@@ -58,6 +58,7 @@ static void smudge_clipped_painthit_coords (PaintCore *,
 		gint*, gint*, gint*, gint*);
 
 Canvas *accum_canvas = NULL;
+Canvas *linked_accum_canvas = NULL;
 
 static void         smudge_motion 	(PaintCore *, GimpDrawable *);
 static void 	    smudge_init   	(PaintCore *, GimpDrawable *);
@@ -202,46 +203,60 @@ smudge_init ( PaintCore *paint_core,
   gint xc, yc, wc, hc;
 
   gint was_clipped;
-  Tag tag = drawable_tag (drawable);
-
-  /*printf("In smudge_init\n");*/
+  Tag tag, linked_tag;
+ 
+      tag = drawable_tag (drawable);
+    if (paint_core->linked_drawable) 
+      {
+	linked_tag = drawable_tag (paint_core->linked_drawable);
+      }
 
   smudge_nonclipped_painthit_coords (paint_core, &x, &y, &w, &h);
   smudge_clipped_painthit_coords (paint_core, &xc, &yc, &wc, &hc);
   
-  if ( x != xc || 
-      y != yc || 
-      w != wc || 
-      h != hc )
+  if ( x != xc || y != yc || w != wc || h != hc )
     was_clipped = TRUE;
   else 
     was_clipped = FALSE;
 
 #if 0
   if (was_clipped)
-  {
-    printf ("original: %d %d %d %d\n",x, y, w,h);
-    printf ("clipped is %d %d %d %d\n",xc, yc, wc, hc);
-  }
+    {
+      printf ("original: %d %d %d %d\n",x, y, w,h);
+      printf ("clipped is %d %d %d %d\n",xc, yc, wc, hc);
+    }
 #endif
 
   /*  Allocate the accumulation buffer */
-  accum_canvas = canvas_new (tag, w, h, STORAGE_FLAT);
- 
+  accum_canvas = canvas_new (tag_set_alpha (tag, ALPHA_NO), w, h, STORAGE_FLAT);
+  if (paint_core->linked_drawable) 
+    linked_accum_canvas = canvas_new (tag_set_alpha (linked_tag, ALPHA_NO), w, h, STORAGE_FLAT);
+
   /* If there is a part clipped fill all of it with black first */ 
   if (was_clipped)
-  {
-    /* fill accum_canvas with black */
-  }
+    {
+      /* fill accum_canvas with black */
+    }
 
   pixelarea_init (&srcPR, drawable_data (drawable), 
-	          xc, yc, wc, hc, FALSE);  
-
+      xc, yc, wc, hc, FALSE);  
   pixelarea_init (&accumPR, accum_canvas, 
-		  xc - x, yc - y, wc , hc, TRUE);  
+      0, 0, 0, 0, TRUE); /*xc - x, yc - y, wc , hc, TRUE);*/   
 
-  /* copy the region under the original painthit into accum_canvas */
-  copy_area (&srcPR, &accumPR);
+
+
+
+      /* copy the region under the original painthit into accum_canvas */
+      copy_area (&srcPR, &accumPR);
+
+      if (paint_core->linked_drawable)
+	{ 
+	  pixelarea_init (&srcPR, drawable_data (paint_core->linked_drawable),
+	      xc, yc, wc, hc, FALSE);
+	  pixelarea_init (&accumPR, linked_accum_canvas,
+	      0, 0, 0, 0, TRUE); /*xc - x, yc - y, wc , hc, TRUE);*/
+	      copy_area (&srcPR, &accumPR);
+	}
 }
 
 Tool *
@@ -270,13 +285,13 @@ tools_free_smudge (Tool *tool)
 }
 
 static void
-smudge_painthit_setup (PaintCore * paint_core,Canvas * painthit)
+smudge_painthit_setup (PaintCore * paint_core, Canvas * painthit)
 {
   PixelArea srcPR, destPR, tempPR;
   gfloat pressure;
   gfloat brush_opacity;
-  Tag tag = drawable_tag(paint_core->drawable);
-  gint x1, y1, x2, y2;
+  /*Tag tag = drawable_tag(paint_core->drawable);
+  */gint x1, y1, x2, y2;
   gint x, y, w, h;
   gint xc, yc, wc, hc; 
   gint was_clipped;
@@ -284,75 +299,127 @@ smudge_painthit_setup (PaintCore * paint_core,Canvas * painthit)
   if (!painthit)
     return;
 
-  smudge_nonclipped_painthit_coords (paint_core, &x, &y, &w, &h);
-  smudge_clipped_painthit_coords(paint_core, &xc, &yc, &wc, &hc);
+  if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      smudge_nonclipped_painthit_coords (paint_core, &x, &y, &w, &h);
+      smudge_clipped_painthit_coords(paint_core, &xc, &yc, &wc, &hc);
 
-  if ( x != xc || 
-      y != yc || 
-      w != wc || 
-      h != hc )
-    was_clipped = TRUE;
-  else 
-    was_clipped = FALSE;
-
-#if 0
-  if (was_clipped)
-  {
-    printf ("original: %d %d %d %d\n",x, y, w,h);
-    printf ("clipped is %d %d %d %d\n",xc, yc, wc, hc);
-  }
-#endif
-
-  /* Get the data under the current painthit and blend with accum_canvas*/
-  pixelarea_init (&srcPR, drawable_data (paint_core->drawable), 
-		paint_core->x, paint_core->y, 
-		paint_core->w, paint_core->h,
-		FALSE);
-
-  /* Set tempPR as the accum buffer*/
-  pixelarea_init (&tempPR, accum_canvas, xc-x, yc-y, wc, hc, TRUE);
-
-  pressure= (smudge_options->pressure)/100.0;
+      if ( x != xc || 
+	  y != yc || 
+	  w != wc || 
+	  h != hc )
+	was_clipped = TRUE;
+      else 
+	was_clipped = FALSE;
 
 #if 0
-  printf("smudge_motion: pressure is %f\n", pressure);
-  copy_area (&srcPR, &tempPR);
+      if (was_clipped)
+	{
+	  printf ("original: %d %d %d %d\n",x, y, w,h);
+	  printf ("clipped is %d %d %d %d\n",xc, yc, wc, hc);
+	}
 #endif
-  
-  /* blend accum with current and place in accum buffer */ 
-  blend_area (&srcPR, &tempPR, &tempPR, pressure);
 
-  /* Next copy from temp (accum_canvas) to painthit buffer*/
-  pixelarea_init (&tempPR, accum_canvas, xc-x, yc-y, wc, hc, FALSE);
-  pixelarea_init (&destPR, painthit, 
-		0, 0, 
-		paint_core->w, paint_core->h, 
-		TRUE);  
- 
-  if (!drawable_has_alpha (paint_core->drawable))
-    add_alpha_area (&tempPR, &destPR);
+      /* Get the data under the current painthit and blend with accum_canvas*/
+      pixelarea_init (&srcPR, drawable_data (paint_core->drawable), 
+	  paint_core->x, paint_core->y, 
+	  paint_core->w, paint_core->h,
+	  FALSE);
+
+      /* Set tempPR as the accum buffer*/
+      pixelarea_init (&tempPR, accum_canvas, xc-x, yc-y, wc, hc, TRUE);
+
+      pressure= (smudge_options->pressure)/100.0;
+
+#if 0
+      printf("smudge_motion: pressure is %f\n", pressure);
+      copy_area (&srcPR, &tempPR);
+#endif
+
+      /* blend accum with current and place in accum buffer */ 
+      blend_area (&srcPR, &tempPR, &tempPR, pressure);
+
+      /* Next copy from temp (accum_canvas) to painthit buffer*/
+      pixelarea_init (&tempPR, accum_canvas, xc-x, yc-y, wc, hc, FALSE);
+      pixelarea_init (&destPR, painthit, 
+	  0, 0, 
+	  paint_core->w, paint_core->h, 
+	  TRUE);  
+
+      /*  if (!drawable_has_alpha (paint_core->drawable))
+	  add_alpha_area (&tempPR, &destPR);
+	  else*/
+      copy_area(&tempPR, &destPR);
+    }
   else
-    copy_area(&tempPR, &destPR);
+    if (paint_core->setup_mode == LINKED_SETUP)
+      {
+	smudge_nonclipped_painthit_coords (paint_core, &x, &y, &w, &h);
+	smudge_clipped_painthit_coords(paint_core, &xc, &yc, &wc, &hc);
+
+	if ( x != xc || y != yc || w != wc || h != hc )
+	  was_clipped = TRUE;
+	else 
+	  was_clipped = FALSE;
+
+#if 0
+	if (was_clipped)
+	  {
+	    printf ("original: %d %d %d %d\n",x, y, w,h);
+	    printf ("clipped is %d %d %d %d\n",xc, yc, wc, hc);
+	  }
+#endif
+
+	/* Get the data under the current painthit and blend with accum_canvas*/
+	pixelarea_init (&srcPR, drawable_data (paint_core->linked_drawable), 
+	    paint_core->x, paint_core->y, 
+	    paint_core->w, paint_core->h,
+	    FALSE);
+
+	/* Set tempPR as the accum buffer*/
+	pixelarea_init (&tempPR, linked_accum_canvas, 0, 0, 0, 0, TRUE); /*xc-x, yc-y, wc, hc, TRUE);*/
+
+	pressure= (smudge_options->pressure)/100.0;
+
+#if 0
+	printf("smudge_motion: pressure is %f\n", pressure);
+#endif
+
+	/* blend accum with current and place in accum buffer */ 
+	blend_area (&srcPR, &tempPR, &tempPR, pressure);
+ 
+	/* Next copy from temp (linked_accum_canvas) to painthit buffer*/
+	pixelarea_init (&tempPR, linked_accum_canvas, 0, 0, 0, 0, FALSE); /*xc-x, yc-y, wc, hc, FALSE);*/
+	pixelarea_init (&destPR, painthit, 
+	    0, 0, 
+	    paint_core->w, paint_core->h, 
+	    TRUE);  
+
+	/*  if (!drawable_has_alpha (paint_core->drawable))
+	    add_alpha_area (&tempPR, &destPR);
+	    else 
+	 */  copy_area(&tempPR, &destPR);
+      }
 }
 
 static void
 smudge_motion (PaintCore *paint_core,
-		 GimpDrawable *drawable)
+    GimpDrawable *drawable)
 {
   GImage *gimage;
   Tag tag = drawable_tag (drawable);
- 
+
   if (! (gimage = drawable_gimage (drawable)))
     return;
   if (tag_format (tag) == FORMAT_INDEXED )
-   return; 
+    return; 
 
   /* Set up the painthit with the right thing*/ 
   paint_core_16_area_setup (paint_core, drawable);                                            
 
   /* Apply the painthit to the drawable */                                                    
   paint_core_16_area_replace (paint_core, drawable, 
-        current_device ? paint_core->curpressure : 1.0, 
+      current_device ? paint_core->curpressure : 1.0, 
 	gimp_brush_get_opacity(), SOFT, INCREMENTAL, NORMAL_MODE);
 }
 

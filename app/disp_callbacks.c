@@ -48,6 +48,7 @@
 
 static guint gdisp_busy = BUSY_OFF;
 
+int middle_mouse_button; 
 
 static void
 redraw (GDisplay *gdisp,
@@ -186,6 +187,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
     case GDK_BUTTON_PRESS:
       bevent = (GdkEventButton *) event;
       state = bevent->state;
+      middle_mouse_button = 0;
 
       switch (bevent->button)
       {
@@ -260,7 +262,8 @@ gdisplay_canvas_events (GtkWidget *canvas,
           break;
 
         case 2:
-          state |= GDK_BUTTON2_MASK;
+          middle_mouse_button = 1;
+	  state |= GDK_BUTTON2_MASK;
 	  scrolled = TRUE;
           gtk_grab_add (canvas);
           start_grab_and_scroll (gdisp, bevent);
@@ -280,6 +283,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
     case GDK_BUTTON_RELEASE:
       bevent = (GdkEventButton *) event;
       state = bevent->state;
+      middle_mouse_button = 0;
 
       switch (bevent->button)
       {
@@ -339,6 +343,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
           break;
 
         case 2:
+          middle_mouse_button = 1;
 	  state &= ~GDK_BUTTON2_MASK;
           scrolled = FALSE;
           gtk_grab_remove (canvas);
@@ -358,6 +363,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
       break;
 
     case GDK_MOTION_NOTIFY:
+      middle_mouse_button = 0;
 
       mevent = (GdkEventMotion *) event;
       state = mevent->state;
@@ -405,6 +411,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
       }
       else if ((mevent->state & GDK_BUTTON2_MASK) && scrolled)
       {
+        middle_mouse_button = 1;
         grab_and_scroll (gdisp, mevent);
       }
       break;

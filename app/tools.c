@@ -45,6 +45,7 @@
 #include "iscissors.h"
 #include "levels.h"
 #include "magnify.h"
+#include "measure.h"
 #include "move.h"
 #include "paintbrush.h"
 #include "pencil.h"
@@ -97,6 +98,7 @@ ToolInfo tool_info[] =
   { NULL, "Airbrush", 18 },
   { NULL, "Clone", 19 },
   { NULL, "Convolve", 20 },
+  { NULL, "Convolve", 20 },
 
   /*  Non-toolbox tools  */
   { NULL, "By Color Select", 21 },
@@ -140,18 +142,19 @@ ToolInfo tool_info[] =
   { NULL, "Clone", 17 },
   { NULL, "Convolve", 18 },
   { NULL, "Dodge Burn", 19 },
-  { NULL, "Dodge Burn", 19 },
+  { NULL, "Smudge", 20 },
 
   /*  Non-toolbox tools  */
-  { NULL, "By Color Select", 20 },
-  { NULL, "Color Balance", 21 },
-  { NULL, "Brightness-Contrast", 22 },
-  { NULL, "Hue-Saturation", 23 },
-  { NULL, "Posterize", 24 },
-  { NULL, "Threshold", 25 },
-  { NULL, "Curves", 26 },
-  { NULL, "Levels", 27 },
-  { NULL, "Histogram", 28 }
+  { NULL, "By Color Select", 21 },
+  { NULL, "Color Balance", 22 },
+  { NULL, "Brightness-Contrast", 23 },
+  { NULL, "Hue-Saturation", 24 },
+  { NULL, "Posterize", 25 },
+  { NULL, "Threshold", 26 },
+  { NULL, "Curves", 27 },
+  { NULL, "Levels", 28 },
+  { NULL, "Histogram", 29 },
+  { NULL, "Measure", 30 }
 };
 #endif
 

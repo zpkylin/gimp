@@ -150,3 +150,6 @@ int main ()
   AC_SUBST(GIMP_LIBS)
   rm -f conf.gimptest
 ])
+
+
+

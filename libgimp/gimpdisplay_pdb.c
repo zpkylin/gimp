@@ -41,7 +41,7 @@ gimp_display_new (gint32 image_ID)
 }
 
 gint32
-gimp_display_fm (gint32 image_ID)
+gimp_display_fm (gint32 image_ID, gint32 disp_ID)
 {
   GParam *return_vals;
   int nreturn_vals;
@@ -50,6 +50,27 @@ gimp_display_fm (gint32 image_ID)
   return_vals = gimp_run_procedure ("gimp_display_fm",
                                     &nreturn_vals,
                                     PARAM_IMAGE, image_ID,
+                                    PARAM_DISPLAY, disp_ID,
+                                    PARAM_END);
+
+  display_ID = -1;
+  if (return_vals[0].data.d_status == STATUS_SUCCESS)
+    display_ID = return_vals[1].data.d_display;
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+
+  return display_ID;
+}
+
+gint32
+gimp_display_active ()
+{
+  GParam *return_vals;
+  int nreturn_vals;
+  gint32 display_ID;
+
+  return_vals = gimp_run_procedure ("gimp_display_active",
+                                    &nreturn_vals,
                                     PARAM_END);
 
   display_ID = -1;

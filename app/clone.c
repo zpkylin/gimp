@@ -42,9 +42,6 @@
 #define TARGET_HEIGHT  15
 #define TARGET_WIDTH   15
 
-static double clone_angle = M_PI/2.0;
-static double clone_scale = 1; 
-static double clone_scale_norm = 1.0; 
 
 typedef enum
 {
@@ -83,6 +80,7 @@ static int  	    setup_successful;
 static char	    draw;
 static char	    clean_up = 0;
 
+extern int middle_mouse_button;
 struct _CloneOptions
 {
   AlignType aligned;
@@ -349,6 +347,9 @@ clone_cursor_func (PaintCore *paint_core,
   int x1, y1, x2, y2; 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
+  if (middle_mouse_button)
+    return;
+
   if (!gdisp || !paint_core || !drawable)
     {
       clone_point_set = 0; 
@@ -396,9 +397,17 @@ clone_cursor_func (PaintCore *paint_core,
   if (active_tool->state == INACTIVE && clone_point_set && !first_down && 
       (clone_options->aligned == AlignYes || clone_options->aligned == AlignNo) && !first_up) 
     {
-      x2 = x1 + offset_x;
-      y2 = y1 + offset_y;
-
+      if (clone_options->aligned == AlignYes)
+	{
+	  x2 = x1 + offset_x;
+	  y2 = y1 + offset_y;
+	}
+      else
+	{
+	  x2 = saved_x;
+	  y2 = saved_y;
+	}
+      
       src_gdisp = gdisplay_get_ID (src_gdisp_ID);
       if (!src_gdisp)
 	{
@@ -439,7 +448,8 @@ clone_paint_func (PaintCore *paint_core,
   GDisplay * gdisp;
   GDisplay * src_gdisp;
   int x1, y1, x2, y2, e; 
-  int dist_x, dist_y, dont_draw=0;
+  float dist_x, dist_y;
+  int dont_draw=0;
 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
@@ -525,16 +535,17 @@ clone_paint_func (PaintCore *paint_core,
 	    ((dest_y - dest2_y) * cos (rotate));
 	  src_x = (dest2_x + (dist_x) * SCALE_X) + offset_x;
 	  src_y = (dest2_y + (dist_y) * SCALE_Y) + offset_y;
-	 
-	  
+
+
 	  error_x = scale_x >= 1 ? 
 	    (dest_x - dest2_x) - ((dest_x - dest2_x) / (int)scale_x) * scale_x :
 	    0; 
-    	    
+
 	  error_y = scale_y >= 1 ?
 	    (dest_y - dest2_y) - ((dest_y - dest2_y) / (int)scale_y) * scale_y :
 	    0;
 
+	  
 	  if (scale_x < 1 && (int)SCALE_X != SCALE_X)
 	    {
 	      if ((dest_x - dest2_x) - 
@@ -555,6 +566,7 @@ clone_paint_func (PaintCore *paint_core,
 
 	  error_x = error_x < 0 ? scale_x + error_x : error_x;
 	  error_y = error_y < 0 ? scale_y + error_y : error_y;
+
 
       clone_now = TRUE; 
 
@@ -713,11 +725,20 @@ tools_free_clone (Tool *tool)
 static void
 clone_draw (Tool *tool)
 {
+  static int first=1;
   GDisplay *gdisplay; 
   PaintCore * paint_core = NULL;
   paint_core = (PaintCore *) tool->private;
 
-  
+  if (middle_mouse_button)
+    {
+      if (first)
+	return;
+      first = 1; 
+    }
+  else
+    first = 1;
+
   if (tool && paint_core && clone_point_set && !expose && drawable_gimage (source_drawable))
     {
       static int radius;
@@ -886,25 +907,25 @@ clone_painthit_setup (PaintCore *paint_core, Canvas * painthit)
 	      Channel *channel = (Channel *)(channels_list->data);
 	      if (channel)
 		{
-		src_drawable = GIMP_DRAWABLE(channel);
+		  src_drawable = GIMP_DRAWABLE(channel);
 		}
 	      else
-	printf ("PROBLEM 2\n"); 
-      if (src_drawable == source_drawable)
-	printf ("ERROR1\n"); 
-      if (drawable == source_drawable)
-	printf ("ERROR\n"); 
+		printf ("PROBLEM 2\n"); 
+	      if (src_drawable == source_drawable)
+		printf ("ERROR1\n"); 
+	      if (drawable == source_drawable)
+		printf ("ERROR\n"); 
 	    }
 	  else
-	printf ("PROBLEM 3\n"); 
-	    
+	    printf ("PROBLEM 3\n"); 
+
 	}
       else 
 	printf ("PROBLEM\n"); 
       setup_successful = clone_line_image (paint_core, painthit,
-	  			drawable, src_drawable,
-	  			paint_core->x + (src_x-dest_x),/*offset_x*/
-	  			paint_core->y + (src_y-dest_y)/*fset_y*/); 
+	  drawable, src_drawable,
+	  paint_core->x + (src_x-dest_x),/*offset_x*/
+	  paint_core->y + (src_y-dest_y)/*fset_y*/); 
     }
 }
 
@@ -945,8 +966,8 @@ clone_line_image  (PaintCore * paint_core,
 	    {
 	     width = canvas_width (painthit) * 2; 
 	     height = canvas_height (painthit) * 2; 
-	     error_x += canvas_width (painthit)/2;
-	     error_y += canvas_height (painthit)/2;
+	     error_x += canvas_width (painthit) / 2;
+	     error_y += canvas_height (painthit) / 2;
 	    }
 	  else
 	    {
@@ -1001,9 +1022,9 @@ clone_line_image  (PaintCore * paint_core,
 	    {
 	     width = canvas_width (painthit) * 2; 
 	     height = canvas_height (painthit) * 2; 
-	     error_x += canvas_width (painthit) / 2;
-	     error_y += canvas_height (painthit) / 2;
-	    }
+	     /*error_x += canvas_width (painthit) / 2.0 + .5;
+	     error_y += canvas_height (painthit) / 2.0 + .5;
+	    */}
 	  else
 	    {
 	     width = canvas_width (painthit); 
@@ -1036,7 +1057,7 @@ clone_line_image  (PaintCore * paint_core,
 	    return FALSE;
 	
 
-	  orig = paint_core_16_area_original (paint_core, src_drawable, x1, y1, x2, y2);
+	  orig = paint_core_16_area_original2 (paint_core, src_drawable, x1, y1, x2, y2);
         }
 
 
@@ -1051,10 +1072,10 @@ clone_line_image  (PaintCore * paint_core,
         rotate_matrix (matrix, 2.0*M_PI-rotate);
         scale_matrix (matrix, scale_x, scale_y);
         rot = transform_core_do (src_gimage, src_drawable, 
-            orig, 1, matrix);
-        /*error_x +=  (canvas_width (rot) - (x2 - x1))/2;
-          error_y +=  (canvas_height (rot) - (y2 - y1))/2;
-         */
+            orig, 0, matrix);
+        error_x +=  (canvas_width (rot))/4;
+        error_y +=  (canvas_height (rot))/4;
+        
         pixelarea_init (&srcPR, rot, error_x, error_y,
             x2-x1,  y2-y1, FALSE);
       }     
@@ -1220,7 +1241,7 @@ static gint
 clone_rotate (GtkWidget *w, gpointer client_data) 
 {
   CloneOptions *co = (CloneOptions*) client_data;
-  rotate = atof (gtk_entry_get_text (w)) * M_PI / 180.0;
+  rotate = (atof (gtk_entry_get_text (w)) / 180.0)  * M_PI;
   return TRUE; 
 }
 

@@ -23,6 +23,7 @@
 #include "edit_selection.h"
 #include "floating_sel.h"
 #include "rect_select.h"
+#include "bezier_select.h"
 #include "rect_selectP.h"
 #include "tag.h"
 
@@ -327,9 +328,8 @@ rect_select_button_press (Tool           *tool,
   tool->state = ACTIVE;
   tool->gdisp_ptr = gdisp_ptr;
 
-  if (0 && bevent->state & GDK_MOD1_MASK)
+  if (1 && bevent->state & GDK_MOD1_MASK)
     {
-      
       init_edit_selection (tool, gdisp_ptr, bevent, MaskTranslate);
       return;
     }
@@ -549,7 +549,8 @@ rect_select_cursor_update (Tool           *tool,
   else if ((gdisplay_mask_value (gdisp, mevent->x, mevent->y) != 0) &&
 	   ! (layer_is_floating_sel (gimage_get_active_layer (gdisp->gimage))) &&
 	   ! (mevent->state & (GDK_SHIFT_MASK | GDK_CONTROL_MASK)) &&
-	   ! active && ((RectSelect *)tool->private)->core->gc)
+	   ! active /*&& ((BezierSelect *)tool->private)->core && 
+        ((BezierSelect *)tool->private)->core->gc*/)
     gdisplay_install_tool_cursor (gdisp, GDK_FLEUR);
   else
     gdisplay_install_tool_cursor (gdisp, GDK_TCROSS);

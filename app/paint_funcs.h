@@ -413,8 +413,8 @@ void  combine_regions_replace             (PixelRegion *, PixelRegion *,
 
 
 /*  Color conversion routines  */
-void  rgb_to_hsv            (int *, int *, int *);
-void  hsv_to_rgb            (int *, int *, int *);
+void  rgb_to_hsv            (float *, float *, float *);
+void  hsv_to_rgb            (float *, float *, float *);
 void  rgb_to_hls            (int *, int *, int *);
 void  hls_to_rgb            (int *, int *, int *);
 

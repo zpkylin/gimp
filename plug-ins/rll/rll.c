@@ -501,10 +501,8 @@ static gint32 load_image (char *filename)
 	      IM_CloseFile(filehandle);
 	      return -1;
 	}
-	for(i=0; i<auxChans+1; i++)
 	      
 	for(i=0; i<auxChans; i++){
-	      guchar color[3] = {0, 0, 255};
 	      layer_ID = gimp_layer_new(image_ID, result[i+1], width, height,
 		  layer_type, 100, NORMAL_MODE);
 	      gimp_image_add_layer(image_ID, layer_ID, 0);
@@ -592,7 +590,6 @@ static gint32 load_image (char *filename)
 
   for(i=0; i<auxChans+matteChans; i++)
     aux_buffer[i] = &aux_buffer1[i*strip_height * aux_rowbytes];
-printf ("2\n");
 
   /* Read strips of the image in order bottom to top and give them to gimp */	
   for(y=0; y<height; y=yend){
@@ -712,6 +709,7 @@ static gint save_image (
     gint32 drawable_ID
 		       ) 
 {
+  gint		  return_args; 
   guchar          *fg_b=NULL, **fg_buffer=NULL;
   guchar          *bg_b=NULL, **bg_buffer=NULL;
   guchar          *aux_buffer1=NULL, **aux_buffer=NULL;
@@ -746,7 +744,7 @@ static gint save_image (
   gint32          *channels=NULL;
   gint32          *layers=NULL;
   gint            fg_nlayers, bg_nlayers, nlayers; 
-  gint            nchannels;
+  gint            nchannels=0;
   gint            aux_rowbytes;
   gint            channel_size;
   char            *bg_name=NULL;
@@ -757,7 +755,7 @@ static gint save_image (
   WF_I_HEAD       header;
   WF_I_FILE*      filehandle;
   char            *a_n=NULL, **aux_name=NULL; 
-  int		aux_name_tsize=300, aux_name_size=30; 
+  int		  aux_name_tsize=300, aux_name_size=30; 
 
 #ifdef _DOFILM_
   int   filmMode = isFilmMode();
@@ -810,7 +808,6 @@ static gint save_image (
 
   /* Stuff the rll header with information.*/
   sprintf(fmtString, "f%dx%d", bg_drawable->width, bg_drawable->height);
-  printf ("%d %d\n", bg_drawable->width, bg_drawable->height); 
   if (!strcmp(bg_name, "fur")) 
   {
 	  if (IM_StuffHeader(&header, fmtString, "fur", "RLL") == -1)
@@ -829,8 +826,6 @@ static gint save_image (
 	  return -1;
   }
 
-
-  scanf ("%d"); 
 
   /* Figure out some header info and 
      channel depth from gimp drawable type */	
@@ -1017,11 +1012,11 @@ static gint save_image (
       return -1;
     } 
 
-#if 1	
+#if 0	
   printf("type is %d %d %d %d\n", gimp_drawable_type(drawable_ID), fg_cpp, bg_cpp, bytes_per_channel);
   printf("imagechans is %d\n", header.imageChans);
   printf("mattechans is %d\n", header.matteChans);
-  printf("mattechans is %d\n", header.auxChans);
+  printf("mattechans is %d %d %d\n", header.auxChans, fg_cpp, fg_bpp);
 #endif
 
   aux_name_tsize = aux_name_size * (1+header.auxChans); 
@@ -1079,7 +1074,7 @@ static gint save_image (
 	for(i=0; i<header.auxChans+1; i++)
 	  aux_name[i] = &a_n[i*aux_name_size];
 	strcpy(aux_name[0], "gimp"); 
-	for(i=1; i<(fg_nlayers)*fg_cpp+1; i++){
+	for(i=1; i<fg_nlayers*fg_cpp+1; i++){
 	      switch (fg_cpp)
 		{
 		case 4:
@@ -1217,11 +1212,8 @@ static gint save_image (
 	  }
   }
 
-  scanf ("%d");
 
-  printf ("LALA \n"); 
   filehandle = IM_OpenFFile ( filename, &header, "w", FALSE );
-  printf ("LALAL\n"); 
   if(!filehandle)
     {
       g_warning("rll save_image: cant open file %s\n", filename); 	
@@ -1490,8 +1482,7 @@ static gint save_image (
 	for(i=0; i<fg_nlayers; i++)
 	  gimp_pixel_rgn_get_rect (&(fg_pixel_rgn[i]), fg_buffer[i], 0, height - yend , width, yend - y );
 	for(i=0; i<nchannels; i++)
-	  gimp_pixel_rgn_get_rect (&(chan_pixel_rgn[i]), aux_buffer[i], 
-	      0, height - yend , width, yend - y );
+	  gimp_pixel_rgn_get_rect (&(chan_pixel_rgn[i]), aux_buffer[i], 0, height - yend , width, yend - y );
 
 	for (row = y; row < yend; row++){
 	      /* Set the data pointers to reverse scanlines in the strip */
@@ -1661,28 +1652,30 @@ static gint save_image (
   }
 
   /* clean up */	
-  if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
-  if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
-  if (a_n) g_free (a_n); 
-  if (aux_name) g_free(aux_name);
-  if (chan_pixel_rgn) g_free (chan_pixel_rgn);
-  if (aux_buffer1) g_free (aux_buffer1);
-  if (aux_buffer) g_free (aux_buffer);
-  if (aux_sptr) g_free (aux_sptr);
-  if (aux_bptr) g_free (aux_bptr);
-  if (aux_fptr) g_free (aux_fptr);
-  if (fg_b) g_free (fg_b);
-  if (fg_buffer) g_free (fg_buffer);
   if (bg_b) g_free (bg_b);
   if (bg_buffer) g_free (bg_buffer);
-  if (fg_bptr) g_free (fg_bptr);
-  if (fg_sptr) g_free (fg_sptr);
-  if (fg_fptr) g_free (fg_fptr);
   if (bg_bptr) g_free (bg_bptr);
   if (bg_sptr) g_free (bg_sptr);
   if (bg_fptr) g_free (bg_fptr);
-
-  return IM_CloseFile(filehandle);
+  if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+  if (fg_b) g_free (fg_b);
+  if (fg_buffer) g_free (fg_buffer);
+  if (fg_bptr) g_free (fg_bptr);
+  if (fg_sptr) g_free (fg_sptr);
+  if (fg_fptr) g_free (fg_fptr);
+  if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+  if (aux_sptr) g_free (aux_sptr);
+  if (aux_bptr) g_free (aux_bptr);
+  if (aux_fptr) g_free (aux_fptr);
+#if 0
+  if (chan_pixel_rgn) g_free (chan_pixel_rgn);
+  if (aux_buffer1) g_free (aux_buffer1);
+  if (aux_buffer) g_free (aux_buffer);
+#endif
+  return_args = IM_CloseFile(filehandle);
+ 
+ printf ("---> %d\n",return_args);  
+  return return_args;
 }
 
 

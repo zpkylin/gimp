@@ -32,6 +32,7 @@
 #include "paint_funcs_area.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "pixel_region.h"
 
 #define BEZIER_START     1
 #define BEZIER_ADD       2
@@ -127,7 +128,7 @@ tools_new_bezier_select ()
 
   tool = g_malloc (sizeof (Tool));
 
-  bezier_sel = g_malloc (sizeof (BezierSelect));
+  bezier_sel = (BezierSelect *)g_malloc (sizeof (BezierSelect));
 
   bezier_sel->num_points = 0;
   bezier_sel->mask = NULL;
@@ -461,8 +462,11 @@ bezier_select_button_release (Tool           *tool,
   gdk_pointer_ungrab (bevent->time);
   gdk_flush ();
 
-  if (bezier_sel->closed)
+  if (bezier_sel->closed){
     bezier_convert (bezier_sel, tool->gdisp_ptr, SUBDIVIDE, NO);
+/*channel_combine_mask (gimage_get_mask (gdisp->gimage),
+                              bezier_sel->mask, ADD, 0, 0);
+*/}
 }
 
 static void
@@ -1029,9 +1033,9 @@ bezier_compose (BezierMatrix a,
         {
           ab[i][j] = (a[i][0] * b[0][j] +
                       a[i][1] * b[1][j] +
-                      a[i][2] * b[2][j] +
-                      a[i][3] * b[3][j]);
-        }
+		      a[i][2] * b[2][j] +
+		      a[i][3] * b[3][j]);
+	}
     }
 }
 
@@ -1040,17 +1044,19 @@ static int width, height;
 static int lastx;
 static int lasty;
 
+
 static void
 bezier_convert (BezierSelect *bezier_sel,
-		GDisplay     *gdisp,
-		int           subdivisions,
-		int           antialias)
+    GDisplay     *gdisp,
+    int           subdivisions,
+    int           antialias)
 {
+
   BezierPoint * points;
   BezierPoint * start_pt;
   int draw_type;
   int i;
-  
+
   if (!bezier_sel->closed)
     fatal_error ("tried to convert an open bezier curve");
 
@@ -1076,10 +1082,10 @@ bezier_convert (BezierSelect *bezier_sel,
     }
 
   /* create a new mask */
-  bezier_sel->mask = channel_ref (channel_new_mask (gdisp->gimage->ID, 
-                                                    gdisp->gimage->width,
-                                                    gdisp->gimage->height,
-                                                    tag_precision (gimage_tag (gdisp->gimage))));
+  bezier_sel->mask = channel_new_mask (gdisp->gimage->ID, 
+	gdisp->gimage->width,
+	gdisp->gimage->height,
+	tag_precision (gimage_tag (gdisp->gimage)));
 
   /* allocate room for the scanlines */
   bezier_sel->scanlines = g_malloc (sizeof (GSList *) * height);
@@ -1094,30 +1100,31 @@ bezier_convert (BezierSelect *bezier_sel,
   start_convert = 1;
 
   do {
-    bezier_draw_segment (bezier_sel, points,
-			 subdivisions, draw_type,
-			 bezier_convert_points);
+	bezier_draw_segment (bezier_sel, points,
+	    subdivisions, draw_type,
+	    bezier_convert_points);
 
-    /*  advance to the next segment  */
-    points = points->next;
-    points = points->next;
-    points = points->next;
-  } while (points != start_pt);
+	/*  advance to the next segment  */
+	points = points->next;
+	points = points->next;
+	points = points->next;
+	} while (points != start_pt);
 
-  if (antialias)
-    bezier_convert_line (bezier_sel->scanlines, lastx, lasty,
-			 bezier_sel->points->x * SUPERSAMPLE,
-			 bezier_sel->points->y * SUPERSAMPLE);
-  else
-    bezier_convert_line (bezier_sel->scanlines, lastx, lasty,
-			 bezier_sel->points->x, bezier_sel->points->y);
+	if (antialias)
+	  bezier_convert_line (bezier_sel->scanlines, lastx, lasty,
+	      bezier_sel->points->x * SUPERSAMPLE,
+	      bezier_sel->points->y * SUPERSAMPLE);
+	else
+	  bezier_convert_line (bezier_sel->scanlines, lastx, lasty,
+	      bezier_sel->points->x, bezier_sel->points->y);
 
-  bezier_convert_helper (bezier_sel, antialias, width, height);
-  
-  g_free (bezier_sel->scanlines);
-  bezier_sel->scanlines = NULL;
+	bezier_convert_helper (bezier_sel, antialias, width, height);
 
-  channel_invalidate_bounds (bezier_sel->mask);
+	g_free (bezier_sel->scanlines);
+	bezier_sel->scanlines = NULL;
+
+	channel_invalidate_bounds (bezier_sel->mask);
+
 }
 
 
@@ -1625,8 +1632,11 @@ bezier_convert_helper_float16  (
 
       /*  zero the vals array  */
       if (antialias && !(i % SUPERSAMPLE))
-	memset (vals, 0, width * sizeof (gfloat));
-
+	{
+	  gint count = width;
+	  while (count--)
+	    vals[count] = 0.0;
+	}
       while (list)
         {
           x = (long) list->data;

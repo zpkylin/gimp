@@ -186,14 +186,19 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Tools/Flip", "<shift>F", tools_select_cmd_callback, FLIP_HORZ },
   /*{ "/Tools/Text", "T", tools_select_cmd_callback, TEXT },*/
   { "/Tools/Color Picker", "O", tools_select_cmd_callback, COLOR_PICKER },
-  { "/Tools/Bucket Fill", "<shift>B", tools_select_cmd_callback, BUCKET_FILL },
+#if 0
+    { "/Tools/Color Picker Down", "I", select_color_picker, NULL },
+#endif
+      { "/Tools/Bucket Fill", "<shift>B", tools_select_cmd_callback, BUCKET_FILL },
   { "/Tools/Blend", "L", tools_select_cmd_callback, BLEND },
   { "/Tools/Paintbrush", "P", tools_select_cmd_callback, PAINTBRUSH },
   { "/Tools/Pencil", "<shift>P", tools_select_cmd_callback, PENCIL },
   { "/Tools/Eraser", "<shift>E", tools_select_cmd_callback, ERASER },
   { "/Tools/Airbrush", "A", tools_select_cmd_callback, AIRBRUSH },
   { "/Tools/Clone", "C", tools_select_cmd_callback, CLONE },
-  { "/Tools/Convolve", "V", tools_select_cmd_callback, CONVOLVE },
+  { "/Tools/Convolve", "C", tools_select_cmd_callback, CONVOLVE },
+  { "/Tools/Dodge or Burn", "D", tools_select_cmd_callback, DODGEBURN },
+  { "/Tools/Smudge", "S", tools_select_cmd_callback, SMUDGE },
   { "/Tools/Default Colors", "D", tools_default_colors_cmd_callback, 0 },
   { "/Tools/Swap Colors", "X", tools_swap_colors_cmd_callback, 0 },  
   { "/Tools/---", NULL, NULL, 0, "<Separator>" },

@@ -2331,6 +2331,8 @@ image_posterize_cmd_callback (GtkWidget *widget,
 {
   GDisplay * gdisp;
 
+  printf ("post\n");
+
   gdisp = gdisplay_active ();
   gtk_widget_activate (tool_widgets[tool_info[(int) POSTERIZE].toolbar_position]);
   posterize_initialize ((void *) gdisp);
@@ -2724,6 +2726,25 @@ tools_select_cmd_callback (GtkWidget           *widget,
   gdisp = gdisplay_active ();
 
   active_tool->drawable = gimage_active_drawable (gdisp->gimage);
+/*  active_tool->prev_tool = -1;
+*/
+    }
+
+void
+select_color_picker (GtkWidget           *widget, 
+    			   gpointer             callback_data, 
+			   guint                callback_action)
+{
+#if 0
+  GDisplay * gdisp;
+  struct _tool prev_active_tool = active_tool->ID;
+  gtk_widget_activate (tool_widgets[tool_info[(long) callback_action].toolbar_position]);
+
+  gdisp = gdisplay_active ();
+
+  active_tool->drawable = gimage_active_drawable (gdisp->gimage);
+  active_tool->prev_tool = prev_active_tool;
+#endif
 }
 
 void

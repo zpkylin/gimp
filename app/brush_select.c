@@ -104,10 +104,10 @@ static MenuItem option_items[] =
   { "Subtract", 0, 0, paint_mode_menu_callback, (gpointer) SUBTRACT_MODE, NULL, NULL },
   { "Darken Only", 0, 0, paint_mode_menu_callback, (gpointer) DARKEN_ONLY_MODE, NULL, NULL },
   { "Lighten Only", 0, 0, paint_mode_menu_callback, (gpointer) LIGHTEN_ONLY_MODE, NULL, NULL },
-#if 0
+#if 1
   { "Hue", 0, 0, paint_mode_menu_callback, (gpointer) HUE_MODE, NULL, NULL },
   { "Saturation", 0, 0, paint_mode_menu_callback, (gpointer) SATURATION_MODE, NULL, NULL },
-  { "Color", 0, 0, paint_mode_menu_callback, (gpointer) COLOR_MODE, NULL, NULL },
+  { "NColor", 0, 0, paint_mode_menu_callback, (gpointer) COLOR_MODE, NULL, NULL },
   { "Value", 0, 0, paint_mode_menu_callback, (gpointer) VALUE_MODE, NULL, NULL },
 #endif
   { NULL, 0, 0, NULL, NULL, NULL, NULL }
@@ -137,12 +137,12 @@ create_paint_mode_menu (MenuItemCallback callback, gpointer udata)
   GtkWidget *menu;
   int i;
 
-  for (i = 0; i <= LIGHTEN_ONLY_MODE; i++)
+  for (i = 0; i <= VALUE_MODE; i++)
     option_items[i].callback = callback;
 
   menu = build_menu (option_items, NULL);
 
-  for (i = 0; i <= LIGHTEN_ONLY_MODE; i++)
+  for (i = 0; i <= VALUE_MODE; i++)
     gtk_object_set_user_data(GTK_OBJECT(option_items[i].widget),udata);
 
 

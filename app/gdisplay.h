@@ -60,6 +60,9 @@ struct _GDisplay
   GtkWidget *hrule, *vrule;       /*  widgets for rulers                      */
   GtkWidget *origin;              /*  widgets for rulers                      */
   GtkWidget *popup;               /*  widget for popup menu                   */
+ 
+  GtkWidget *statusarea;          /*  hbox holding the statusbar and stuff    */
+  GtkWidget *statusbar;           /*  widget for statusbar		      */ 
 
   InfoDialog *window_info_dialog; /*  dialog box for image information        */
 
@@ -102,7 +105,7 @@ extern GSList *display_list;
 /* member function declarations */
 
 GDisplay * gdisplay_new                    (GImage *, unsigned int);
-GDisplay * gdisplay_fm                     (GImage *, unsigned int);
+GDisplay * gdisplay_fm                     (GImage *, unsigned int, GDisplay*);
 void       gdisplay_remove_and_delete      (GDisplay *);
 gfloat     gdisplay_mask_value             (GDisplay *, int, int);
 int        gdisplay_mask_bounds            (GDisplay *, int *, int *, int *, int *);

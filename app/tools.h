@@ -123,7 +123,8 @@ typedef enum
   THRESHOLD,
   CURVES,
   LEVELS,
-  HISTOGRAM
+  HISTOGRAM, 
+  MEASURE
 } ToolType;
 
 #define XButtonEvent GdkEventButton
@@ -154,6 +155,7 @@ struct _tool
   void *         drawable;             /*  pointer to the drawable that was
 					   active when the tool was created */
   int            ID;                   /*  unique tool ID  */
+  int            prev_active_tool;     /*  unique tool ID  */
 
   int            preserve;             /*  Perserve this tool through the current image changes */
 
