@@ -1,3 +1,19 @@
+Sun Apr  5 01:37:45 EEST 1998  Lauri Alanko  <nether@gimp.org>
+
+	* app/gimpimage.c
+	* app/globals.c
+	* app/layers_dialog.c
+	* app/layers_dialogP.h
+
+	Removed image ids from layers dialog. The ids are old fashioned
+	and slow down. Things should be coded so that you don't need to
+	check for invalid pointers all the time.
+
+	Cleaned the image code a little. Removed a bunch of header
+	dependencies there. Moved msw's tools callback to globals.c for
+	now. Also removed direct warnings from the image code, they should 
+	be handled some place else.
+
 Sat Apr  4 22:37:01 EEST 1998  Lauri Alanko  <nether@gimp.org>
 
 	* app/Makefile.am

@@ -17,29 +17,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <math.h>
-#include "appenv.h"
+
+/* TODO: Add signal handlers to channels dialog */
 #include "channels_dialog.h"
+/* TODO: Add signal handlers to indexed palette */
+#include "indexed_palette.h"
+
 #include "drawable.h"
-#include "errors.h"
 #include "floating_sel.h"
 #include "gdisplay.h"
 #include "general.h"
-
 #include "gimage_mask.h"
-#include "indexed_palette.h"
-#include "interface.h"
-#include "layers_dialog.h"
-#include "paint_funcs.h"
+
+/* TODO: Add some sort of exception system.. gimage code must not call 
+   messagebox, or output to stderr */
+/*#include "interface.h"*/
+/*#include "errors.h"*/
+
 #include "palette.h"
-#include "plug_in.h"
-#include "tools.h"
 #include "undo.h"
 
+/* TODO: Add proper access methods to TileManager */
 #include "tile_manager_pvt.h"		/* ick. */
 #include "layer_pvt.h"
 #include "drawable_pvt.h"		/* ick ick. */
@@ -200,7 +199,7 @@ gimage_allocate_projection (GImage *gimage)
       gimage->proj_type = GRAYA_GIMAGE;
       break;
     default:
-      warning ("gimage type unsupported.\n");
+      /* warning ("gimage type unsupported.\n"); */
       break;
     }
 
@@ -272,7 +271,6 @@ gimage_new (int width, int height, GImageBaseType base_type)
   gimage->selection_mask = channel_new_mask (gimage->ID, gimage->width, gimage->height);
 
   gimp_set_add (image_set, gimage->ID, gimage);
-  /* lc_dialog_update_image_list (); */
   indexed_palette_update_image_list ();
 
 
@@ -301,7 +299,6 @@ gimage_set_filename (GImage *gimage, char *filename)
     }
 
   gdisplays_update_title (gimage->ID);
-  /* lc_dialog_update_image_list (); */
   indexed_palette_update_image_list ();
   gtk_signal_emit (GTK_OBJECT (gimage), gimage_signals[RENAME]);
 }
@@ -318,7 +315,7 @@ gimage_resize (GImage *gimage, int new_width, int new_height,
 
   if (new_width <= 0 || new_height <= 0) 
     {
-      warning("gimage_resize: width and height must be positive");
+      /*warning("gimage_resize: width and height must be positive");*/
       return;
     }
 
@@ -522,8 +519,6 @@ gimage_destroy (GtkObject *object)
       gimage_free_channels (gimage);
       channel_delete (gimage->selection_mask);
 
-      /* lc_dialog_update_image_list (); */
-
       indexed_palette_update_image_list ();
     }
   GTK_OBJECT_CLASS (parent_class)->destroy (object);
@@ -556,7 +551,7 @@ gimage_apply_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
   operation = valid_combinations [drawable_type (drawable)][src2PR->bytes];
   if (operation == -1)
     {
-      warning ("gimage_apply_image sent illegal parameters\n");
+      /*warning ("gimage_apply_image sent illegal parameters\n");*/
       return;
     }
 
@@ -564,10 +559,10 @@ gimage_apply_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
   drawable_offsets (drawable, &offset_x, &offset_y);
 
   /*  make sure the image application coordinates are within gimage bounds  */
-  x1 = BOUNDS (x, 0, drawable_width (drawable));
-  y1 = BOUNDS (y, 0, drawable_height (drawable));
-  x2 = BOUNDS (x + src2PR->w, 0, drawable_width (drawable));
-  y2 = BOUNDS (y + src2PR->h, 0, drawable_height (drawable));
+  x1 = CLAMP (x, 0, drawable_width (drawable));
+  y1 = CLAMP (y, 0, drawable_height (drawable));
+  x2 = CLAMP (x + src2PR->w, 0, drawable_width (drawable));
+  y2 = CLAMP (y + src2PR->h, 0, drawable_height (drawable));
 
   if (mask)
     {
@@ -575,10 +570,10 @@ gimage_apply_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2PR,
        *  we need to add the layer offset to transform coords
        *  into the mask coordinate system
        */
-      x1 = BOUNDS (x1, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
-      y1 = BOUNDS (y1, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
-      x2 = BOUNDS (x2, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
-      y2 = BOUNDS (y2, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
+      x1 = CLAMP (x1, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
+      y1 = CLAMP (y1, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
+      x2 = CLAMP (x2, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
+      y2 = CLAMP (y2, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
     }
 
   /*  If the calling procedure specified an undo step...  */
@@ -650,7 +645,7 @@ gimage_replace_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2P
   operation = valid_combinations [drawable_type (drawable)][src2PR->bytes];
   if (operation == -1)
     {
-      warning ("gimage_apply_image sent illegal parameters\n");
+      /*warning ("gimage_apply_image sent illegal parameters\n");*/
       return;
     }
 
@@ -658,10 +653,10 @@ gimage_replace_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2P
   drawable_offsets (drawable, &offset_x, &offset_y);
 
   /*  make sure the image application coordinates are within gimage bounds  */
-  x1 = BOUNDS (x, 0, drawable_width (drawable));
-  y1 = BOUNDS (y, 0, drawable_height (drawable));
-  x2 = BOUNDS (x + src2PR->w, 0, drawable_width (drawable));
-  y2 = BOUNDS (y + src2PR->h, 0, drawable_height (drawable));
+  x1 = CLAMP (x, 0, drawable_width (drawable));
+  y1 = CLAMP (y, 0, drawable_height (drawable));
+  x2 = CLAMP (x + src2PR->w, 0, drawable_width (drawable));
+  y2 = CLAMP (y + src2PR->h, 0, drawable_height (drawable));
 
   if (mask)
     {
@@ -669,10 +664,10 @@ gimage_replace_image (GImage *gimage, GimpDrawable *drawable, PixelRegion *src2P
        *  we need to add the layer offset to transform coords
        *  into the mask coordinate system
        */
-      x1 = BOUNDS (x1, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
-      y1 = BOUNDS (y1, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
-      x2 = BOUNDS (x2, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
-      y2 = BOUNDS (y2, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
+      x1 = CLAMP (x1, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
+      y1 = CLAMP (y1, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
+      x2 = CLAMP (x2, -offset_x, drawable_width (GIMP_DRAWABLE(mask)) - offset_x);
+      y2 = CLAMP (y2, -offset_y, drawable_height (GIMP_DRAWABLE(mask)) - offset_y);
     }
 
   /*  If the calling procedure specified an undo step...  */
@@ -937,8 +932,8 @@ project_indexed (GImage *gimage, Layer *layer,
   if (! gimage->construct_flag)
     initial_region (src, dest, NULL, gimage->cmap, layer->opacity,
 		    layer->mode, gimage->visible, INITIAL_INDEXED);
-  else
-    warning ("Unable to project indexed image.");
+  /* else
+    warning ("Unable to project indexed image.");*/
 }
 
 
@@ -1079,10 +1074,10 @@ gimage_construct_layers (GImage *gimage, int x, int y, int w, int h)
       layer = (Layer *) reverse_list->data;
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
 
-      x1 = BOUNDS (off_x, x, x + w);
-      y1 = BOUNDS (off_y, y, y + h);
-      x2 = BOUNDS (off_x + drawable_width (GIMP_DRAWABLE(layer)), x, x + w);
-      y2 = BOUNDS (off_y + drawable_height (GIMP_DRAWABLE(layer)), y, y + h);
+      x1 = CLAMP (off_x, x, x + w);
+      y1 = CLAMP (off_y, y, y + h);
+      x2 = CLAMP (off_x + drawable_width (GIMP_DRAWABLE(layer)), x, x + w);
+      y2 = CLAMP (off_y + drawable_height (GIMP_DRAWABLE(layer)), y, y + h);
 
       /* configure the pixel regions  */
       pixel_region_init (&src1PR, gimage_projection (gimage), x1, y1, (x2 - x1), (y2 - y1), TRUE);
@@ -1731,11 +1726,11 @@ gimage_raise_layer (GImage *gimage, Layer *layer_arg)
 	      drawable_offsets (GIMP_DRAWABLE(prev_layer), &off2_x, &off2_y);
 
 	      /*  calculate minimum area to update  */
-	      x1 = MAXIMUM (off_x, off2_x);
-	      y1 = MAXIMUM (off_y, off2_y);
-	      x2 = MINIMUM (off_x + drawable_width (GIMP_DRAWABLE(layer)),
+	      x1 = MAX (off_x, off2_x);
+	      y1 = MAX (off_y, off2_y);
+	      x2 = MIN (off_x + drawable_width (GIMP_DRAWABLE(layer)),
 			    off2_x + drawable_width (GIMP_DRAWABLE(prev_layer)));
-	      y2 = MINIMUM (off_y + drawable_height (GIMP_DRAWABLE(layer)),
+	      y2 = MIN (off_y + drawable_height (GIMP_DRAWABLE(layer)),
 			    off2_y + drawable_height (GIMP_DRAWABLE(prev_layer)));
 	      if ((x2 - x1) > 0 && (y2 - y1) > 0)
 		gdisplays_update_area (gimage->ID, x1, y1, (x2 - x1), (y2 - y1));
@@ -1747,7 +1742,7 @@ gimage_raise_layer (GImage *gimage, Layer *layer_arg)
 	    }
 	  else
 	    {
-	      message_box ("Layer cannot be raised any further", NULL, NULL);
+	      /*message_box ("Layer cannot be raised any further", NULL, NULL);*/
 	      return NULL;
 	    }
 	}
@@ -1800,11 +1795,11 @@ gimage_lower_layer (GImage *gimage, Layer *layer_arg)
 	      drawable_offsets (GIMP_DRAWABLE(next_layer), &off2_x, &off2_y);
 
 	      /*  calculate minimum area to update  */
-	      x1 = MAXIMUM (off_x, off2_x);
-	      y1 = MAXIMUM (off_y, off2_y);
-	      x2 = MINIMUM (off_x + drawable_width (GIMP_DRAWABLE(layer)),
+	      x1 = MAX (off_x, off2_x);
+	      y1 = MAX (off_y, off2_y);
+	      x2 = MIN (off_x + drawable_width (GIMP_DRAWABLE(layer)),
 			    off2_x + drawable_width (GIMP_DRAWABLE(next_layer)));
-	      y2 = MINIMUM (off_y + drawable_height (GIMP_DRAWABLE(layer)),
+	      y2 = MIN (off_y + drawable_height (GIMP_DRAWABLE(layer)),
 			    off2_y + drawable_height (GIMP_DRAWABLE(next_layer)));
 	      if ((x2 - x1) > 0 && (y2 - y1) > 0)
 		gdisplays_update_area (gimage->ID, x1, y1, (x2 - x1), (y2 - y1));
@@ -1816,7 +1811,7 @@ gimage_lower_layer (GImage *gimage, Layer *layer_arg)
 	    }
 	  else
 	    {
-	      message_box ("Layer cannot be lowered any further", NULL, NULL);
+/* 	      message_box ("Layer cannot be lowered any further", NULL, NULL); */
 	      return NULL;
 	    }
 	}
@@ -1853,8 +1848,8 @@ gimage_merge_visible_layers (GImage *gimage, MergeType merge_type)
     }
   else
     {
-      message_box ("There are not enough visible layers for a merge.\nThere must be at least two.",
-		   NULL, NULL);
+      /* message_box ("There are not enough visible layers for a merge.\nThere must be at least two.", */
+/* 		   NULL, NULL); */
       g_slist_free (merge_list);
       return NULL;
     }
@@ -1939,10 +1934,10 @@ gimage_merge_layers (GImage *gimage, GSList *merge_list, MergeType merge_type)
 	    }
 	  if (merge_type == ClipToImage)
 	    {
-	      x1 = BOUNDS (x1, 0, gimage->width);
-	      y1 = BOUNDS (y1, 0, gimage->height);
-	      x2 = BOUNDS (x2, 0, gimage->width);
-	      y2 = BOUNDS (y2, 0, gimage->height);
+	      x1 = CLAMP (x1, 0, gimage->width);
+	      y1 = CLAMP (y1, 0, gimage->height);
+	      x2 = CLAMP (x2, 0, gimage->width);
+	      y2 = CLAMP (y2, 0, gimage->height);
 	    }
 	  break;
 	case ClipToBottomLayer:
@@ -1988,7 +1983,7 @@ gimage_merge_layers (GImage *gimage, GSList *merge_list, MergeType merge_type)
 			       type, drawable_name (GIMP_DRAWABLE(layer)), OPAQUE_OPACITY, NORMAL_MODE);
 
       if (!merge_layer) {
-	warning("gimage_merge_layers: could not allocate merge layer");
+	/*warning("gimage_merge_layers: could not allocate merge layer");*/
 	return NULL;
       }
 
@@ -2015,7 +2010,7 @@ gimage_merge_layers (GImage *gimage, GSList *merge_list, MergeType merge_type)
 			       layer->opacity, layer->mode);
       
       if (!merge_layer) {
-	warning("gimage_merge_layers: could not allocate merge layer");
+	/*warning("gimage_merge_layers: could not allocate merge layer");*/
 	return NULL;
       }
 
@@ -2054,15 +2049,15 @@ gimage_merge_layers (GImage *gimage, GSList *merge_list, MergeType merge_type)
       operation = valid_combinations [drawable_type (GIMP_DRAWABLE(merge_layer))][drawable_bytes (GIMP_DRAWABLE(layer))];
       if (operation == -1)
 	{
-	  warning ("gimage_merge_layers attempting to merge incompatible layers\n");
+	  /*warning ("gimage_merge_layers attempting to merge incompatible layers\n");*/
 	  return NULL;
 	}
 
       drawable_offsets (GIMP_DRAWABLE(layer), &off_x, &off_y);
-      x3 = BOUNDS (off_x, x1, x2);
-      y3 = BOUNDS (off_y, y1, y2);
-      x4 = BOUNDS (off_x + drawable_width (GIMP_DRAWABLE(layer)), x1, x2);
-      y4 = BOUNDS (off_y + drawable_height (GIMP_DRAWABLE(layer)), y1, y2);
+      x3 = CLAMP (off_x, x1, x2);
+      y3 = CLAMP (off_y, y1, y2);
+      x4 = CLAMP (off_x + drawable_width (GIMP_DRAWABLE(layer)), x1, x2);
+      y4 = CLAMP (off_y + drawable_height (GIMP_DRAWABLE(layer)), y1, y2);
 
       /* configure the pixel regions  */
       pixel_region_init (&src1PR, drawable_data (GIMP_DRAWABLE(merge_layer)), (x3 - x1), (y3 - y1), (x4 - x3), (y4 - y3), TRUE);
@@ -2135,7 +2130,7 @@ gimage_add_layer (GImage *gimage, Layer *float_layer, int position)
   if (GIMP_DRAWABLE(float_layer)->gimage_ID != 0 && 
       GIMP_DRAWABLE(float_layer)->gimage_ID != gimage->ID) 
     {
-      warning("gimage_add_layer: attempt to add layer to wrong image");
+      /*warning("gimage_add_layer: attempt to add layer to wrong image");*/
       return NULL;
     }
 
@@ -2145,7 +2140,7 @@ gimage_add_layer (GImage *gimage, Layer *float_layer, int position)
       {
 	if (ll->data == float_layer) 
 	  {
-	    warning("gimage_add_layer: trying to add layer to image twice");
+	    /*warning("gimage_add_layer: trying to add layer to image twice");*/
 	    return NULL;
 	  }
 	ll = g_slist_next(ll);
@@ -2265,7 +2260,7 @@ gimage_add_layer_mask (GImage *gimage, Layer *layer, LayerMask *mask)
 
   if (error)
     {
-      message_box (error, NULL, NULL);
+/*       message_box (error, NULL, NULL); */
       return NULL;
     }
 
@@ -2367,7 +2362,7 @@ gimage_raise_channel (GImage *gimage, Channel * channel_arg)
 	    }
 	  else
 	    {
-	      message_box ("Channel cannot be raised any further", NULL, NULL);
+/* 	      message_box ("Channel cannot be raised any further", NULL, NULL); */
 	      return NULL;
 	    }
 	}
@@ -2414,7 +2409,7 @@ gimage_lower_channel (GImage *gimage, Channel *channel_arg)
 	    }
 	  else
 	    {
-	      message_box ("Channel cannot be lowered any further", NULL, NULL);
+/* 	      message_box ("Channel cannot be lowered any further", NULL, NULL); */
 	      return NULL;
 	    }
 	}
@@ -2434,7 +2429,7 @@ gimage_add_channel (GImage *gimage, Channel *channel, int position)
   if (GIMP_DRAWABLE(channel)->gimage_ID != 0 &&
       GIMP_DRAWABLE(channel)->gimage_ID != gimage->ID)
     {
-      warning("gimage_add_channel: attempt to add channel to wrong image");
+      /* warning("gimage_add_channel: attempt to add channel to wrong image");*/
       return NULL;
     }
 
@@ -2444,7 +2439,7 @@ gimage_add_channel (GImage *gimage, Channel *channel, int position)
       {
 	if (cc->data == channel) 
 	  {
-	    warning("gimage_add_channel: trying to add channel to image twice");
+	    /*    warning("gimage_add_channel: trying to add channel to image twice");*/
 	    return NULL;
 	  }
 	cc = g_slist_next (cc);
@@ -2651,22 +2646,11 @@ gimage_disable_undo (GImage *gimage)
 int
 gimage_dirty (GImage *gimage)
 {
-  GDisplay *gdisp;
-  
   if (gimage->dirty < 0)
     gimage->dirty = 2;
   else
     gimage->dirty ++;
-  if (active_tool && !active_tool->preserve) {
-    gdisp = active_tool->gdisp_ptr;
-    if (gdisp)
-      if (gdisp->gimage->ID == gimage->ID)
-	tools_initialize (active_tool->type, gdisp);
-      else
-	active_tool_control(DESTROY, gdisp);
-    else
-      active_tool_control(DESTROY, gdisp);
-  }
+
   gtk_signal_emit (GTK_OBJECT (gimage), gimage_signals[DIRTY]);
   return gimage->dirty;
 }
@@ -2880,10 +2864,10 @@ gimage_construct_composite_preview (GImage *gimage, int width, int height)
       w = (int) (ratio * drawable_width (GIMP_DRAWABLE(layer)) + 0.5);
       h = (int) (ratio * drawable_height (GIMP_DRAWABLE(layer)) + 0.5);
 
-      x1 = BOUNDS (x, 0, width);
-      y1 = BOUNDS (y, 0, height);
-      x2 = BOUNDS (x + w, 0, width);
-      y2 = BOUNDS (y + h, 0, height);
+      x1 = CLAMP (x, 0, width);
+      y1 = CLAMP (y, 0, height);
+      x2 = CLAMP (x + w, 0, width);
+      y2 = CLAMP (y + h, 0, height);
 
       src1PR.bytes = comp->bytes;
       src1PR.x = x1;  src1PR.y = y1;

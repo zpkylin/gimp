@@ -19,13 +19,14 @@
 #define  __LAYERS_DIALOGP_H__
 
 #include "buildmenu.h"
+#include "gimpimage_decl.h"
 
 GtkWidget *  layers_dialog_create    (void);
 GtkWidget *  channels_dialog_create  (void);
 
-GtkWidget *  create_image_menu       (int *, int *, MenuItemCallback);
+GtkWidget *  create_image_menu       (GImage **, int *, MenuItemCallback);
 
-void         layers_dialog_update    (int);
+void         layers_dialog_update    (GImage*);
 void         channels_dialog_update  (int);
 
 void         layers_dialog_clear     (void);
