@@ -24,6 +24,7 @@
 #include "channel.h"
 #include "temp_buf.h"
 #include "tile_manager.h"
+#include "layer_decl.h"
 
 #define APPLY   0
 #define DISCARD 1
@@ -46,13 +47,6 @@ typedef enum
 #define GIMP_LAYER_MASK_CLASS(klass) GTK_CHECK_CLASS_CAST (klass, gimp_layer_mask_get_type(), GimpLayerMaskClass)
 #define GIMP_IS_LAYER_MASK(obj)      GTK_CHECK_TYPE (obj, gimp_layer_mask_get_type())
 
-typedef struct _GimpLayer      GimpLayer;
-typedef struct _GimpLayerClass GimpLayerClass;
-typedef struct _GimpLayerMask      GimpLayerMask;
-typedef struct _GimpLayerMaskClass GimpLayerMaskClass;
-
-typedef GimpLayer Layer;		/* convenience */
-typedef GimpLayerMask LayerMask;	/* convenience */
 
 guint gimp_layer_get_type (void);
 guint gimp_layer_mask_get_type (void);

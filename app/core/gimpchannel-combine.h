@@ -23,6 +23,7 @@
 #include "boundary.h"
 #include "temp_buf.h"
 #include "tile_manager.h"
+#include "channel_decl.h"
 
 /* OPERATIONS */
 
@@ -40,10 +41,6 @@
 #define GIMP_CHANNEL_CLASS(klass) GTK_CHECK_CLASS_CAST (klass, gimp_channel_get_type(), GimpChannelClass)
 #define GIMP_IS_CHANNEL(obj)     GTK_CHECK_TYPE (obj, gimp_channel_get_type())
 
-typedef struct _GimpChannel      GimpChannel;
-typedef struct _GimpChannelClass GimpChannelClass;
-
-typedef GimpChannel Channel;		/* convenience */
 
 guint gimp_channel_get_type (void);
 

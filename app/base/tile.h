@@ -10,8 +10,7 @@
 #include <sys/types.h>
 #include <glib.h>
 
-
-typedef struct _Tile Tile;
+#include "tile_decl.h"
 
 struct _Tile
 {

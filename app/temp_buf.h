@@ -18,9 +18,7 @@
 #ifndef __TEMP_BUF_H__
 #define __TEMP_BUF_H__
 
-
-typedef struct _temp_buf TempBuf;
-typedef struct _temp_buf MaskBuf;
+#include "temp_buf_decl.h"
 
 struct _temp_buf
 {

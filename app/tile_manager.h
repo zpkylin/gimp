@@ -20,10 +20,8 @@
 
 
 #include "tile.h"
+#include "tile_manager_decl.h"
 
-
-typedef struct _TileLevel    TileLevel;
-typedef struct _TileManager  TileManager;
 
 typedef void (*TileValidateProc) (TileManager *tm,
 				  Tile        *tile,

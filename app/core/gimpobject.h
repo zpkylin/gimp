@@ -51,17 +51,21 @@
    most cases it will be a struct, but for non-gtkobject types it
    could be an enum or even an just an integer or anything. Just so it 
    brings the type name properly in the scope so pointers to it can be 
-   used. This should also bring the associated class type in scope, too.
+   used.
 
    The file "type.h" (should this one have a suffix too?) should have
    the external (public) method declarations for this class.
 
-   The file "type_prv.h" should have the actual definition of the
-   object's internal structure.
+   The file "type_pvt.h" should have the actual definition of the
+   object's internal structure. It should also include a typedef for
+   the class in the form "GimpImagePvt". This is basically the same
+   type as GimpImage, but it should be used where appropriate to
+   remind us that we have private access to a type. The gtk class
+   structure should also be defined and typedef'd properly here.
 
 */
      
-#define DEF_GET_TYPE(class, prefix, parent_prefix)\
+#define DEF_GET_TYPE(class, prefix, parent_prefix) \
 guint prefix##_get_type (void)\
 {\
   static guint type = 0;\
@@ -80,9 +84,19 @@ guint prefix##_get_type (void)\
       type = gtk_type_unique (parent_prefix##_get_type (), &info);\
     }\
   return type;\
-}\	
-				       
-	
+}
+
+#include "gimpobject_decl.h"
+#define GIMP_OBJECT(obj) GTK_CHECK_CAST (obj, gimp_object_get_type (), GimpObject)
+
+
+#define GIMP_OBJECT_CLASS(klass) GTK_CHECK_CLASS_CAST (klass, gimp_object_get_type(), GimpObjectClass)
+     
+     
+#define GIMP_IS_OBJECT(obj) GTK_CHECK_TYPE (obj, gimp_object_get_type())
+
+
+guint gimp_object_get_type(void);
 
 
 /* Method declarations here */

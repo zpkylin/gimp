@@ -20,7 +20,7 @@
 
 #include "tile_manager.h"
 
-typedef struct _PixelRegion PixelRegion;
+#include "pixel_region_decl.h"
 
 struct _PixelRegion
 {

@@ -1,3 +1,30 @@
+Fri Apr  3 20:14:18 1998  Lauri Alanko  <la@iki.fi>
+
+	* app/channel.h
+	* app/channel_decl.h
+	* app/drawable.h
+	* app/drawable_decl.h
+	* app/gimage.h
+	* app/gimpimage.c
+	* app/gimpimage.h
+	* app/gimpimage_decl.h
+	* app/gimpimage_pvt.h
+	* app/gimpobject.h
+	* app/gimpobject_decl.h
+	* app/gimpobject_pvt.h
+	* app/layer.h
+	* app/layer_decl.h
+	* app/pixel_region.h
+	* app/pixel_region_decl.h
+	* app/temp_buf.h
+	* app/temp_buf_decl.h
+	* app/tile.h
+	* app/tile_decl.h
+	* app/tile_manager.h
+	* app/tile_manager_decl.h: Started the work on GimpImage, and
+	split a couple of headers in two, for the "declaration only"
+	headers.
+	
 Thu Apr  2 21:53:03 EEST 1998 Lauri Alanko <la@iki.fi>
         
 	* Started the GTKOB_PROJECT branch. This is intended for modifying
