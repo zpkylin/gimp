@@ -361,6 +361,7 @@ AM_CPPFLAGS = \
 	-DDATADIR=\""$(gimpdatadir)"\"	\
 	-DGIMPDIR=\""$(gimpdir)"\"	\
 	-DPRECISION_CONFIG=$(precision)	\
+	-DLINUX=$(LINUX)\
 	-DREGEX_MALLOC
 
 INCLUDES = \
