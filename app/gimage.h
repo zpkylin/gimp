@@ -163,6 +163,7 @@ void            gimage_delete_guide           (GImage *, Guide *);
 int             gimage_get_layer_index        (GImage *, Layer *);
 int             gimage_get_channel_index      (GImage *, Channel *);
 Layer *         gimage_get_active_layer       (GImage *);
+Layer *         gimage_get_first_layer        (GImage *);
 Channel *       gimage_get_active_channel     (GImage *);
 Channel *       gimage_get_mask               (GImage *);
 int             gimage_get_component_active   (GImage *, ChannelType);

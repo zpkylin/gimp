@@ -645,8 +645,8 @@ step_forward (GDisplay *gdisplay)
 		  dont_change_frame = 0;
 		  frame_manager_store_add (gdisplay->gimage, gdisplay, num);
 		  dont_change_frame = 1; 
-		  frame_manager_link_forward (gdisplay);
-		}
+/*		  frame_manager_link_forward (gdisplay);
+*/		}
 	      else
 		if (file_load (whole, raw, gdisplay))
 		  {
@@ -654,8 +654,8 @@ step_forward (GDisplay *gdisplay)
 		    dont_change_frame = 0; 
 		    frame_manager_store_add (gdisplay->gimage, gdisplay, num);
 		    dont_change_frame = 1; 
-		    frame_manager_link_forward (gdisplay);
-		  }
+/*		    frame_manager_link_forward (gdisplay);
+*/		  }
 		else
 		  {
 		    printf ("ERROR\n");
@@ -685,6 +685,7 @@ step_forward (GDisplay *gdisplay)
       num ++; 
       list = g_slist_next (list); 
     }
+  frame_manager_link_forward (gdisplay);
   for (j=0; j<i; j++)
     {
       if (!gi[j])
@@ -803,8 +804,8 @@ step_backwards (GDisplay *gdisplay)
 		  dont_change_frame = 0; 
 		  frame_manager_store_add (gdisplay->gimage, gdisplay, num);
 		  dont_change_frame = 1; 
-		  frame_manager_link_forward (gdisplay);
-		}
+/*		  frame_manager_link_backward (gdisplay);
+*/		}
 	      else
 		if (file_load (whole, raw, gdisplay))
 		  {
@@ -812,8 +813,8 @@ step_backwards (GDisplay *gdisplay)
 		    dont_change_frame = 0; 
 		    frame_manager_store_add (gdisplay->gimage, gdisplay, num);
 		    dont_change_frame = 1; 
-		    frame_manager_link_forward (gdisplay);
-		  }
+/*		    frame_manager_link_backward (gdisplay);
+*/		  }
 		else
 		  {
 		    printf ("ERROR\n");
@@ -852,6 +853,7 @@ step_backwards (GDisplay *gdisplay)
 	  gimage_delete (gimages[j]); 	
 	}
     }
+  frame_manager_link_backward (gdisplay);
   free (whole);
   free (raw); 
 
@@ -1135,7 +1137,8 @@ frame_manager_flip_area (GtkWidget *w, gpointer client_data)
       e_x = MAX (rect_sel->x, rect_sel->x + rect_sel->w) - s_x;
       e_y = MAX (rect_sel->y, rect_sel->y + rect_sel->h) - s_y;
 
-      if (!s_x && !s_y && !e_x && !e_y)
+      if ((!s_x && !s_y && !e_x && !e_y) ||
+	  (!rect_sel->w && !rect_sel->h))
 	{
           scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST (gdisplay));
 	  s_x = 0;
@@ -1168,7 +1171,8 @@ frame_manager_update_whole_area (GtkWidget *w, gpointer client_data)
     return FALSE; 
 
   scale = ((double) SCALESRC (gdisplay) / (double)SCALEDEST(gdisplay));
-  gdisplay_add_update_area (gdisplay, 0, 0, 
+  gdisplay_add_update_area (gdisplay, gdisplay->offset_x*scale, 
+      gdisplay->offset_y*scale, 
       gdisplay->disp_width*scale, gdisplay->disp_height*scale);
   gdisplays_flush ();
 
@@ -3207,6 +3211,7 @@ frame_manager_link_forward (GDisplay *gdisplay)
 	{
 	  printf ("ERROR\n");
 	}
+      gdisplays_flush ();
       free (whole);
       free (raw);
     } 
@@ -3229,7 +3234,8 @@ frame_manager_link_backward (GDisplay *gdisplay)
       /* ** save image ** */
 
       gimage = fm->linked_display->gimage; 
-      frame_manager_next_filename (fm->linked_display->gimage, &whole, &raw, 0, fm);
+      frame_manager_next_filename (fm->linked_display->gimage, &whole, &raw, 0, 
+	  gdisplay);
       if (file_load (whole, raw, fm->linked_display))
 	{
 	  if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
@@ -3243,6 +3249,7 @@ frame_manager_link_backward (GDisplay *gdisplay)
 	{
 	  printf ("ERROR\n");
 	}
+      gdisplays_flush ();
       free (whole);
       free (raw);
     } 

@@ -1438,6 +1438,15 @@ gimage_get_active_layer (GImage *gimage)
   return gimage->active_layer;
 }
 
+Layer *
+gimage_get_first_layer (GImage *gimage)
+{
+  Layer *layer;
+
+  GSList *layers = gimage->layer_stack;
+  return (Layer*)layers->data;
+}
+
 
 Channel *
 gimage_get_active_channel (GImage *gimage)

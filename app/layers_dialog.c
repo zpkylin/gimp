@@ -3042,11 +3042,18 @@ new_layer_query_ok_callback (GtkWidget *w,
       /*  Start a group undo  */
       undo_push_group_start (gimage, EDIT_PASTE_UNDO);
 
-      layer = layer_new (gimage->ID, options->xsize, options->ysize,
-			 tag_set_alpha (gimage_tag (gimage),
-                                        ALPHA_YES),
-                         STORAGE_TILED,
-			 layer_name, 1.0, NORMAL_MODE);
+      if (fill_type == 4)
+	layer = layer_new (gimage->ID, options->xsize, options->ysize,
+	    tag_set_alpha (gimage_tag (gimage),
+	      ALPHA_NO),
+	    STORAGE_TILED,
+	    layer_name, 1.0, NORMAL_MODE);
+      else
+	layer = layer_new (gimage->ID, options->xsize, options->ysize,
+	    tag_set_alpha (gimage_tag (gimage),
+	      ALPHA_YES),
+	    STORAGE_TILED,
+	    layer_name, 1.0, NORMAL_MODE);
       if (layer)
 	{
 	  drawable_fill (GIMP_DRAWABLE(layer), fill_type);
@@ -3111,6 +3118,16 @@ new_layer_foreground_callback (GtkWidget *w,
 }
 
 static void
+new_layer_fur_callback (GtkWidget *w,
+			       gpointer   client_data)
+{
+  NewLayerOptions *options;
+
+  options = (NewLayerOptions *) client_data;
+  options->fill_type = FOREGROUND_FILL;
+}
+
+static void
 new_layer_white_callback (GtkWidget *w,
 			  gpointer   client_data)
 {
@@ -3149,19 +3166,21 @@ layers_dialog_new_layer_query (int gimage_id)
   GSList *group = NULL;
   int i;
   char size[12];
-  char *button_names[4] =
+  char *button_names[5] =
   {
     "Background",
     "White",
     "Transparent",
-    "Foreground"
+    "Foreground",
+    "Fur/Voo Chan"
   };
-  ActionCallback button_callbacks[4] =
+  ActionCallback button_callbacks[5] =
   {
     new_layer_background_callback,
     new_layer_white_callback,
     new_layer_transparent_callback,
-    new_layer_foreground_callback
+    new_layer_foreground_callback,
+    new_layer_fur_callback
   };
 
   gimage = gimage_get_ID (gimage_id);
@@ -3242,7 +3261,7 @@ layers_dialog_new_layer_query (int gimage_id)
   gtk_container_add (GTK_CONTAINER (radio_frame), radio_box);
 
   /*  the radio buttons  */
-  for (i = 0; i < 4; i++)
+  for (i = 0; i < 5; i++)
     {
       radio_button = gtk_radio_button_new_with_label (group, button_names[i]);
       group = gtk_radio_button_group (GTK_RADIO_BUTTON (radio_button));

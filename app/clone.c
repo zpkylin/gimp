@@ -1105,7 +1105,7 @@ clone_x_offset (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, 0);
+	frame_manager_onionskin_offset (d, offset_x, offset_y);
       list = g_slist_next (list);
     }
 
@@ -1126,7 +1126,7 @@ clone_x_offset_down (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, 0); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1147,7 +1147,7 @@ clone_x_offset_up (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, 0); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1166,7 +1166,7 @@ clone_y_offset (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, offset_y);
+	frame_manager_onionskin_offset (d, offset_x, offset_y);
       list = g_slist_next (list);
     }
 
@@ -1188,7 +1188,7 @@ clone_y_offset_down (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, offset_y); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1209,7 +1209,7 @@ clone_y_offset_up (GtkWidget *w, gpointer client_data)
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, offset_y); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1278,7 +1278,7 @@ clone_x_offset_increase ()
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, 0); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1298,7 +1298,7 @@ clone_x_offset_decrease ()
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, offset_x, 0); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 
@@ -1319,7 +1319,7 @@ clone_y_offset_increase ()
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, offset_y); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 }
@@ -1338,7 +1338,7 @@ clone_y_offset_decrease ()
   while (list)
     {
       if ((d=((GDisplay *) list->data))->frame_manager)
-	frame_manager_onionskin_offset (d, 0, offset_y); 
+	frame_manager_onionskin_offset (d, offset_x, offset_y); 
       list = g_slist_next (list);
     }
 }
