@@ -2,8 +2,17 @@
 #include "zoombookmark.h"
 #include "scale.h"
 #include "scroll.h"
+#include "zoom.h"
 
-ZoomBookmark zoom_bookmarks[ZOOM_BOOKMARK_NUM];
+ZoomBookmark zoom_bookmarks[ZOOM_BOOKMARK_NUM] =
+{
+   {0,0,101,FALSE},
+   {0,0,101,FALSE},
+   {0,0,101,FALSE},
+   {0,0,101,FALSE},
+   {0,0,101,FALSE}
+};
+
 static int zoom_bookmark_is_init = FALSE;
 
 static void zoom_bookmark_check_init();
@@ -20,6 +29,7 @@ void zoom_bookmark_check_init()
          zoom_bookmarks[i].image_offset_x = 0;
          zoom_bookmarks[i].image_offset_y = 0;
          zoom_bookmarks[i].zoom = 101;
+	 zoom_bookmarks[i].is_set = FALSE;
       }
 
       zoom_bookmark_is_init = TRUE;
@@ -43,6 +53,7 @@ void zoom_bookmark_set(ZoomBookmark* mark, const GDisplay *gdisp)
    mark->image_offset_x = gdisp->offset_x;
    mark->image_offset_y = gdisp->offset_y;
    mark->zoom = SCALEDEST(gdisp) * 100 + SCALESRC(gdisp);
+   mark->is_set = TRUE;
 }
 
 int zoom_bookmark_save(const char *filename)
@@ -59,11 +70,14 @@ int zoom_bookmark_save(const char *filename)
 
    fprintf(file, "%d\n", ZOOM_BOOKMARK_NUM);
    for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
-      fprintf(file, "%d %d %d\n", zoom_bookmarks[i].zoom, zoom_bookmarks[i].image_offset_x,
-		      zoom_bookmarks[i].image_offset_y);
+      fprintf(file, "%d %d %d %d\n", zoom_bookmarks[i].zoom, zoom_bookmarks[i].image_offset_x,
+		      zoom_bookmarks[i].image_offset_y, zoom_bookmarks[i].is_set);
    }
 
    fclose(file);
+
+   //make sure the ui reflects the new bookmarks
+   zoom_control_update_bookmark_ui(zoom_control);
    return 1;
 }
 
@@ -84,8 +98,8 @@ int zoom_bookmark_load(const char *filename)
       num = ZOOM_BOOKMARK_NUM;
 
    for (i=0; i < num; i++) {
-      fscanf(file, "%d %d %d\n", &zoom_bookmarks[i].zoom, &zoom_bookmarks[i].image_offset_x,
-		      &zoom_bookmarks[i].image_offset_y);
+      fscanf(file, "%d %d %d %d\n", &zoom_bookmarks[i].zoom, &zoom_bookmarks[i].image_offset_x,
+		      &zoom_bookmarks[i].image_offset_y, &zoom_bookmarks[i].is_set);
    }
 
    fclose(file);

@@ -6,6 +6,7 @@
 //#include <gdk/gdk.h>
 #include "gdisplay.h"
 #include "gimage.h"
+#include "zoombookmark.h"
 
 /* This struct holds the information for
  * the zoom/pan widget.  
@@ -30,6 +31,8 @@ typedef struct
   gint mouse_capture; // whether the preview widget is between mouse button 1 down and up.
   gint drag_offset_x; // intitial offset from the center of the extent box during a mouse drag
   gint drag_offset_y;
+  GtkWidget *bookmark_button[ZOOM_BOOKMARK_NUM];
+
 } ZoomControl;
 
 ZoomControl * zoom_control_open();
@@ -44,6 +47,8 @@ void zoom_view_changed(GDisplay *disp);
 
 void zoom_set_focus(GDisplay *gdisp);
 void zoom_image_preview_changed(GImage *image);
+
+void zoom_control_update_bookmark_ui(ZoomControl *zoom);
 
 extern ZoomControl * zoom_control;
 #endif

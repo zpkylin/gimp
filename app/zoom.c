@@ -28,6 +28,12 @@ static void zoom_pulldown_value_changed(
    GtkList *list,
    GtkWidget *widget,
    gpointer user_data);
+/*
+static gboolean zoom_control_button_expose(
+   GtkWidget *widget,
+   GdkEventExpose *event,
+   gpointer user_data);
+*/
 static gboolean zoom_preview_expose_event(
    GtkWidget *widget,
    GdkEventExpose *event,
@@ -59,6 +65,8 @@ static void zoom_preview_draw_extents();
 static void zoom_preview_jump_to(gfloat x, gfloat y);
 static void zoom_control_set_event(GtkButton *, gpointer user_data);
 static void zoom_control_jump_event(GtkButton *, gpointer user_data);
+static void zoom_enable_button(GtkButton *b);
+static void zoom_disable_button(GtkButton *b);
 
 /************************************************************/
 /*     Global variables (yikes!)                            */
@@ -72,6 +80,25 @@ static GDisplay *zoom_gdisp = 0;
 /************************************************************/
 /*     Externally called functions (Notifications)          */
 /************************************************************/
+
+void zoom_control_update_bookmark_ui(ZoomControl *zoom)
+{
+   int i=0;
+
+   if (!zoom)
+      return;
+
+   for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
+      if (zoom->bookmark_button[i]) {
+         if (zoom_bookmarks[i].is_set) {
+            zoom_enable_button(GTK_BUTTON(zoom->bookmark_button[i]));
+         }
+         else {
+            zoom_disable_button(GTK_BUTTON(zoom->bookmark_button[i]));
+         }
+      }
+   }
+}
 
 void zoom_view_changed(GDisplay *disp)
 {
@@ -165,6 +192,9 @@ ZoomControl * zoom_control_new()
   zoom->top = zoom->bottom = zoom->left = zoom->right = 0;
   zoom->preview_width = zoom->preview_height = zoom->preview_x_offset = zoom->preview_y_offset = 0;
   zoom->mouse_capture = 0;
+  for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
+     zoom->bookmark_button[i] = 0;
+  }
 
   zoom->window = gtk_dialog_new();
   gtk_signal_connect(GTK_OBJECT(zoom->window), "destroy", 
@@ -248,8 +278,11 @@ ZoomControl * zoom_control_new()
      button = gtk_button_new_with_label(buff);
      gtk_table_attach(GTK_TABLE(table), button, i, i+1, 1, 2, 
 		     GTK_FILL | GTK_EXPAND, GTK_FILL | GTK_EXPAND, 1, 1);
+//     gtk_signal_connect(GTK_OBJECT (button), "expose-event",
+//		      (GtkSignalFunc) zoom_control_button_expose, (gpointer)i);
      gtk_signal_connect (GTK_OBJECT (button), "clicked",
 		      (GtkSignalFunc) zoom_control_jump_event, (gpointer)i);
+     zoom->bookmark_button[i] = button;
      gtk_widget_show(button);
   }
 
@@ -259,6 +292,9 @@ ZoomControl * zoom_control_new()
   gtk_box_pack_start(GTK_BOX(vbox), zoom->slider   , TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(vbox), table          , TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->vbox), zoom->preview, TRUE, TRUE, 0); 
+
+  // make sure the bookmark buttons reflect the bookmark state
+  zoom_control_update_bookmark_ui(zoom);
 
   gtk_widget_show(zoom->pull_down);
   gtk_widget_show(zoom->slider);
@@ -277,6 +313,18 @@ void zoom_control_delete(ZoomControl *zoom)
 /************************************************************/
 /*     Utility Functions                                    */
 /************************************************************/
+
+void zoom_enable_button(GtkButton *b)
+{
+   gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+//   gtk_button_set_relief(b, GTK_RELIEF_NORMAL);
+}
+
+void zoom_disable_button(GtkButton *b)
+{
+   gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+   //gtk_button_set_relief(b, GTK_RELIEF_NONE);
+}
 
 void zoom_preview_jump_to(gfloat x, gfloat y)
 {
@@ -590,6 +638,32 @@ static void zoom_pulldown_value_changed(
 /*     Callback functions for preview widget events         */
 /************************************************************/
 
+/*
+static gboolean 
+zoom_control_button_expose(
+   GtkWidget *widget,
+   GdkEventExpose *event,
+   gpointer user_data)
+{
+   gint id;
+   ZoomBookmark * bm;
+
+   if (!zoom_control)
+      return FALSE;
+
+   id = (gint) user_data;
+   bm = &zoom_bookmarks[id];
+
+   if (bm->is_set) {
+      gdk_draw_rectangle(widget->window,
+		      widget->style->black_gc,
+		      TRUE, 5, 5, 15, 15);
+   }
+
+   return FALSE;
+}
+*/
+
 static gboolean zoom_preview_expose_event(
    GtkWidget *widget,
    GdkEventExpose *event,
@@ -696,6 +770,7 @@ static void zoom_control_set_event(GtkButton *button, gpointer user_data)
       return;
 
    zoom_bookmark_set(&zoom_bookmarks[i], zoom_control->gdisp);
+   zoom_enable_button(GTK_BUTTON(zoom_control->bookmark_button[i]));
 }
 
 static void zoom_control_jump_event(GtkButton *button, gpointer user_data)
@@ -706,7 +781,8 @@ static void zoom_control_jump_event(GtkButton *button, gpointer user_data)
    if (!zoom_control || !zoom_control->gdisp)
       return;
 
-   zoom_bookmark_jump_to(&zoom_bookmarks[i], zoom_control->gdisp);
+   if (zoom_bookmarks[i].is_set)
+      zoom_bookmark_jump_to(&zoom_bookmarks[i], zoom_control->gdisp);
 }
 
 /**********************************************/

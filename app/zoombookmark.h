@@ -11,6 +11,7 @@ typedef struct
    gint zoom;
    gint image_offset_x;
    gint image_offset_y;
+   gboolean is_set;
 } ZoomBookmark;
 
 extern ZoomBookmark zoom_bookmarks[ZOOM_BOOKMARK_NUM];
