@@ -116,6 +116,7 @@ internal_procs_init ()
 
   /*  GDisplay procedures  */
   procedural_db_register (&gdisplay_new_proc); pcount++;
+  procedural_db_register (&gdisplay_fm_proc); pcount++;
   procedural_db_register (&gdisplay_delete_proc); pcount++;
   procedural_db_register (&gdisplays_delete_image_proc); pcount++;
   procedural_db_register (&gdisplays_flush_proc); pcount++;

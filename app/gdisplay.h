@@ -98,6 +98,7 @@ extern GSList *display_list;
 /* member function declarations */
 
 GDisplay * gdisplay_new                    (GImage *, unsigned int);
+GDisplay * gdisplay_fm                     (GImage *, unsigned int);
 void       gdisplay_remove_and_delete      (GDisplay *);
 gfloat     gdisplay_mask_value             (GDisplay *, int, int);
 int        gdisplay_mask_bounds            (GDisplay *, int *, int *, int *, int *);

@@ -602,8 +602,8 @@ layer_translate2 (layer, off_x, off_y, x, y, w, h)
   layer_invalidate_boundary (layer);
 
   /*  update the layer offsets  */
-  GIMP_DRAWABLE(layer)->offset_x += off_x;
-  GIMP_DRAWABLE(layer)->offset_y += off_y;
+  GIMP_DRAWABLE(layer)->offset_x = off_x;
+  GIMP_DRAWABLE(layer)->offset_y = off_y;
 
   /*  update the affected region  */
   drawable_update (GIMP_DRAWABLE(layer),
@@ -612,11 +612,12 @@ layer_translate2 (layer, off_x, off_y, x, y, w, h)
 
   if (layer->mask) 
     {
-      GIMP_DRAWABLE(layer->mask)->offset_x += off_x;
-      GIMP_DRAWABLE(layer->mask)->offset_y += off_y;
+      GIMP_DRAWABLE(layer->mask)->offset_x = off_x;
+      GIMP_DRAWABLE(layer->mask)->offset_y = off_y;
   /*  invalidate the mask preview  */
       drawable_invalidate_preview (GIMP_DRAWABLE(layer->mask));
     }
+  gdisplays_flush ();
 }
 
 

@@ -99,6 +99,8 @@ struct _GImage
   Layer * floating_sel;               /*  ID of fs layer               */
   Channel * selection_mask;           /*  selection mask channel       */
 
+  Channel *channel_as_opacity;
+
   int visible [MAX_CHANNELS];         /*  visible channels             */
   int active  [MAX_CHANNELS];         /*  active channels              */
 

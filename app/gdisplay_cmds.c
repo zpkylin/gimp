@@ -104,6 +104,82 @@ ProcRecord gdisplay_new_proc =
   { { gdisplay_new_invoker } },
 };
 
+/******************/
+/*  GDISPLAY_FM   */
+
+static Argument *
+gdisplay_fm_invoker (Argument *args)
+{
+  GImage *gimage;
+  GDisplay *gdisp;
+  unsigned int scale = 0x101;
+
+  gdisp = NULL;
+
+  success = TRUE;
+  if (success)
+    {
+      int_value = args[0].value.pdb_int;
+      if ((gimage = gimage_get_ID (int_value)) == NULL)
+	success = FALSE;
+
+      /*  make sure the image has layers before displaying it  */
+      if (success && gimage->layers == NULL)
+	success = FALSE;
+    }
+
+  if (success)
+    success = ((gdisp = gdisplay_fm (gimage, scale)) != NULL);
+
+  /*  create the new image  */
+  return_args = procedural_db_return_args (&gdisplay_new_proc, success);
+
+
+  if (success)
+    return_args[1].value.pdb_int = gdisp->ID;
+
+  return return_args;
+}
+
+/*  The procedure definition  */
+ProcArg gdisplay_fm_args[] =
+{
+  { PDB_IMAGE,
+    "image",
+    "the image"
+  }
+};
+
+ProcArg gdisplay_fm_out_args[] =
+{
+  { PDB_DISPLAY,
+    "display",
+    "the new display"
+  }
+};
+
+ProcRecord gdisplay_fm_proc =
+{
+  "gimp_display_fm",
+  "Creates a new display for the specified image",
+  "Creates a new display for the specified image.  If the image already has a display, another is added.  Multiple displays are handled transparently by the GIMP.  The newly created display is returned and can be subsequently destroyed with a call to 'gimp_display_delete'.  This procedure only makes sense for use with the GIMP UI.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  gdisplay_fm_args,
+
+  /*  Output arguments  */
+  1,
+  gdisplay_fm_out_args,
+
+  /*  Exec method  */
+  { { gdisplay_fm_invoker } },
+};
+
 
 /*********************/
 /*  GDISPLAY_DELETE  */

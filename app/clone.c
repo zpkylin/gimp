@@ -65,7 +65,11 @@ static void         clone_painthit_setup  (PaintCore *, Canvas *);
 static void	    create_dialog         (char type); 
 static void	    create_offset_dialog  (); 
 static gint	    clone_x_offset        (GtkWidget *, gpointer); 
+static gint	    clone_x_offset_down   (GtkWidget *, gpointer); 
+static gint	    clone_x_offset_up     (GtkWidget *, gpointer); 
 static gint	    clone_y_offset        (GtkWidget *, gpointer); 
+static gint	    clone_y_offset_down   (GtkWidget *, gpointer); 
+static gint	    clone_y_offset_up     (GtkWidget *, gpointer); 
 static gint	    clone_x_scale         (GtkWidget *, gpointer); 
 static gint	    clone_y_scale         (GtkWidget *, gpointer); 
 static gint	    clone_rotate          (GtkWidget *, gpointer); 
@@ -228,35 +232,49 @@ create_clone_options (void)
   gtk_widget_show (rhbox);
  
  
-  options->x_offset_entry = entry = gtk_spin_button_new (
-      gtk_adjustment_new (0, -G_MAXFLOAT, G_MAXFLOAT, 1, 1, 0), 
-                1.0, 0);
+  options->x_offset_entry = entry = gtk_entry_new ();
+  gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);
+  gtk_entry_set_text (GTK_ENTRY (entry), "0");
   gtk_box_pack_start (GTK_BOX (rhbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_x_offset,
       options);
   gtk_widget_show (entry);
   
-  button = gtk_button_new_with_label ("Apply");
+  button = gtk_button_new_with_label ("UP");
   gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
   gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_x_offset,
+      (GtkSignalFunc) clone_x_offset_up,
       options);
   gtk_widget_show (button);
   
-  options->y_offset_entry = entry = gtk_spin_button_new (
-            gtk_adjustment_new (0, -G_MAXFLOAT, G_MAXFLOAT, 1, 1, 0),
-	                    1.0, 0);
+  button = gtk_button_new_with_label ("DOWN");
+  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
+  gtk_signal_connect (GTK_OBJECT (button), "clicked",
+      (GtkSignalFunc) clone_x_offset_down,
+      options);
+  gtk_widget_show (button);
+  
+  options->y_offset_entry = entry = gtk_entry_new ();
+  gtk_widget_set_usize (GTK_WIDGET (entry), 40, 0);
+  gtk_entry_set_text (GTK_ENTRY (entry), "0");
   gtk_box_pack_start (GTK_BOX (rhbox), entry, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (entry), "activate",
       (GtkSignalFunc) clone_y_offset,
       options);
   gtk_widget_show (entry);
   
-  button = gtk_button_new_with_label ("Apply");
+  button = gtk_button_new_with_label ("UP");
   gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
   gtk_signal_connect (GTK_OBJECT (button), "clicked",
-      (GtkSignalFunc) clone_y_offset,
+      (GtkSignalFunc) clone_y_offset_up,
+      options);
+  gtk_widget_show (button);
+  
+  button = gtk_button_new_with_label ("DOWN");
+  gtk_box_pack_start (GTK_BOX (rhbox), button, FALSE, FALSE, 2);
+  gtk_signal_connect (GTK_OBJECT (button), "clicked",
+      (GtkSignalFunc) clone_y_offset_down,
       options);
   gtk_widget_show (button);
  
@@ -331,17 +349,28 @@ clone_cursor_func (PaintCore *paint_core,
   int x1, y1, x2, y2; 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
-  if (!gdisp || !paint_core || !drawable || clean_up)
-    return 0;
-
+  if (!gdisp || !paint_core || !drawable)
+    {
+      clone_point_set = 0; 
+      return 0;
+    }
+  if (clean_up)
+    return 0; 
   x1 = paint_core->curx;
   y1 = paint_core->cury;
-   
+  
+ 
+  
   if (active_tool->state == INACTIVE && clone_point_set && first_down && !first_up 
       && clone_options->aligned == AlignYes)
     {
       clone_now = FALSE; 
       src_gdisp = gdisplay_get_ID (src_gdisp_ID);
+      if (!src_gdisp)
+	{
+	  src_gdisp_ID = gdisp->ID;
+	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
+	}
       if (src_gdisp != gdisp)
 	dont_dist = 1;
       else
@@ -373,7 +402,12 @@ clone_cursor_func (PaintCore *paint_core,
       y2 = y1 + offset_y;
 
       src_gdisp = gdisplay_get_ID (src_gdisp_ID);
-	dont_dist = 1;
+      if (!src_gdisp)
+	{
+	  src_gdisp_ID = gdisp->ID;
+	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
+	}
+      dont_dist = 1;
 
       if (src_gdisp && clone_point_set && second_mv)
 	{
@@ -421,18 +455,6 @@ clone_paint_func (PaintCore *paint_core,
   switch (state)
     {
     case MOTION_PAINT :
-#if 0
-      if (gdisp->framemanager && src_gdisp_ID != frame_manager_bg_display ())
-	{
-	  printf ("lkklk\n"); 
-	  src_gdisp_ID = frame_manager_bg_display ();
-	  source_drawable = frame_manager_bg_drawable ();
-	  saved_x = src_x = paint_core->curx + offset_x;
-	  saved_y = src_y = paint_core->cury + offset_y;
-	  first_down = TRUE;
-	  first_mv = TRUE;	    
-	}
-#endif 
       clone_now = TRUE; 
 
       x1 = paint_core->curx;
@@ -469,8 +491,17 @@ clone_paint_func (PaintCore *paint_core,
 	    {
 	      dest2_x = dest_x;
 	      dest2_y = dest_y;
-	      offset_x = src_x - dest_x;
-	      offset_y = src_y - dest_y;
+	      if (gdisp->gimage->onionskin)
+		{
+	      offset_x += src_x - dest_x;
+	      offset_y += src_y - dest_y;
+		}
+	      else
+		{
+		  offset_x = src_x - dest_x;
+		  offset_y = src_y - dest_y;
+
+		}
 	      if (gdisp->gimage->onionskin)
 		frame_manager_onionskin_offset (offset_x, offset_y); 
 	      first_down = FALSE;
@@ -528,7 +559,8 @@ clone_paint_func (PaintCore *paint_core,
       break;
 
     case INIT_PAINT :
-      if (clone_point_set && gdisp->framemanager && source_drawable != frame_manager_bg_drawable ())
+      if (clone_point_set && gdisp->framemanager && 
+	  source_drawable != frame_manager_bg_drawable ())
 	{
 	  source_drawable = frame_manager_bg_drawable (); 
 	}
@@ -536,7 +568,8 @@ clone_paint_func (PaintCore *paint_core,
 	{
 	 source_drawable = frame_manager_onionskin_drawable (); 
 	}
-      if (!clone_point_set && gdisp->framemanager && (src_gdisp_ID = frame_manager_bg_display ()))
+      if (!clone_point_set && gdisp->framemanager  
+	  && (src_gdisp_ID = frame_manager_bg_display ()))
 	{
 	  source_drawable = frame_manager_bg_drawable ();
 	  saved_x = src_x = paint_core->curx + offset_x;
@@ -655,7 +688,7 @@ clone_draw (Tool *tool)
   PaintCore * paint_core = NULL;
 
   paint_core = (PaintCore *) tool->private;
-
+  
   if (tool && paint_core && clone_point_set && !expose)
     {
       static int radius; 
@@ -671,38 +704,43 @@ clone_draw (Tool *tool)
 	}
       if (clone_now)
 	{
-	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-	      trans_tx - (TARGET_WIDTH >> 1), trans_ty,
-	      trans_tx + (TARGET_WIDTH >> 1), trans_ty);
-	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-	      trans_tx, trans_ty - (TARGET_HEIGHT >> 1),
-	      trans_tx, trans_ty + (TARGET_HEIGHT >> 1));
-	  gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
-	      0,
-	      trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
-	      radius, radius,
-	      0, 23040); 
-			    
+	  if ((GDisplay *) tool->gdisp_ptr &&
+	      !((GDisplay *) tool->gdisp_ptr)->gimage->onionskin)
+	    {
+	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		  trans_tx - (TARGET_WIDTH >> 1), trans_ty,
+		  trans_tx + (TARGET_WIDTH >> 1), trans_ty);
+	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		  trans_tx, trans_ty - (TARGET_HEIGHT >> 1),
+		  trans_tx, trans_ty + (TARGET_HEIGHT >> 1));
+	      gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
+		  0,
+		  trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
+		  radius, radius,
+		  0, 23040); 
+	    }		    
 	}
       else
 	{
-	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-	      trans_tx - (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
-	      trans_tx + (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
-	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-	      trans_tx + (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
-	      trans_tx - (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
-	
-	  gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
-	      0,
-	      trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
-	      radius, radius,
-	      0, 23040);
+	  if (!(dont_dist && ((GDisplay *) tool->gdisp_ptr)->gimage->onionskin))
+	    {
+	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		  trans_tx - (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
+		  trans_tx + (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
+	      gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		  trans_tx + (TARGET_WIDTH >> 1), trans_ty - (TARGET_HEIGHT >> 1),
+		  trans_tx - (TARGET_WIDTH >> 1), trans_ty + (TARGET_HEIGHT >> 1));
 
+	      gdk_draw_arc (paint_core->core->win, paint_core->core->gc,
+		  0,
+		  trans_tx - (radius+1)/2, trans_ty - (radius+1)/2,
+		  radius, radius,
+		  0, 23040);
+	    }
 	  if (!dont_dist)
-	  gdk_draw_line (paint_core->core->win, paint_core->core->gc,
-	      trans_tx, trans_ty,
-	      dtrans_tx, dtrans_ty); 
+	    gdk_draw_line (paint_core->core->win, paint_core->core->gc,
+		trans_tx, trans_ty,
+		dtrans_tx, dtrans_ty); 
 	}
     }
 }
@@ -765,9 +803,9 @@ clone_delete_image (GImage *gimage)
 void
 clone_flip_image ()
 {
-  clean_up = 0;
 
-  clone_expose (); 
+  clean_up = 1;
+  expose = 1; 
 }
 
 static void 
@@ -966,21 +1004,71 @@ clone_line_image  (PaintCore * paint_core,
   return rc;
 }
 
-static gint	    
+static gint
 clone_x_offset (GtkWidget *w, gpointer client_data)
 {
   CloneOptions *co = (CloneOptions*) client_data;
-  offset_x = gtk_spin_button_get_value_as_int (co->x_offset_entry);
-    frame_manager_onionskin_offset (offset_x, offset_y); 
+  char *tmp;
+  offset_x = atoi (gtk_entry_get_text (co->x_offset_entry));
+  frame_manager_onionskin_offset (offset_x, 0);
+  return TRUE;
+}
+
+static gint	    
+clone_x_offset_down (GtkWidget *w, gpointer client_data)
+{
+  char tmp[30]; 
+  CloneOptions *co = (CloneOptions*) client_data;
+  offset_x --;
+  sprintf (tmp, "%d\0", offset_x);  
+  gtk_entry_set_text (co->x_offset_entry, tmp);
+  frame_manager_onionskin_offset (offset_x, 0); 
+  return TRUE; 
+}
+
+static gint	    
+clone_x_offset_up (GtkWidget *w, gpointer client_data)
+{
+  char tmp[30]; 
+  CloneOptions *co = (CloneOptions*) client_data;
+  offset_x ++;
+  sprintf (tmp, "%d\0", offset_x);  
+  gtk_entry_set_text (co->x_offset_entry, tmp);
+  frame_manager_onionskin_offset (offset_x, 0); 
+  return TRUE; 
+}
+
+static gint
+clone_y_offset (GtkWidget *w, gpointer client_data)
+{
+  CloneOptions *co = (CloneOptions*) client_data;
+  char *tmp;
+  offset_y = atoi (gtk_entry_get_text (co->y_offset_entry));
+  frame_manager_onionskin_offset (0, offset_y);
+  return TRUE;
+}
+
+static gint 	    
+clone_y_offset_down (GtkWidget *w, gpointer client_data) 
+{
+  char tmp[30]; 
+  CloneOptions *co = (CloneOptions*) client_data;
+  offset_y --;
+  sprintf (tmp, "%d\0", offset_y);  
+  gtk_entry_set_text (co->y_offset_entry, tmp);
+  frame_manager_onionskin_offset (0, offset_y); 
   return TRUE; 
 }
 
 static gint 	    
-clone_y_offset (GtkWidget *w, gpointer client_data) 
+clone_y_offset_up (GtkWidget *w, gpointer client_data) 
 {
+  char tmp[30]; 
   CloneOptions *co = (CloneOptions*) client_data;
-  offset_y = gtk_spin_button_get_value_as_int (co->y_offset_entry);
-    frame_manager_onionskin_offset (offset_x, offset_y); 
+  offset_y ++;
+  sprintf (tmp, "%d\0", offset_y);  
+  gtk_entry_set_text (co->y_offset_entry, tmp);
+  frame_manager_onionskin_offset (0, offset_y); 
   return TRUE; 
 }
 
@@ -1013,53 +1101,90 @@ clone_rotate (GtkWidget *w, gpointer client_data)
   return TRUE; 
 }
 
+gint 
+clone_is_src (GDisplay *gdisplay)
+{
+
+  if (src_gdisp_ID == gdisplay->ID)
+    return 1;
+  return 0; 
+}
+
 static void         
 clone_set_offset (CloneOptions *co, int x, int y)
 {
-  gtk_spin_button_set_value (co->x_offset_entry, x);
-  gtk_spin_button_set_value (co->y_offset_entry, y);
+  char tmp[20];
+  sprintf (tmp, "%d\0", x); 
+  gtk_entry_set_text (co->x_offset_entry, tmp);
+  sprintf (tmp, "%d\0", y); 
+  gtk_entry_set_text (co->y_offset_entry, tmp);
 } 
 
 void
 clone_x_offset_increase ()
 {
-  offset_x ++;  
+  char tmp[20];
+  offset_x ++; 
+  sprintf (tmp, "%d\0", offset_x);  
   if (clone_options)
-  gtk_spin_button_set_value (clone_options->x_offset_entry, offset_x);
+    gtk_entry_set_text (clone_options->x_offset_entry, tmp);
+  frame_manager_onionskin_offset (offset_x, 0); 
 }
 
 void
 clone_x_offset_decrease ()
 {
-  offset_x --;  
+  char tmp[20];
+  offset_x --; 
+  sprintf (tmp, "%d\0", offset_x);  
   if (clone_options)
-  gtk_spin_button_set_value (clone_options->x_offset_entry, offset_x);
+    gtk_entry_set_text (clone_options->x_offset_entry, tmp);
+  frame_manager_onionskin_offset (offset_x, 0); 
 }
 
 void
 clone_y_offset_increase ()
 {
-  offset_y ++;  
+  char tmp[20];
+  offset_y ++;
+  sprintf (tmp, "%d\0", offset_y);
   if (clone_options)
-  gtk_spin_button_set_value (clone_options->y_offset_entry, offset_y);
+    gtk_entry_set_text (clone_options->y_offset_entry, tmp);
+  frame_manager_onionskin_offset (0, offset_y); 
 }
 
 void
 clone_y_offset_decrease ()
 {
-  offset_y --;  
+  char tmp[20];
+  offset_y --;
+  sprintf (tmp, "%d\0", offset_y);
   if (clone_options)
-  gtk_spin_button_set_value (clone_options->y_offset_entry, offset_y);
+    gtk_entry_set_text (clone_options->y_offset_entry, tmp);
+  frame_manager_onionskin_offset (0, offset_y); 
 }
 
 void
 clone_reset_offset ()
 {
-
   offset_x = offset_y = 0; 
   if (clone_options)
     clone_set_offset (clone_options, offset_x, offset_y); 
+  frame_manager_onionskin_offset (0, 0);  
 }
+
+int
+clone_get_x_offset ()
+{
+  return offset_x;
+}
+
+int
+clone_get_y_offset ()
+{
+  return offset_y;
+}
+
 
 static void *
 clone_non_gui_paint_func (PaintCore *paint_core,

@@ -42,6 +42,7 @@
 #include "scroll.h"
 #include "tools.h"
 #include "undo.h"
+#include "frame_manager.h"
 
 #include "layer_pvt.h"			/* ick. */
 
@@ -53,6 +54,7 @@ GSList *               display_list = NULL;
 static int             display_num  = 1;
 static GdkCursorType   default_gdisplay_cursor = GDK_TOP_LEFT_ARROW;
 extern char 	       BRUSH_CHANGED;
+extern frame_manager_t *frame_manager;
 
 #define ROUND(x) ((int) (x + 0.5))
 
@@ -138,6 +140,12 @@ gdisplay_new (GImage       *gimage,
   return gdisp;
 }
 
+GDisplay*
+gdisplay_fm (GImage *gimage,
+	      unsigned int  scale)
+{
+  return frame_manager_load (gimage);
+}
 
 static void
 gdisplay_format_title (GImage *gimage,

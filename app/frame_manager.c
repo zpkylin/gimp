@@ -54,30 +54,14 @@
 #define STORE_LIST_HEIGHT	150 
 #define	STORE_MAX_NUM		6
 #define BUTTON_EVENT_MASK  GDK_EXPOSURE_MASK | GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK | \
-                           GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK
-	
-			   
+GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK
+
+
 #define NORMAL 0
 #define SELECTED 1
 #define INSENSITIVE 2
-			   
 
 
-typedef struct
-{
-  GtkWidget *istep;
-  GtkWidget *iflip;
-  GtkWidget *ibg;
-  GtkWidget *label;
-  GImage *gimage;
-  GtkWidget *list_item;
-  char flip;
-  char bg;
-  char step; 
-  char selected;
-  char active;  
-  GImage *bg_image; 
-}store_t;
 
 /* functions */
 static gint frame_manager_step_size (GtkWidget *, gpointer);
@@ -91,7 +75,7 @@ static gint frame_manager_update_whole_area (GtkWidget *, gpointer);
 static gint frame_manager_flip_delete (GtkWidget *, gpointer);
 
 static void frame_manager_next_filename (GImage *gimage, char **whole, char **raw, char
-dir, frame_manager_t *fm);
+    dir, frame_manager_t *fm);
 static char* frame_manager_get_name (GImage *image);
 static char* frame_manager_get_frame (GImage *image);
 static char* frame_manager_get_ext (GImage *image);
@@ -109,8 +93,6 @@ static gint frame_manager_store_deselect_update (GtkWidget *, gpointer);
 static gint frame_manager_store_step_button (GtkWidget *, GdkEvent *);
 static gint frame_manager_store_flip_button (GtkWidget *, GdkEvent *);
 static gint frame_manager_store_bg_button (GtkWidget *, GdkEvent *);
-static void frame_manager_store_add (GImage *, frame_manager_t *, int);
-static store_t* frame_manager_store_new (GImage *gimage, char active);
 static void frame_manager_store_delete (store_t*, frame_manager_t*, char);
 static void frame_manager_store_unselect (frame_manager_t *fm);
 static void frame_manager_store_load (store_t *item, frame_manager_t*);
@@ -123,6 +105,12 @@ static void frame_manager_bg_redraw (store_t *item);
 static void frame_manager_save (GImage *gimage, frame_manager_t *fm);
 
 static gint frame_manager_transparency (GtkAdjustment *, gpointer);
+static gint frame_manager_opacity_00 (GtkWidget *, gpointer);
+static gint frame_manager_opacity_25 (GtkWidget *, gpointer);
+static gint frame_manager_opacity_05 (GtkWidget *, gpointer);
+static gint frame_manager_opacity_75 (GtkWidget *, gpointer);
+static gint frame_manager_opacity_10 (GtkWidget *, gpointer);
+
 static gint frame_manager_close (GtkWidget *, gpointer);
 
 static void frame_manager_link_forward (frame_manager_t*);
@@ -131,33 +119,42 @@ static void frame_manager_link_backward (frame_manager_t*);
 static int frame_manager_check (frame_manager_t *fm);
 static int frame_manager_get_bg_id ();
 
+static int create_warning (char*, frame_manager_t*);
+static gint warning_close (GtkWidget *, gpointer);
+static gint warning_ok (GtkWidget *, gpointer);
+
+static void step_forward (frame_manager_t *fm);
+static void step_backwards (frame_manager_t *fm);
+static void flip_delete (frame_manager_t *fm);
+
 static ActionAreaItem action_items[] =
 {
   { "Close", frame_manager_close, NULL, NULL }  
 };
 
+
 static OpsButton step_button[] =
 {
   { backwards_xpm, backwards_is_xpm, frame_manager_step_backwards, "Step Backwards", NULL, NULL, NULL, NULL, NULL, NULL },
-  { forward_xpm, forward_is_xpm, frame_manager_step_forward, "Step Forward", NULL, NULL, NULL, NULL, NULL, NULL },
-  { NULL, 0, 0, NULL, NULL, NULL, NULL }
+    { forward_xpm, forward_is_xpm, frame_manager_step_forward, "Step Forward", NULL, NULL, NULL, NULL, NULL, NULL },
+      { NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
 static OpsButton flip_button[] =
 {
   { backwards_xpm, backwards_is_xpm, frame_manager_flip_backwards, "Flip Backwards", NULL, NULL, NULL, NULL, NULL, NULL },
-  { forward_xpm, forward_is_xpm, frame_manager_flip_forward, "Flip Forward", NULL, NULL, NULL, NULL, NULL, NULL },
-  { raise_xpm, raise_is_xpm, frame_manager_flip_raise, "Raise", NULL, NULL, NULL, NULL, NULL, NULL },
-  { lower_xpm, lower_is_xpm, frame_manager_flip_lower, "Lower", NULL, NULL, NULL, NULL, NULL, NULL },
-  { area_xpm, area_is_xpm, frame_manager_flip_area, "Set Area", NULL, NULL, NULL, NULL, NULL, NULL },
-  { update_xpm, update_is_xpm, frame_manager_update_whole_area, "Update Whole Area", NULL, NULL, NULL, NULL, NULL, NULL },
-  { delete_xpm, delete_is_xpm, frame_manager_flip_delete, "Delete", NULL, NULL, NULL, NULL, NULL, NULL },
-  { NULL, 0, 0, NULL, NULL, NULL, NULL }
+    { forward_xpm, forward_is_xpm, frame_manager_flip_forward, "Flip Forward", NULL, NULL, NULL, NULL, NULL, NULL },
+      { raise_xpm, raise_is_xpm, frame_manager_flip_raise, "Raise", NULL, NULL, NULL, NULL, NULL, NULL },
+	{ lower_xpm, lower_is_xpm, frame_manager_flip_lower, "Lower", NULL, NULL, NULL, NULL, NULL, NULL },
+	  { area_xpm, area_is_xpm, frame_manager_flip_area, "Set Area", NULL, NULL, NULL, NULL, NULL, NULL },
+	    { update_xpm, update_is_xpm, frame_manager_update_whole_area, "Update Whole Area", NULL, NULL, NULL, NULL, NULL, NULL },
+	      { delete_xpm, delete_is_xpm, frame_manager_flip_delete, "Delete", NULL, NULL, NULL, NULL, NULL, NULL },
+		{ NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
 
 /* variables */
-static frame_manager_t *frame_manager=NULL; 
+frame_manager_t *frame_manager=NULL; 
 static store_t store[STORE_MAX_NUM];
 static GdkPixmap *istep_pixmap[3] = { NULL, NULL, NULL };
 static GdkPixmap *iflip_pixmap[3] = { NULL, NULL, NULL };
@@ -165,6 +162,8 @@ static GdkPixmap *ibg_pixmap[3] = { NULL, NULL, NULL };
 static int s_x, s_y, e_x, e_y;
 static char onionskin=0;
 static int NEW_OPTION=0;
+static char fm_continue = 0;
+static char dont_change_frame=0;
 
 void
 frame_manager_free ()
@@ -195,7 +194,7 @@ frame_manager_create ()
 	  frame_manager = NULL;
 	  return; 
 	}
-      
+
       if (!(gdisplay->gimage->filename))
 	{
 	  frame_manager = NULL;
@@ -204,45 +203,47 @@ frame_manager_create ()
 
 
       frame_manager = (frame_manager_t*) g_malloc (sizeof (frame_manager_t));
-    
+
       if (frame_manager == NULL)
 	return; 
-     
+
       gdisplay->framemanager = 1; 
-      
+
       frame_manager->gdisplay = gdisplay;
       frame_manager->store_option = NULL;
+      frame_manager->change_frame_num = NULL;
+      frame_manager->warning = NULL;
 
       s_x = 0;
       s_y = 0;
       e_x = gdisplay->disp_width;
       e_y = gdisplay->disp_height;
-      
+
       /* the shell */
       frame_manager->shell = gtk_dialog_new ();
       gtk_window_set_wmclass (GTK_WINDOW (frame_manager->shell), "frame_manager", "Gimp");
       gtk_window_set_policy (GTK_WINDOW (frame_manager->shell), FALSE, FALSE, FALSE);
       sprintf (tmp, "Frame Manager for %s\0", gdisplay->gimage->filename); 
       gtk_window_set_title (GTK_WINDOW (frame_manager->shell), tmp);
-      
+
       /* vbox */
       vbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);
       gtk_box_pack_start (GTK_BOX (GTK_DIALOG (frame_manager->shell)->vbox), vbox, TRUE, TRUE, 0);
       gtk_widget_show (vbox);
-      
+
       /* hbox */
       hbox = gtk_hbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (hbox), 1);
       gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
-    
+
       /* vbox */
       lvbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (lvbox), 1);
       gtk_box_pack_start (GTK_BOX (hbox), lvbox, TRUE, TRUE, 0);
       gtk_widget_show (lvbox);
-      
+
       rvbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (rvbox), 1);
       gtk_box_pack_start (GTK_BOX (hbox), rvbox, TRUE, TRUE, 0);
@@ -258,18 +259,18 @@ frame_manager_create ()
 	  frame_manager);
       gtk_widget_show (frame_manager->auto_save);  
       frame_manager->auto_save_on = 0; 
-      
+
       /* line */
       separator = gtk_hseparator_new (); 
       gtk_box_pack_start (GTK_BOX (lvbox), separator, FALSE, FALSE, 4);
       gtk_widget_show (separator); 
-      
+
       /* step size */
       hbox = gtk_hbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (hbox), 1);
       gtk_box_pack_start (GTK_BOX (lvbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
-      
+
       label = gtk_label_new ("Step Size"); 
       gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
       gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
@@ -280,12 +281,12 @@ frame_manager_create ()
 	  1.0, 0);
       gtk_box_pack_start (GTK_BOX (hbox), frame_manager->step_size, FALSE, FALSE, 2);
       /*gtk_widget_set_events (frame_manager->step_size, GDK_ENTER_NOTIFY_MASK|GDK_LEAVE_NOTIFY_MASK);
-      gtk_signal_connect (GTK_OBJECT (frame_manager->step_size), "event",
-	  (GtkSignalFunc) frame_manager_step_size,
-	  frame_manager);
-      */gtk_widget_show (frame_manager->step_size);
+	gtk_signal_connect (GTK_OBJECT (frame_manager->step_size), "event",
+	(GtkSignalFunc) frame_manager_step_size,
+	frame_manager);
+       */gtk_widget_show (frame_manager->step_size);
 
-      
+
       /* step buttons */
       button_box = ops_button_box_new2 (frame_manager->shell, tool_tips, step_button, frame_manager);
       gtk_box_pack_start (GTK_BOX (lvbox), button_box, FALSE, FALSE, 2);
@@ -293,39 +294,12 @@ frame_manager_create ()
 
 
 
-      /* jump to */
-      hbox = gtk_hbox_new (FALSE, 1);
-      gtk_container_border_width (GTK_CONTAINER (hbox), 1);
-      gtk_box_pack_start (GTK_BOX (lvbox), hbox, TRUE, TRUE, 0);
-      gtk_widget_show (hbox);
-     
-      sprintf (&(tmp[0]), "%s.\0", frame_manager_get_name (gdisplay->gimage));
-      label = gtk_label_new (tmp);     
-      gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
-      gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
-      gtk_widget_show (label);
 
-      temp = strdup (frame_manager_get_frame (gdisplay->gimage)); 
-      frame_manager->jump_to = gtk_entry_new ();
-      gtk_widget_set_usize (GTK_WIDGET (frame_manager->jump_to), 50, 0);
-      gtk_entry_set_text (GTK_ENTRY (frame_manager->jump_to), temp); 
-      gtk_box_pack_start (GTK_BOX (hbox), frame_manager->jump_to, FALSE, FALSE, 0);
-      gtk_signal_connect (GTK_OBJECT (frame_manager->jump_to), "activate",
-	  (GtkSignalFunc) frame_manager_jump_to,
-	  frame_manager);
-      gtk_widget_show (frame_manager->jump_to);
-     
-      sprintf (&(tmp[0]), ".%s\0", frame_manager_get_ext (gdisplay->gimage));
-      label = gtk_label_new (tmp);     
-      gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
-      gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
-      gtk_widget_show (label);
-      
       /* line */
       separator = gtk_hseparator_new (); 
       gtk_box_pack_start (GTK_BOX (lvbox), separator, FALSE, FALSE, 4);
       gtk_widget_show (separator); 
-      
+
       /* link */
       hbox = gtk_hbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (hbox), 1);
@@ -353,10 +327,10 @@ frame_manager_create ()
       frame_manager->linked_display = NULL;
 
       /*** right side ***/
-  
-     /* store list */
-     frame_manager->stores = NULL; 
-     
+
+      /* store list */
+      frame_manager->stores = NULL; 
+
       /* store area */
       listbox = gtk_scrolled_window_new (NULL, NULL);
       gtk_widget_set_usize (listbox, STORE_LIST_WIDTH, STORE_LIST_HEIGHT);
@@ -379,7 +353,7 @@ frame_manager_create ()
       separator = gtk_hseparator_new (); 
       gtk_box_pack_start (GTK_BOX (lvbox), separator, FALSE, FALSE, 4);
       gtk_widget_show (separator); 
-      
+
       /* trans slider */
       utilbox = gtk_hbox_new (FALSE, 1);
       gtk_box_pack_start (GTK_BOX (rvbox), utilbox, FALSE, FALSE, 0);
@@ -398,19 +372,57 @@ frame_manager_create ()
 	  (GtkSignalFunc) frame_manager_transparency,
 	  frame_manager);
       gtk_widget_show (slider);
-      
+
+      /* opacity buttons */
+      hbox = gtk_hbox_new (FALSE, 1);
+      gtk_container_border_width (GTK_CONTAINER (hbox), 1);
+      gtk_box_pack_start (GTK_BOX (rvbox), hbox, TRUE, TRUE, 0);
+      gtk_widget_show (hbox);
+
+      button = gtk_button_new_with_label ("0.0");
+      gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+	  (GtkSignalFunc) frame_manager_opacity_00,
+	  frame_manager);
+      button = gtk_button_new_with_label (".25");
+      gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+	  (GtkSignalFunc) frame_manager_opacity_25,
+	  frame_manager);
+      button = gtk_button_new_with_label ("0.5");
+      gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+	  (GtkSignalFunc) frame_manager_opacity_05,
+	  frame_manager);
+      button = gtk_button_new_with_label (".75");
+      gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+	  (GtkSignalFunc) frame_manager_opacity_75,
+	  frame_manager);
+      button = gtk_button_new_with_label ("1.0");
+      gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+      gtk_widget_show (button);
+      gtk_signal_connect (GTK_OBJECT (button), "clicked",
+	  (GtkSignalFunc) frame_manager_opacity_10,
+	  frame_manager);
+
+
       /* line */
       separator = gtk_hseparator_new (); 
       gtk_box_pack_start (GTK_BOX (rvbox), separator, FALSE, FALSE, 4);
       gtk_widget_show (separator); 
-     
+
       /* num of store */
       hbox = gtk_hbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (hbox), 1);
       gtk_box_pack_start (GTK_BOX (rvbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
-      
-      label = gtk_label_new ("Number of Store"); 
+
+      label = gtk_label_new ("Number of store to add"); 
       gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
       gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
       gtk_widget_show (label);
@@ -431,25 +443,34 @@ frame_manager_create ()
 	  (GtkSignalFunc) frame_manager_store_size,
 	  frame_manager);
       gtk_widget_show (button);
-      
-      
+
+
       /* buttons */
       button_box = ops_button_box_new2 (frame_manager->shell, tool_tips, flip_button, frame_manager);
       gtk_box_pack_start (GTK_BOX (rvbox), button_box, FALSE, FALSE, 2);
       gtk_widget_show (button_box);
-      
+
       /* line */
       separator = gtk_hseparator_new (); 
       gtk_box_pack_start (GTK_BOX (rvbox), separator, FALSE, FALSE, 4);
       gtk_widget_show (separator); 
-      
+
       /* Close */
       action_items[0].user_data = frame_manager;
       build_action_area (GTK_DIALOG (frame_manager->shell), action_items, 1, 0);
-      
-      gtk_widget_show (frame_manager->shell);
+
+
+      dont_change_frame = 0; 
       frame_manager_store_add (gdisplay->gimage, frame_manager, 0);
-      
+      dont_change_frame = 1; 
+      gtk_widget_show (frame_manager->shell);
+
+      if (active_tool->type == CLONE)
+	{
+	  if (clone_is_src (gdisplay))
+	    frame_manager_set_bg (gdisplay); 
+	}
+
     }
   else
     {
@@ -462,8 +483,19 @@ frame_manager_create ()
 	{
 	  if (gdisplay)
 	    {
+	      frame_manager->gdisplay = gdisplay;
+	      frame_manager->gdisplay->framemanager = 1;
 	      gtk_widget_show (frame_manager->shell);
+	      dont_change_frame = 0; 
 	      frame_manager_store_add (gdisplay->gimage, frame_manager, 0); 
+	      dont_change_frame = 1; 
+	      if (active_tool->type == CLONE)
+		{
+		  if (clone_is_src (gdisplay))
+		    frame_manager_set_bg (gdisplay); 
+		}
+
+
 	    }
 	}
       else
@@ -504,11 +536,9 @@ frame_manager_find_gimage (char *whole, frame_manager_t *fm)
 gint 
 frame_manager_step_forward (GtkWidget *w, gpointer client_data)
 {
-  char *whole, *raw, autosave;
-  int num=0, i=0, j=0, gi[7];
   GSList *list=NULL;
   store_t *item;
-  GImage *gimages[7], *gimage; 
+  char flag=0;
 
   frame_manager_t *fm;
   if (client_data)
@@ -521,6 +551,44 @@ frame_manager_step_forward (GtkWidget *w, gpointer client_data)
       return 1; 
     }
   frame_manager_rm_onionskin (fm); 
+
+
+
+  /* warning dialog */
+  if (!gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
+    {
+      list = fm->stores;
+      while (list)
+	{
+	  item = (store_t*) list->data;
+	  if (item->gimage->dirty)
+	    flag = 1;
+	  list = g_slist_next (list);	
+	}
+    }
+  if (flag)
+    {
+      fm_continue = 0; 
+      create_warning ("Not all stores are saved. Do you really want to step forward\0",
+	  fm);
+    }
+  else 
+    {
+      step_forward (fm); 
+    }
+  return TRUE; 
+
+}
+
+static void 
+step_forward (frame_manager_t *fm)
+{
+  char *whole, *raw, autosave;
+  int num=0, i=0, j=0, gi[7];
+  GSList *list=NULL;
+  store_t *item;
+  GImage *gimages[7], *gimage; 
+
   autosave = gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save);
 
 
@@ -534,15 +602,15 @@ frame_manager_step_forward (GtkWidget *w, gpointer client_data)
    */
   list = fm->stores;
   if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
-  {
-    while (list)
     {
-      item = (store_t*) list->data;
-      gi[i] = 0; 
-      gimages[i++] = item->gimage;
-      list = g_slist_next (list);
+      while (list)
+	{
+	  item = (store_t*) list->data;
+	  gi[i] = 0; 
+	  gimages[i++] = item->gimage;
+	  list = g_slist_next (list);
+	}
     }
-  }
   list = fm->stores;
   while (list)
     {
@@ -566,40 +634,44 @@ frame_manager_step_forward (GtkWidget *w, gpointer client_data)
 		{
 		  fm->gdisplay->gimage = gimage;
 		  fm->gdisplay->ID = fm->gdisplay->gimage->ID;
+		  dont_change_frame = 0; 
 		  frame_manager_store_add (fm->gdisplay->gimage, fm, num);
-		  frame_manager_jump_to_update (
-		      frame_manager_get_frame (fm->gdisplay->gimage), fm);
+		  dont_change_frame = 1; 
 		  frame_manager_link_forward (fm);
 		}
 	      else
-	      if (file_load (whole, raw, fm->gdisplay))
-		{
-		  fm->gdisplay->ID = fm->gdisplay->gimage->ID;
-		  frame_manager_store_add (fm->gdisplay->gimage, fm, num);
-		  frame_manager_jump_to_update (
-		      frame_manager_get_frame (fm->gdisplay->gimage), fm);
-		  frame_manager_link_forward (fm);
-		}
-	      else
-		{
-		  printf ("ERROR\n");
-		}
+		if (file_load (whole, raw, fm->gdisplay))
+		  {
+		    fm->gdisplay->ID = fm->gdisplay->gimage->ID;
+		    dont_change_frame = 0; 
+		    frame_manager_store_add (fm->gdisplay->gimage, fm, num);
+		    dont_change_frame = 1; 
+		    frame_manager_link_forward (fm);
+		  }
+		else
+		  {
+		    printf ("ERROR\n");
+		  }
 	    }
 	  else
 	    {
 	      if (gimage)
 		{
+		  dont_change_frame = 0; 
 		  frame_manager_store_add (gimage, fm, num);
+		  dont_change_frame = 1; 
 		}
 	      else
 		if ((gimage = file_load_without_display (whole, raw, fm->gdisplay)))
-		{
-		  frame_manager_store_add (gimage, fm, num);
-		}
-	      else
-		{
-		  printf ("ERROR\n");
-		}
+		  {
+		    dont_change_frame = 0; 
+		    frame_manager_store_add (gimage, fm, num);
+		    dont_change_frame = 1; 
+		  }
+		else
+		  {
+		    printf ("ERROR\n");
+		  }
 	    }
 	}
       num ++; 
@@ -617,18 +689,15 @@ frame_manager_step_forward (GtkWidget *w, gpointer client_data)
   free (whole);
   free (raw); 
 
-  return TRUE; 
 
 }
 
 gint 
 frame_manager_step_backwards (GtkWidget *w, gpointer client_data)
 {
-  char *whole, *raw, autosave;
-  int num=0, i=0, j=0, gi[7];
   GSList *list=NULL;
   store_t *item;
-  GImage *gimages[7], *gimage; 
+  char flag=0;
 
   frame_manager_t *fm;
   if (client_data)
@@ -641,6 +710,45 @@ frame_manager_step_backwards (GtkWidget *w, gpointer client_data)
       return 1; 
     }
   frame_manager_rm_onionskin (fm); 
+
+
+
+  /* warning dialog */
+  if (!gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
+    {
+      list = fm->stores;
+      while (list)
+	{
+	  item = (store_t*) list->data;
+	  if (item->gimage->dirty)
+	    flag = 1;
+	  list = g_slist_next (list);	
+	}
+    }
+  if (flag)
+    {
+
+      fm_continue = 1; 
+      create_warning ("Not all stores are saved. Do you really want to step forward\0",
+	  fm);
+    }
+  else 
+    {
+      step_backwards (fm); 
+    }
+  return TRUE; 
+
+}
+
+static void
+step_backwards (frame_manager_t *fm)
+{
+  char *whole, *raw, autosave;
+  int num=0, i=0, j=0, gi[7];
+  GSList *list=NULL;
+  store_t *item;
+  GImage *gimages[7], *gimage; 
+
   autosave = gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save);
 
 
@@ -654,15 +762,15 @@ frame_manager_step_backwards (GtkWidget *w, gpointer client_data)
    */
   list = fm->stores;
   if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
-  {
-    while (list)
     {
-      item = (store_t*) list->data;
-      gi[i] = 0; 
-      gimages[i++] = item->gimage;
-      list = g_slist_next (list);
+      while (list)
+	{
+	  item = (store_t*) list->data;
+	  gi[i] = 0; 
+	  gimages[i++] = item->gimage;
+	  list = g_slist_next (list);
+	}
     }
-  }
   list = fm->stores;
   while (list)
     {
@@ -686,40 +794,44 @@ frame_manager_step_backwards (GtkWidget *w, gpointer client_data)
 		{
 		  fm->gdisplay->gimage = gimage;
 		  fm->gdisplay->ID = fm->gdisplay->gimage->ID;
+		  dont_change_frame = 0; 
 		  frame_manager_store_add (fm->gdisplay->gimage, fm, num);
-		  frame_manager_jump_to_update (
-		      frame_manager_get_frame (fm->gdisplay->gimage), fm);
+		  dont_change_frame = 1; 
 		  frame_manager_link_forward (fm);
 		}
 	      else
-	      if (file_load (whole, raw, fm->gdisplay))
-		{
-		  fm->gdisplay->ID = fm->gdisplay->gimage->ID;
-		  frame_manager_store_add (fm->gdisplay->gimage, fm, num);
-		  frame_manager_jump_to_update (
-		      frame_manager_get_frame (fm->gdisplay->gimage), fm);
-		  frame_manager_link_forward (fm);
-		}
-	      else
-		{
-		  printf ("ERROR\n");
-		}
+		if (file_load (whole, raw, fm->gdisplay))
+		  {
+		    fm->gdisplay->ID = fm->gdisplay->gimage->ID;
+		    dont_change_frame = 0; 
+		    frame_manager_store_add (fm->gdisplay->gimage, fm, num);
+		    dont_change_frame = 1; 
+		    frame_manager_link_forward (fm);
+		  }
+		else
+		  {
+		    printf ("ERROR\n");
+		  }
 	    }
 	  else
 	    {
 	      if (gimage)
 		{
+		  dont_change_frame = 0; 
 		  frame_manager_store_add (gimage, fm, num);
+		  dont_change_frame = 1; 
 		}
 	      else
 		if ((gimage = file_load_without_display (whole, raw, fm->gdisplay)))
-		{
-		  frame_manager_store_add (gimage, fm, num);
-		}
-	      else
-		{
-		  printf ("ERROR\n");
-		}
+		  {
+		    dont_change_frame = 0; 
+		    frame_manager_store_add (gimage, fm, num);
+		    dont_change_frame = 1; 
+		  }
+		else
+		  {
+		    printf ("ERROR\n");
+		  }
 	    }
 	}
       num ++; 
@@ -737,7 +849,6 @@ frame_manager_step_backwards (GtkWidget *w, gpointer client_data)
   free (whole);
   free (raw); 
 
-  return TRUE; 
 
 }
 
@@ -746,21 +857,21 @@ frame_manager_step_size (GtkWidget *w, gpointer client_data)
 {
   frame_manager_rm_onionskin ((frame_manager_t*)client_data); 
   return TRUE; 
-  
+
 }
 
 static gint 
 frame_manager_jump_to (GtkWidget *w, gpointer client_data)
 {
   char *whole, *raw;
-  int num=1;
-frame_manager_t *fm = (frame_manager_t*) client_data;
-
+  int num=1, i;
+  frame_manager_t *fm = (frame_manager_t*) client_data;
+  GSList *item_list=NULL;
   if (!frame_manager_check (fm))
     return 1; 
   frame_manager_rm_onionskin (fm); 
 
-  
+
 
   whole = (char*) malloc (sizeof(char)*255);
   raw = (char*) malloc (sizeof(char)*255);
@@ -770,8 +881,14 @@ frame_manager_t *fm = (frame_manager_t*) client_data;
   if (file_load (whole, raw, fm->gdisplay))
     {
       fm->gdisplay->ID = fm->gdisplay->gimage->ID;
-      frame_manager_store_add (fm->gdisplay->gimage, fm, 0);  
-
+      item_list =  (GList*) GTK_LIST(frame_manager->store_list)->selection;
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (frame_manager->store_list), item_list->data);
+	  dont_change_frame = 0; 
+	  frame_manager_store_add (fm->gdisplay->gimage, fm, i);  
+	  dont_change_frame = 1; 
+	}
     }
   else
     {
@@ -808,7 +925,7 @@ frame_manager_flip_forward (GtkWidget *w, gpointer client_data)
   if (!frame_manager_check (fm))
     return; 
 
-  
+
   if (onionskin)
     {
       item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
@@ -818,9 +935,10 @@ frame_manager_flip_forward (GtkWidget *w, gpointer client_data)
       drawable_update (GIMP_DRAWABLE(item->gimage->active_layer),
 	  s_x, s_y, e_x, e_y);
       gdisplays_flush ();
+      gtk_adjustment_set_value (frame_manager->trans_data, item->gimage->active_layer->opacity);
       return 1;
     }
-  
+
   list = fm->stores; 
 
   /* find the next active item */ 
@@ -836,7 +954,6 @@ frame_manager_flip_forward (GtkWidget *w, gpointer client_data)
 	{
 	  item->selected = 1;
 	  frame_manager_store_load (item, fm); 
-	  frame_manager_jump_to_update (frame_manager_get_frame (item->gimage), fm); 
 	  return; 
 	}
       if (item->selected)
@@ -852,7 +969,6 @@ frame_manager_flip_forward (GtkWidget *w, gpointer client_data)
     {
       first->selected = 1;
       frame_manager_store_load (first, fm);
-      frame_manager_jump_to_update (frame_manager_get_frame (first->gimage), fm); 
     }
   else
     {
@@ -870,7 +986,7 @@ frame_manager_flip_backwards (GtkWidget *w, gpointer client_data)
   store_t *item, *prev=NULL, *next=NULL, *cur;
   frame_manager_t *fm;
   GList *item_list=NULL;
-  
+
   if(client_data)
     fm = (frame_manager_t*) client_data; 
   else
@@ -888,6 +1004,7 @@ frame_manager_flip_backwards (GtkWidget *w, gpointer client_data)
       drawable_update (GIMP_DRAWABLE(item->gimage->active_layer),
 	  s_x, s_y, e_x, e_y);
       gdisplays_flush ();
+      gtk_adjustment_set_value (frame_manager->trans_data, item->gimage->active_layer->opacity);
       return 1;
     }
   list = fm->stores; 
@@ -916,13 +1033,11 @@ frame_manager_flip_backwards (GtkWidget *w, gpointer client_data)
     {
       prev->selected = 1;
       frame_manager_store_load (prev, fm);
-      frame_manager_jump_to_update (frame_manager_get_frame (prev->gimage), fm); 
     }
   else if (next)
     {
       next->selected = 1;
       frame_manager_store_load (next, fm); 
-      frame_manager_jump_to_update (frame_manager_get_frame (next->gimage), fm); 
     }
   else
     {
@@ -942,11 +1057,13 @@ frame_manager_flip_raise (GtkWidget *w, gpointer client_data)
     fm = (frame_manager_t*) client_data; 
   else
     fm = frame_manager; 
-  item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
   if (!frame_manager_check (fm))
     return FALSE; 
   frame_manager_rm_onionskin (fm); 
+  item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
 
+  dont_change_frame = 0;
+  
   if (item_list && g_slist_length (fm->stores) > 1)
     {
       i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
@@ -959,6 +1076,7 @@ frame_manager_flip_raise (GtkWidget *w, gpointer client_data)
       fm->stores = g_slist_insert(fm->stores, item, j);
       gtk_list_select_item (GTK_LIST (fm->store_list), j); 
     }
+  dont_change_frame = 1;
   return TRUE; 
 }
 
@@ -978,6 +1096,7 @@ frame_manager_flip_lower (GtkWidget *w, gpointer client_data)
   frame_manager_rm_onionskin (fm); 
   item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
 
+  dont_change_frame = 0;
   if (item_list && g_slist_length (fm->stores) > 1)
     {
       i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
@@ -990,6 +1109,7 @@ frame_manager_flip_lower (GtkWidget *w, gpointer client_data)
       fm->stores = g_slist_insert(fm->stores, item, j);
       gtk_list_select_item (GTK_LIST (fm->store_list), j); 
     }
+  dont_change_frame = 1;
   return TRUE;
 
 }
@@ -1051,26 +1171,36 @@ frame_manager_update_whole_area (GtkWidget *w, gpointer client_data)
 static gint 
 frame_manager_flip_delete (GtkWidget *w, gpointer client_data)
 {
+  frame_manager_t *fm = (frame_manager_t*) client_data;
+
+  fm_continue = 2;
+  create_warning ("Do you wanna delete the store", fm);
+  return TRUE;
+
+}
+
+static void
+flip_delete (frame_manager_t *fm)
+{
   int index;
   store_t *item;
   GList *item_list=NULL, *list=NULL;
-frame_manager_t *fm = (frame_manager_t*) client_data;
 
   if (!frame_manager_check (fm))
-    return FALSE; 
-  frame_manager_rm_onionskin (fm); 
+    return;
+  frame_manager_rm_onionskin (fm);
   item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
 
   if (item_list && g_slist_length (fm->stores) > 1)
     {
       index = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
       item = (store_t*) g_slist_nth (fm->stores, index)->data;
-      list = g_list_append (list, item->list_item); 
+      list = g_list_append (list, item->list_item);
       gtk_list_remove_items (GTK_LIST (fm->store_list), list);
       frame_manager_store_delete (item, fm, 1);
-      fm->stores = g_slist_remove(fm->stores, item); 
+      fm->stores = g_slist_remove(fm->stores, item);
       g_free (item);
-      item = NULL; 
+      item = NULL;
       if (fm->stores)
 	{
 	  item = (store_t*) g_slist_nth (fm->stores, 0)->data;
@@ -1078,9 +1208,10 @@ frame_manager_t *fm = (frame_manager_t*) client_data;
 	    frame_manager_store_load (item, fm);
 	}
     }
-  return TRUE;
+  return;
 
 }
+
 
 
 gint 
@@ -1194,15 +1325,15 @@ frame_manager_store_list (GtkWidget *w, GdkEvent *e)
   return 0; 
 }
 
-static void
+void
 frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
 {
   store_t *item;
   GList *item_list = NULL; 
   char frame[20];
-  char selected, flip, bg;
+  char selected, flip, bg, flag=0;
 
-  if (!gimage || num<0 /*|| num >= gtk_spin_button_get_value_as_int (fm->store_size)*/)
+  if (!gimage || num<0)
     return;
 
 
@@ -1214,7 +1345,6 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
       gtk_list_insert_items (GTK_LIST (fm->store_list),
 	  g_list_append(item_list, item->list_item), num);
       strcpy (frame, frame_manager_get_frame (gimage));
-      gtk_entry_set_text (GTK_ENTRY (fm->jump_to), frame);
       frame_manager_store_unselect (fm);
       gtk_list_select_item (GTK_LIST (fm->store_list), num);
     }
@@ -1231,11 +1361,18 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
       }
     else 
       {
+	
 	/* rm the item and then add new item in place */
 	item = (store_t*) g_slist_nth (fm->stores, num)->data;
 	selected = item->selected; 
 	flip = item->flip; 
-	bg = item->bg; 
+	bg = item->bg;
+	if (!item->active)
+	  {
+	    selected = 1;
+	    flip = 1;
+	    flag = 1;
+	  }	    
 	item_list = g_list_append (item_list, item->list_item);
 	gtk_list_remove_items (GTK_LIST (fm->store_list), item_list);
 	frame_manager_store_delete (item, fm, 0);
@@ -1251,18 +1388,20 @@ frame_manager_store_add (GImage *gimage, frame_manager_t *fm, int num)
 	gtk_list_insert_items (GTK_LIST (fm->store_list),
 	    g_list_append(item_list, item->list_item), num);
 
-
 	if (selected)
 	  {
 	    strcpy (frame, frame_manager_get_frame (gimage));
-	    gtk_entry_set_text (GTK_ENTRY (fm->jump_to), frame);
 	    frame_manager_store_unselect (fm);
 	    gtk_list_select_item (GTK_LIST (fm->store_list), num);
+	  }
+	if (flag)
+	  {
+	    frame_manager_store_load (item, fm);
 	  }
       }
 }
 
-static store_t* 
+store_t* 
 frame_manager_store_new (GImage *gimage, char active)
 {
 
@@ -1300,7 +1439,6 @@ frame_manager_store_new (GImage *gimage, char active)
   gtk_signal_connect (GTK_OBJECT (list_item), "deselect",
       (GtkSignalFunc) frame_manager_store_deselect_update,
       item);
-
   vbox = gtk_vbox_new (FALSE, 1);
   gtk_container_add (GTK_CONTAINER (list_item), vbox);
   gtk_widget_show (vbox);
@@ -1371,6 +1509,9 @@ frame_manager_store_new (GImage *gimage, char active)
 static void
 frame_manager_store_delete (store_t *store, frame_manager_t *fm, char flag)
 {
+  if (!store->active)
+    return;
+  
   /* get rid of gimage */
   if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
     {
@@ -1437,9 +1578,9 @@ frame_manager_store_unselect (frame_manager_t *fm)
 static void
 frame_manager_store_load (store_t *item, frame_manager_t *fm)
 {
-  if (!frame_manager_check (fm))
+/*  if (!frame_manager_check (fm))
     return; 
-  
+  */
   item->selected = 1;
   gtk_list_select_item (GTK_LIST (fm->store_list), 
       g_slist_index (fm->stores, item));
@@ -1447,10 +1588,10 @@ frame_manager_store_load (store_t *item, frame_manager_t *fm)
   fm->gdisplay->ID = item->gimage->ID; 
   gdisplays_update_title (fm->gdisplay->gimage->ID);
   gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
-  gdisplays_flush ();
-
   if (active_tool->type == CLONE)
     clone_flip_image (); 
+  gdisplays_flush ();
+
 }
 
 static void
@@ -1472,30 +1613,32 @@ frame_manager_store_add_stores (frame_manager_t *fm)
 
  switch (NEW_OPTION)
    {
-#if 0
-   case 0: /* do nothing */
-    num = gtk_spin_button_get_value_as_int (fm->store_size) - g_slist_length (fm->stores); 
+   case 3: /* do nothing */
+    num = gtk_spin_button_get_value_as_int (fm->store_size); 
     for (i=0; i<num; i++)
       {
+	dont_change_frame = 0; 
 	frame_manager_store_add (item->gimage, fm, cur_num+i); 
+	dont_change_frame = 1; 
       }
     break;
-#endif
    case 0: /* add prev */
-    num = gtk_spin_button_get_value_as_int (fm->store_size) - g_slist_length (fm->stores); 
+    num = gtk_spin_button_get_value_as_int (fm->store_size); 
     frame = strdup (frame_manager_get_frame (item->gimage));
     l = strlen (frame);
     f = atoi (frame);  
     whole = (char*) malloc (sizeof(char)*255);
     raw = (char*) malloc (sizeof(char)*255);
 
+    printf ("%s %d\n", item->gimage->filename, l);
     for (i=0; i<num; i++)
       {
+	
 	sprintf (tmp, "%d\0", f-(i+1));
 	while (strlen (tmp) != l)
 	  {
 	    sprintf (tmp2, "0%s\0", tmp);
-	    strcpy (tmp, tmp2); 
+	    strcpy (tmp, tmp2);
 	  }
 	frame_manager_this_filename (item->gimage, &whole, &raw, 
 	    tmp, fm);
@@ -1514,7 +1657,7 @@ frame_manager_store_add_stores (frame_manager_t *fm)
       }
     break;
    case 1: /* add next */
-    num = gtk_spin_button_get_value_as_int (fm->store_size) - g_slist_length (fm->stores); 
+    num = gtk_spin_button_get_value_as_int (fm->store_size); 
     frame = strdup (frame_manager_get_frame (item->gimage));
     l = strlen (frame);
     f = atoi (frame);  
@@ -1528,7 +1671,6 @@ frame_manager_store_add_stores (frame_manager_t *fm)
 	  {
 	    sprintf (tmp2, "0%s\0", tmp);
 	    strcpy (tmp, tmp2);
-	   printf ("%s\n", tmp);  
 	  }
 	frame_manager_this_filename (item->gimage, &whole, &raw, 
 	    tmp, fm);
@@ -1547,7 +1689,7 @@ frame_manager_store_add_stores (frame_manager_t *fm)
       }
     break;
    case 2: /* cp */
-    num = gtk_spin_button_get_value_as_int (fm->store_size) - g_slist_length (fm->stores);
+    num = gtk_spin_button_get_value_as_int (fm->store_size);
 
     gimage = item->gimage;
 
@@ -1567,6 +1709,37 @@ frame_manager_store_add_stores (frame_manager_t *fm)
    } 
 }
 
+GDisplay*
+frame_manager_load (GImage *gimage)
+{
+  store_t *item;
+  GSList *item_list=NULL;
+  int i;
+
+  if (!frame_manager)
+    return NULL;
+
+  /* get the selected item */
+  /* make sure it if inactive */
+  /* add the new stuff to it */
+
+  item_list =  (GList*) GTK_LIST(frame_manager->store_list)->selection;
+
+  if (item_list)
+    {
+      i = gtk_list_child_position (GTK_LIST (frame_manager->store_list), item_list->data);
+      item = (store_t*) g_slist_nth (frame_manager->stores, i)->data;
+      if (!item->active)
+	{
+      dont_change_frame = 0; 
+	frame_manager_store_add (gimage, frame_manager, i); 
+      dont_change_frame = 1; 
+    }
+    }
+
+  return frame_manager->gdisplay;
+
+}
 static void
 frame_manager_store_option_close (GtkWidget *w, gpointer client_data)
 {
@@ -1577,18 +1750,20 @@ frame_manager_store_option_close (GtkWidget *w, gpointer client_data)
       if (GTK_WIDGET_VISIBLE (fm->store_option))
 	{
 	  gtk_widget_hide (fm->store_option); 
-	
+	  dont_change_frame = 0; 
+
 	  frame_manager_store_add_stores (fm); 
+	  dont_change_frame = 1; 
 	}
     }
 }
 
-char *options[3] =
+char *options[4] =
 {
- /* "Do nothing",*/
-  "Add before",
-  "Add after",
-  "Copy cur"
+  "Load prev frames",
+  "Load next frames",
+  "Load copies of cur frame", 
+  "Do nothing"
 };
 
 static ActionAreaItem offset_action_items[] =
@@ -1623,7 +1798,7 @@ frame_manager_store_new_options (frame_manager_t *fm)
       gtk_box_pack_start (GTK_BOX (GTK_DIALOG (fm->store_option)->vbox),
 	  vbox, TRUE, TRUE, 0);
 
-      for (i = 0; i < 3; i++)
+      for (i = 0; i < 4; i++)
 	{
 	  radio_button = gtk_radio_button_new_with_label (group, options[i]);
 	  group = gtk_radio_button_group (GTK_RADIO_BUTTON (radio_button));
@@ -1647,11 +1822,103 @@ frame_manager_store_new_options (frame_manager_t *fm)
       }
 }
 
+static int
+frame_manager_change_frame_close (GtkWidget *w, gpointer client_data)
+{
+  char *whole, *raw;
+  int num=1, i;
+  GSList *item_list=NULL;
+  frame_manager_t *fm = (frame_manager_t*) client_data;
+
+  if (fm)
+    {
+      if (GTK_WIDGET_VISIBLE (fm->change_frame_num))
+	{
+	  gtk_widget_hide (fm->change_frame_num); 
+	}
+    }
+}
+
+static ActionAreaItem change_action_items[] =
+{
+  { "Close",         frame_manager_change_frame_close, NULL, NULL },
+};
+
+static void
+frame_manager_change_frame_num (frame_manager_t *fm, store_t *item)
+{
+
+  int i;
+  GtkWidget *vbox, *radio_button, *hbox, *label;
+  GList *item_list;
+
+  char tmp[256], *temp; 
+  
+  GSList *group = NULL;
+
+  if (!dont_change_frame)
+    return;
+  if (!fm->change_frame_num && GTK_WIDGET_VISIBLE (fm->shell))
+    {
+#if 1 
+      fm->change_frame_num = gtk_dialog_new ();
+      gtk_window_set_wmclass (GTK_WINDOW (fm->change_frame_num), "Change Frame Num", "Gimp");
+      gtk_window_set_policy (GTK_WINDOW (fm->change_frame_num), FALSE, FALSE, FALSE);
+      gtk_window_set_title (GTK_WINDOW (fm->change_frame_num), "Change Frame Num");
+
+      vbox = gtk_vbox_new (FALSE, 1);
+      gtk_container_border_width (GTK_CONTAINER (vbox), 1);
+      gtk_box_pack_start (GTK_BOX (GTK_DIALOG (fm->change_frame_num)->vbox),
+	  vbox, TRUE, TRUE, 0);
+      
+      /* jump to */
+      hbox = gtk_hbox_new (FALSE, 1);
+      gtk_container_border_width (GTK_CONTAINER (hbox), 1);
+      gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
+      gtk_widget_show (hbox);
+
+      sprintf (&(tmp[0]), "%s.\0", frame_manager_get_name (item->gimage));
+      label = gtk_label_new (tmp);     
+      gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
+      gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
+      gtk_widget_show (label);
+      
+
+      fm->jump_to = gtk_entry_new (); 
+      temp = strdup (frame_manager_get_frame (item->gimage)); 
+      gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp); 
+      gtk_box_pack_start (GTK_BOX (hbox), fm->jump_to, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (fm->jump_to), "activate",
+	  (GtkSignalFunc) frame_manager_jump_to,
+	  fm);
+      gtk_widget_show (fm->jump_to);
+     
+      sprintf (&(tmp[0]), ".%s\0", frame_manager_get_ext (item->gimage));
+      label = gtk_label_new (tmp);     
+      gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 4);
+      gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
+      gtk_widget_show (label);
+
+      change_action_items[0].user_data = fm;
+      build_action_area (GTK_DIALOG (fm->change_frame_num), change_action_items, 1, 0);
+
+      gtk_widget_show (vbox);
+      gtk_widget_show (fm->change_frame_num); 
+#endif 
+    }
+  else
+    if (GTK_WIDGET_VISIBLE (fm->shell) && !GTK_WIDGET_VISIBLE (fm->change_frame_num))
+      {
+	temp = strdup (frame_manager_get_frame (item->gimage));
+	gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp);
+	gtk_widget_show (fm->change_frame_num);
+      }
+}
+
 static gint 
 frame_manager_store_size (GtkWidget *w, gpointer client_data)
 {
   frame_manager_t *fm;
-  int num, cur_num;
 
   fm = (frame_manager_t*)client_data; 
 
@@ -1659,19 +1926,7 @@ frame_manager_store_size (GtkWidget *w, gpointer client_data)
     return; 
   frame_manager_rm_onionskin (fm); 
 
-
-  num = gtk_spin_button_get_value_as_int (fm->store_size); 
-  cur_num = g_slist_length (fm->stores);
- 
-  if (num > cur_num)
-    {
-      frame_manager_store_new_options (fm); 
-    }
-  else if (num < cur_num)
-    {
-      printf ("rm store\n"); 
-    }
-  
+  frame_manager_store_new_options (fm); 
   return TRUE; 
 }
 
@@ -1679,25 +1934,32 @@ frame_manager_store_size (GtkWidget *w, gpointer client_data)
 static gint 
 frame_manager_store_select_update (GtkWidget *w, gpointer client_pointer)
 {
-  store_t *item = (store_t*) client_pointer;
+ GList *item_list;
+   int i;
+  store_t *cur, *item = (store_t*) client_pointer;
   
   frame_manager_rm_onionskin (frame_manager);
+  
+  item_list =  (GList*) GTK_LIST(frame_manager->store_list)->selection;
+  if (!item_list)
+    {
+      if (item->active)
+      frame_manager_change_frame_num (frame_manager, item);
+    }
 
   if (item->active)
-    frame_manager_store_load (item, frame_manager); 
-  else 
     {
-      file_open_callback (NULL, NULL);
-    } 
+	frame_manager_store_load (item, frame_manager); 
+    }
   return 1; 
 }
 
 static gint 
 frame_manager_store_deselect_update (GtkWidget *w, gpointer client_pointer)
 {
-
   store_t *item = (store_t*) client_pointer;
   frame_manager_rm_onionskin (frame_manager);
+
   item->selected = 0;
   return 1; 
 }
@@ -2027,6 +2289,11 @@ frame_manager_transparency (GtkAdjustment *a, gpointer client_data)
 		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
 		      1, s_x, s_y, e_x, e_y);
 		  gimage_set_active_layer (fg->gimage, layer); 
+		
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
 		}
 	     drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
 		  s_x, s_y, e_x, e_y);
@@ -2039,11 +2306,321 @@ frame_manager_transparency (GtkAdjustment *a, gpointer client_data)
   return TRUE; 
 }
 
+static gint 
+frame_manager_opacity_00 (GtkWidget *w, gpointer client_data)
+{
+  store_t *fg, *bg;
+  int i, j;
+  GList *item_list;
+  frame_manager_t *fm = (frame_manager_t*) client_data; 
+
+  if (!frame_manager_check ((frame_manager_t*)client_data))
+    {
+      return TRUE; 
+    }
+  if (onionskin == 2)
+    {
+     onionskin = 0;
+    return TRUE;  
+    }
+  /* display */
+
+  if (g_slist_length (fm->stores) > 1)
+    {
+      item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
+
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
+	  j = frame_manager_get_bg_id ();
+	  if (i != j && j < g_slist_length (fm->stores))
+	    {
+	      fg = (store_t*) g_slist_nth (fm->stores, i)->data;
+
+	      fg->gimage->active_layer->opacity = 0.0; 
+
+
+	      if (!fg->gimage->onionskin)
+		{
+		  Layer *layer = fg->gimage->active_layer;
+
+		  bg = (store_t*) g_slist_nth (fm->stores, j)->data; 
+		  fg->gimage->onionskin = 1;
+		  onionskin=1;
+		  fg->bg_image = bg->gimage; 
+		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
+		      1, s_x, s_y, e_x, e_y);
+		  gimage_set_active_layer (fg->gimage, layer); 
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
+		}
+	      gtk_adjustment_set_value (frame_manager->trans_data, 0.0);
+	     drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
+		  s_x, s_y, e_x, e_y);
+  	      /*gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
+	      */gdisplays_flush ();
+	    }	      
+	} 
+
+    }
+  return TRUE; 
+}
+
+static gint 
+frame_manager_opacity_25 (GtkWidget *w, gpointer client_data)
+{
+  store_t *fg, *bg;
+  int i, j;
+  GList *item_list;
+  frame_manager_t *fm = (frame_manager_t*) client_data; 
+
+  if (!frame_manager_check ((frame_manager_t*)client_data))
+    {
+      return TRUE; 
+    }
+  if (onionskin == 2)
+    {
+     onionskin = 0;
+    return TRUE;  
+    }
+  /* display */
+
+  if (g_slist_length (fm->stores) > 1)
+    {
+      item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
+
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
+	  j = frame_manager_get_bg_id ();
+	  if (i != j && j < g_slist_length (fm->stores))
+	    {
+	      fg = (store_t*) g_slist_nth (fm->stores, i)->data;
+
+	      fg->gimage->active_layer->opacity = 0.25; 
+
+
+	      if (!fg->gimage->onionskin)
+		{
+		  Layer *layer = fg->gimage->active_layer;
+
+		  bg = (store_t*) g_slist_nth (fm->stores, j)->data; 
+		  fg->gimage->onionskin = 1;
+		  onionskin=1;
+		  fg->bg_image = bg->gimage; 
+		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
+		      1, s_x, s_y, e_x, e_y);
+		  gimage_set_active_layer (fg->gimage, layer); 
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
+		}
+	      gtk_adjustment_set_value (frame_manager->trans_data, 0.25);
+	      drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
+		 s_x, s_y, e_x, e_y);
+	     /*gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
+	      */gdisplays_flush ();
+	    }	      
+	} 
+
+    }
+  return TRUE; 
+}
+
+static gint 
+frame_manager_opacity_05 (GtkWidget *w, gpointer client_data)
+{
+  store_t *fg, *bg;
+  int i, j;
+  GList *item_list;
+  frame_manager_t *fm = (frame_manager_t*) client_data; 
+
+  if (!frame_manager_check ((frame_manager_t*)client_data))
+    {
+      return TRUE; 
+    }
+  if (onionskin == 2)
+    {
+      onionskin = 0;
+      return TRUE;  
+    }
+  /* display */
+
+  if (g_slist_length (fm->stores) > 1)
+    {
+      item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
+
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
+	  j = frame_manager_get_bg_id ();
+	  if (i != j && j < g_slist_length (fm->stores))
+	    {
+	      fg = (store_t*) g_slist_nth (fm->stores, i)->data;
+
+	      fg->gimage->active_layer->opacity = 0.5; 
+
+
+	      if (!fg->gimage->onionskin)
+		{
+		  Layer *layer = fg->gimage->active_layer;
+
+		  bg = (store_t*) g_slist_nth (fm->stores, j)->data; 
+		  fg->gimage->onionskin = 1;
+		  onionskin=1;
+		  fg->bg_image = bg->gimage; 
+		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
+		      1, s_x, s_y, e_x, e_y);
+		  gimage_set_active_layer (fg->gimage, layer); 
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
+		}
+	      gtk_adjustment_set_value (frame_manager->trans_data, 0.50);
+	      drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
+		  s_x, s_y, e_x, e_y);
+	      /*gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
+	       */gdisplays_flush ();
+	    }	      
+	} 
+
+    }
+  return TRUE; 
+}
+
+static gint 
+frame_manager_opacity_75 (GtkWidget *w, gpointer client_data)
+{
+  store_t *fg, *bg;
+  int i, j;
+  GList *item_list;
+  frame_manager_t *fm = (frame_manager_t*) client_data; 
+
+  if (!frame_manager_check ((frame_manager_t*)client_data))
+    {
+      return TRUE; 
+    }
+  if (onionskin == 2)
+    {
+      onionskin = 0;
+      return TRUE;  
+    }
+  /* display */
+
+  if (g_slist_length (fm->stores) > 1)
+    {
+      item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
+
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
+	  j = frame_manager_get_bg_id ();
+	  if (i != j && j < g_slist_length (fm->stores))
+	    {
+	      fg = (store_t*) g_slist_nth (fm->stores, i)->data;
+
+	      fg->gimage->active_layer->opacity = 0.75; 
+
+
+	      if (!fg->gimage->onionskin)
+		{
+		  Layer *layer = fg->gimage->active_layer;
+
+		  bg = (store_t*) g_slist_nth (fm->stores, j)->data; 
+		  fg->gimage->onionskin = 1;
+		  onionskin=1;
+		  fg->bg_image = bg->gimage; 
+		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
+		      1, s_x, s_y, e_x, e_y);
+		  gimage_set_active_layer (fg->gimage, layer); 
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
+		}
+	      gtk_adjustment_set_value (frame_manager->trans_data, 0.75);
+	      drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
+		  s_x, s_y, e_x, e_y);
+	      /*gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
+	       */gdisplays_flush ();
+	    }	      
+	} 
+
+    }
+  return TRUE; 
+}
+
+static gint 
+frame_manager_opacity_10 (GtkWidget *w, gpointer client_data)
+{
+  store_t *fg, *bg;
+  int i, j;
+  GList *item_list;
+  frame_manager_t *fm = (frame_manager_t*) client_data; 
+
+  if (!frame_manager_check ((frame_manager_t*)client_data))
+    {
+      return TRUE; 
+    }
+  if (onionskin == 2)
+    {
+      onionskin = 0;
+      return TRUE;  
+    }
+  /* display */
+
+  if (g_slist_length (fm->stores) > 1)
+    {
+      item_list =  (GList*) GTK_LIST(fm->store_list)->selection;
+
+      if (item_list)
+	{
+	  i = gtk_list_child_position (GTK_LIST (fm->store_list), item_list->data);
+	  j = frame_manager_get_bg_id ();
+	  if (i != j && j < g_slist_length (fm->stores))
+	    {
+	      fg = (store_t*) g_slist_nth (fm->stores, i)->data;
+
+	      fg->gimage->active_layer->opacity = 1.0; 
+
+
+	      if (!fg->gimage->onionskin)
+		{
+		  Layer *layer = fg->gimage->active_layer;
+
+		  bg = (store_t*) g_slist_nth (fm->stores, j)->data; 
+		  fg->gimage->onionskin = 1;
+		  onionskin=1;
+		  fg->bg_image = bg->gimage; 
+		  gimage_add_layer2 (fg->gimage, bg->gimage->active_layer, 
+		      1, s_x, s_y, e_x, e_y);
+		  gimage_set_active_layer (fg->gimage, layer); 
+		  if (active_tool->type == CLONE)
+		    {
+		      frame_manager_onionskin_offset (clone_get_x_offset (), clone_get_y_offset ());
+		    }
+		}
+	      gtk_adjustment_set_value (frame_manager->trans_data, 1.0);
+	      drawable_update (GIMP_DRAWABLE(fg->gimage->active_layer),
+		  s_x, s_y, e_x, e_y);
+	      /*gdisplay_add_update_area (fm->gdisplay, s_x, s_y, e_x, e_y);
+	       */gdisplays_flush ();
+	    }	      
+	} 
+
+    }
+  return TRUE; 
+}
+
 static void
 frame_manager_next_filename (GImage *gimage, char **whole, char **raw, char dir,
-frame_manager_t *fm)
+    frame_manager_t *fm)
 {
- 
+
   char rawname[256], tmp[30], frame_num[30], *name, *frame, *ext;
   int i, num, org_len, cur_len, len1, len2;  
 
@@ -2056,9 +2633,9 @@ frame_manager_t *fm)
   len1 = strlen (*whole);
   len2 = strlen (rawname);
 
-  name  = strtok (rawname, ".");
-  frame = strtok (NULL, ".");
-  ext = strtok (NULL, ".");
+  name  = strdup (strtok (rawname, "."));
+  frame = strdup (strtok (NULL, "."));
+  ext = strdup (strtok (NULL, "."));
 
 
   org_len = strlen (frame); 
@@ -2085,9 +2662,9 @@ frame_manager_t *fm)
 
 static void
 frame_manager_this_filename (GImage *gimage, char **whole, char **raw, char *num,
-frame_manager_t *fm)
+    frame_manager_t *fm)
 {
- 
+
   char rawname[256], *name, *frame, *ext;
   int len, org_len;
 
@@ -2099,7 +2676,7 @@ frame_manager_t *fm)
 
   len = strlen (*whole);
   org_len = strlen (rawname);
-  
+
 
   name  = strtok (rawname, ".");
   frame = strtok (NULL, ".");
@@ -2111,11 +2688,11 @@ frame_manager_t *fm)
   sprintf (&((*whole)[len-org_len]), "%s\0", *raw);
 
 }
-  
+
 static char* 
 frame_manager_get_name (GImage *gimage)
 {
- 
+
   char raw[256], whole[256];
   char *tmp;
 
@@ -2126,17 +2703,16 @@ frame_manager_get_name (GImage *gimage)
   strcpy (raw, prune_filename (whole));
 
   tmp = strdup (strtok (raw, "."));
-  
+
   return tmp; 
-  
+
 }
 
 static char* 
 frame_manager_get_frame (GImage *gimage)
 {
- 
-  char raw[256], whole[256], frame[20];
-  char *tmp;
+
+  char raw[256], whole[256];
 
   if (!gimage)
     return "ERROR";
@@ -2145,17 +2721,15 @@ frame_manager_get_frame (GImage *gimage)
   strcpy (raw, prune_filename (whole));
 
   strtok (raw, ".");
-  tmp =  strtok (NULL, ".");
 
-  strcpy (frame, tmp);  
-  return frame; 
+  return strdup (strtok (NULL, ".")); 
 
 }
 
 static char* 
 frame_manager_get_ext (GImage *gimage)
 {
- 
+
   char raw[256], whole[256];
 
   if (!gimage)
@@ -2167,15 +2741,15 @@ frame_manager_get_ext (GImage *gimage)
   strtok (raw, ".");
   strtok (NULL, ".");
   return strdup (strtok (NULL, "."));
-  
+
 }
-  
+
 void
 frame_manager_rm_onionskin (frame_manager_t *fm)
 {
   GSList *list=NULL;
   store_t *item;
-  
+
   fm = fm ? fm : frame_manager; 
   list = fm->stores;
   if (onionskin)
@@ -2190,8 +2764,10 @@ frame_manager_rm_onionskin (frame_manager_t *fm)
 	      item->gimage->active_layer->opacity = 1; 
 	      item->gimage->onionskin = 0;
 	      gimage_remove_layer (item->gimage, item->bg_image->active_layer);
+
 	      GIMP_DRAWABLE (item->bg_image->active_layer)->offset_x = 0; 
 	      GIMP_DRAWABLE (item->bg_image->active_layer)->offset_y = 0; 
+	      GIMP_DRAWABLE(item->bg_image->active_layer)->gimage_ID = item->bg_image->ID;
 	      gtk_adjustment_set_value (fm->trans_data, 1);
 	    }
 	  list = g_slist_next (list);
@@ -2208,6 +2784,7 @@ frame_manager_store_clear (frame_manager_t *fm)
   GSList *l=NULL; 
   store_t *item;
 
+
   while (fm->stores)
     {
       item = (store_t*) fm->stores->data;
@@ -2215,23 +2792,28 @@ frame_manager_store_clear (frame_manager_t *fm)
       if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
 	{
 	  /* save image */
-	  file_save (item->gimage->ID, item->gimage->filename, prune_filename (item->gimage->
-		filename));
+	  file_save (item->gimage->ID, item->gimage->filename, 
+	      prune_filename (item->gimage->filename));
 	}
       if (!item->selected)
 	{
-if (active_tool->type == CLONE)
-  clone_delete_image (item->gimage);
+	  if (active_tool->type == CLONE)
+	    clone_delete_image (item->gimage);
 	  gimage_delete (item->gimage);
 	}
       fm->stores = g_slist_remove(fm->stores, item);
       g_free (item);
 
+      item = NULL; 
 
     }
 
-  fm->stores = NULL; 
   gtk_list_remove_items (GTK_LIST (fm->store_list), l);
+
+  fm->gdisplay->framemanager=0; 
+
+
+
 }
 
 GimpDrawable*
@@ -2239,7 +2821,7 @@ frame_manager_onionskin_drawable ()
 {
   GSList *list=NULL;
   store_t *item;
- 
+
   if (!frame_manager || !onionskin)
     return NULL;
 
@@ -2254,14 +2836,14 @@ frame_manager_onionskin_drawable ()
       list = g_slist_next (list);
     }   
   printf ("ERROR : something is wrong with onionskin 1\n"); 
-    return NULL;
-  
+  return NULL;
+
 }
 
 int
 frame_manager_onionskin_display ()
 {
- 
+
   GSList *list=NULL;
   store_t *item;
 
@@ -2279,9 +2861,9 @@ frame_manager_onionskin_display ()
       list = g_slist_next (list);
     }
   printf ("ERROR : something is wrong with onionskin 2\n"); 
- 
+
   return NULL; 
-  
+
 }
 
 GimpDrawable*
@@ -2289,7 +2871,7 @@ frame_manager_bg_drawable ()
 {
   GSList *list=NULL;
   store_t *item;
- 
+
   if (!frame_manager)
     return NULL;
 
@@ -2303,14 +2885,14 @@ frame_manager_bg_drawable ()
 	}
       list = g_slist_next (list);
     }   
-    return NULL;
-  
+  return NULL;
+
 }
 
 int
 frame_manager_bg_display ()
 {
- 
+
   GSList *list=NULL;
   store_t *item;
 
@@ -2328,17 +2910,17 @@ frame_manager_bg_display ()
       list = g_slist_next (list);
     }
   return NULL; 
-  
+
 }
 
 static int
 frame_manager_get_bg_id ()
 {
- 
+
   GSList *list=NULL;
   store_t *item;
   int i=0;
-  
+
   if (!frame_manager)
     return NULL;
 
@@ -2354,16 +2936,16 @@ frame_manager_get_bg_id ()
       i ++; 
     }
   return NULL; 
-  
+
 }
 
 void
 frame_manager_set_bg (GDisplay *display)
 {
- 
+
   GSList *list=NULL;
   store_t *item, *i;
-  
+
   if (!frame_manager)
     return;
 
@@ -2389,7 +2971,7 @@ frame_manager_set_bg (GDisplay *display)
 	}
       list = g_slist_next (list);
     }
-  
+
 }
 
 void
@@ -2413,9 +2995,10 @@ frame_manager_onionskin_offset (int x, int y)
       list = g_slist_next (list);
     }
   printf ("ERROR : something is wrong with onionskin 3\n");
-	    
+
 
 }
+
 static void
 frame_manager_link_forward (frame_manager_t *fm)
 {
@@ -2437,8 +3020,8 @@ frame_manager_link_forward (frame_manager_t *fm)
 	  if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
 	    file_save (gimage->ID, gimage->filename,
 		prune_filename (gimage->filename));
-if (active_tool->type == CLONE)
-  clone_delete_image (gimage);
+	  if (active_tool->type == CLONE)
+	    clone_delete_image (gimage);
 	  gimage_delete (gimage); 	  
 	}
       else
@@ -2471,8 +3054,8 @@ frame_manager_link_backward (frame_manager_t *fm)
 	  if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
 	    file_save (gimage->ID, gimage->filename,
 		prune_filename (gimage->filename));
-if (active_tool->type == CLONE)
-  clone_delete_image (gimage);
+	  if (active_tool->type == CLONE)
+	    clone_delete_image (gimage);
 	  gimage_delete (gimage); 	  
 	}
       else
@@ -2518,6 +3101,81 @@ frame_manager_image_reload (GImage *old, GImage *new)
       list = g_slist_next (list);
     }
   printf ("ERROR : something is wrong with onionskin 2\n"); 
- 
- 
+
+
 }
+static ActionAreaItem warning_action_items[] =
+{
+  { "Close", warning_close, NULL, NULL },   
+    { "OK", warning_ok, NULL, NULL }  
+};
+
+static int 
+create_warning (char* warning, frame_manager_t *fm)
+{
+
+  GtkWidget *label, *vbox;
+  if (!fm->warning)
+    {
+      fm->warning = gtk_dialog_new ();
+      gtk_window_set_wmclass (GTK_WINDOW (fm->warning), "Warning", "Gimp");
+      gtk_window_set_policy (GTK_WINDOW (fm->warning), FALSE, FALSE, FALSE);
+      gtk_window_set_title (GTK_WINDOW (fm->warning), "Warning");
+
+      vbox = gtk_vbox_new (FALSE, 1);
+      gtk_container_border_width (GTK_CONTAINER (vbox), 1);
+      gtk_box_pack_start (GTK_BOX (GTK_DIALOG (fm->warning)->vbox),
+	  vbox, TRUE, TRUE, 0);
+
+      label = gtk_label_new (warning); 
+      gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 4);
+      gtk_misc_set_alignment (GTK_MISC (label), 0.5, 0.5);
+      gtk_widget_show (label);
+
+      warning_action_items[0].user_data = fm;
+      warning_action_items[1].user_data = fm;
+      build_action_area (GTK_DIALOG (fm->warning), warning_action_items, 2, 0);
+
+      gtk_widget_show (vbox);
+      gtk_widget_show (fm->warning);
+    }
+  else
+    if (!GTK_WIDGET_VISIBLE (fm->warning))
+      {
+	gtk_widget_show (fm->warning);
+      }
+
+
+}
+
+static gint 
+warning_close (GtkWidget *w, gpointer client_pointer)
+{
+  if (GTK_WIDGET_VISIBLE (frame_manager->warning))
+    gtk_widget_hide (frame_manager->warning);
+
+  return TRUE;
+}
+
+static gint 
+warning_ok (GtkWidget *w, gpointer client_pointer)
+{
+  switch (fm_continue)
+    {
+    case 0:
+      step_forward (frame_manager); 
+      break;
+    case 1:
+      step_backwards (frame_manager); 
+      break;
+
+    case 2:
+      flip_delete (frame_manager);
+      break;
+    }
+  if (GTK_WIDGET_VISIBLE (frame_manager->warning))
+    gtk_widget_hide (frame_manager->warning);
+
+  return TRUE;
+}
+

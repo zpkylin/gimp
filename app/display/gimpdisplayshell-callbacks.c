@@ -259,7 +259,8 @@ gdisplay_canvas_events (GtkWidget *canvas,
           break;
 
         case 2:
-          scrolled = TRUE;
+          state |= GDK_BUTTON2_MASK;
+	  scrolled = TRUE;
           gtk_grab_add (canvas);
           start_grab_and_scroll (gdisp, bevent);
           break;
@@ -337,13 +338,12 @@ gdisplay_canvas_events (GtkWidget *canvas,
           break;
 
         case 2:
-          /*scrolled = FALSE;
+	  state &= ~GDK_BUTTON2_MASK;
+          scrolled = FALSE;
           gtk_grab_remove (canvas);
-          end_grab_and_scroll (gdisp, bevent);
-          */
-	  scrolled = TRUE;
-	  gtk_grab_add (canvas);
-	  start_grab_and_scroll (gdisp, bevent);
+          /*
+	     end_grab_and_scroll (gdisp, bevent);
+	  */
 	  break;
 
 

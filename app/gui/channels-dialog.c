@@ -144,7 +144,7 @@ static void channel_widget_channel_flush (GtkWidget *, gpointer);
 /*  assorted query dialogs  */
 static void channels_dialog_new_channel_query (int);
 static void channels_dialog_edit_channel_query (ChannelWidget *);
-
+static void edit_channel_use_opacity_clicked (ChannelWidget *);
 
 /*  Only one channels dialog  */
 static ChannelsDialog *channelsD = NULL;
@@ -201,6 +201,7 @@ struct _EditChannelOptions {
   double opacity;
   gint link_paint;
   double link_paint_opacity;
+  gint channel_as_opacity; 
 };
 
 static EditChannelOptions *options = NULL;
@@ -1946,6 +1947,21 @@ edit_channel_query_button_clicked (GtkWidget *button,
 }
 
 static void
+edit_channel_as_opacity_clicked (GtkWidget *button,
+    gpointer client_data)
+{
+  Channel *channel;
+  channel = options->channel_widget->channel;
+  options->channel_as_opacity = GTK_TOGGLE_BUTTON (button)->active ? TRUE : FALSE; 
+  channel->channel_as_opacity = options->channel_as_opacity;
+  if (channel->channel_as_opacity) 
+    channel_as_opacity (channel, options->gimage_id); 
+  else
+    channel_as_opacity (NULL, options->gimage_id); 
+
+}
+
+static void
 edit_channel_query_link_scale_update (GtkAdjustment *adjustment,
 				gpointer client_data)
 {
@@ -2121,6 +2137,8 @@ channels_dialog_edit_channel_query (ChannelWidget *channel_widget)
   options->opacity = (double) channel_widget->channel->opacity * 100.0;
   options->link_paint = channel_widget->channel->link_paint;
   options->link_paint_opacity = channel_widget->channel->link_paint_opacity * 100.0;
+  options->channel_as_opacity = channel_widget->channel->channel_as_opacity;
+
 
   pixelrow_init (&channel_col, color_tag, channel_color_data, 1);
   copy_row (&channel_widget->channel->col, &channel_col);
@@ -2190,7 +2208,6 @@ channels_dialog_edit_channel_query (ChannelWidget *channel_widget)
 
   if(index == 0) 
   {
-    options->link_paint = channel_link_paint; 
     button = gtk_check_button_new_with_label("Enable RGBM painting");
     gtk_signal_connect (GTK_OBJECT (button), "clicked",
 			(GtkSignalFunc) edit_channel_query_button_clicked,
@@ -2218,6 +2235,16 @@ channels_dialog_edit_channel_query (ChannelWidget *channel_widget)
     gtk_widget_show (hbox);
   }
 
+
+  /* use channel as opacity */
+  button = gtk_check_button_new_with_label("Use this channel as opacity");
+  gtk_signal_connect (GTK_OBJECT (button), "clicked",
+      (GtkSignalFunc) edit_channel_as_opacity_clicked,
+      options);
+  gtk_box_pack_start (GTK_BOX (vbox1), button, FALSE, FALSE, 0);
+  gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON(button), options->channel_as_opacity);
+  gtk_widget_show (button);
+  
   gtk_widget_show (vbox1);
 
   /*  the color panel  */

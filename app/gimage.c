@@ -270,6 +270,8 @@ gimage_new  (
   gimage->active_channel = NULL;  /* no default active channel */
   gimage->floating_sel = NULL;
 
+  gimage->channel_as_opacity = NULL;
+
   /*  set all color channels visible and active  */
   for (i = 0; i < MAX_CHANNELS; i++)
     {

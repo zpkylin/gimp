@@ -142,6 +142,7 @@ channel_new (int gimage_ID, int width, int height, Precision p, char *name,
 
   
   channel->link_paint = enable_rgbm_painting;
+  channel->channel_as_opacity = 0;
 
   /*  selection mask variables  */
   channel->empty = TRUE;
@@ -425,6 +426,27 @@ channel_get_link_paint_opacity (Channel *channel)
     return channel->link_paint_opacity;
   else
     return 0.0; 
+}
+
+void
+channel_as_opacity (Channel *channel, gint gimage_ID)
+{
+ /* find the image */
+  /* set the as_opacity */
+  GImage *gimage;
+  extern GSList *image_list;
+  GSList *list = image_list;
+  
+  while (list)
+    {
+      gimage = (GImage*) list->data;
+      
+      if (gimage->ID == gimage_ID)
+	{
+	  gimage->channel_as_opacity = channel; 
+	}
+    }
+  
 }
 
 gint

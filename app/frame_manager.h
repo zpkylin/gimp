@@ -22,6 +22,23 @@
 #include "drawable.h"
 #include "gdisplay.h"
 
+typedef struct
+{
+  GtkWidget *istep;
+  GtkWidget *iflip;
+  GtkWidget *ibg;
+  GtkWidget *label;
+  GImage *gimage;
+  GtkWidget *list_item;
+  char flip;
+  char bg;
+  char step;
+  char selected;
+  char active;
+  GImage *bg_image;
+}store_t;
+
+
 typedef struct 
 {
   GtkWidget *shell;
@@ -42,6 +59,8 @@ typedef struct
   GDisplay *linked_display; 
   GDisplay *gdisplay; 
   GtkWidget *store_option;
+  GtkWidget *change_frame_num; 
+  GtkWidget *warning; 
 }frame_manager_t;
 
 void frame_manager_create (void);
@@ -60,5 +79,8 @@ void frame_manager_image_reload (GImage *, GImage*);
 GimpDrawable *frame_manager_bg_drawable ();
 int frame_manager_bg_display ();
 void frame_manager_set_bg (GDisplay *display);
+void frame_manager_store_add (GImage *, frame_manager_t *, int);
+store_t* frame_manager_store_new (GImage *gimage, char active);
+GDisplay* frame_manager_load (GImage *gimage);
 
 #endif /* __FRAME_MANAGER_H__ */

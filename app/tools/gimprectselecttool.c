@@ -329,6 +329,7 @@ rect_select_button_press (Tool           *tool,
 
   if (0 && bevent->state & GDK_MOD1_MASK)
     {
+      
       init_edit_selection (tool, gdisp_ptr, bevent, MaskTranslate);
       return;
     }
@@ -341,7 +342,8 @@ rect_select_button_press (Tool           *tool,
   else
     {
       if (! (layer_is_floating_sel (gimage_get_active_layer (gdisp->gimage))) &&
-	  gdisplay_mask_value (gdisp, bevent->x, bevent->y) > HALF_WAY)
+	  gdisplay_mask_value (gdisp, bevent->x, bevent->y) > HALF_WAY &&
+	  rect_sel->core->gc)
 	{
 	  init_edit_selection (tool, gdisp_ptr, bevent, MaskToLayerTranslate);
 	  return;
@@ -515,9 +517,11 @@ rect_select_draw (Tool *tool)
   y1 = MINIMUM (rect_sel->y, rect_sel->y + rect_sel->h);
   x2 = MAXIMUM (rect_sel->x, rect_sel->x + rect_sel->w);
   y2 = MAXIMUM (rect_sel->y, rect_sel->y + rect_sel->h);
+  
 
   gdisplay_transform_coords (gdisp, x1, y1, &x1, &y1, 0);
   gdisplay_transform_coords (gdisp, x2, y2, &x2, &y2, 0);
+
 
   gdk_draw_rectangle (rect_sel->core->win,
 		      rect_sel->core->gc, 0,
@@ -545,7 +549,7 @@ rect_select_cursor_update (Tool           *tool,
   else if ((gdisplay_mask_value (gdisp, mevent->x, mevent->y) != 0) &&
 	   ! (layer_is_floating_sel (gimage_get_active_layer (gdisp->gimage))) &&
 	   ! (mevent->state & (GDK_SHIFT_MASK | GDK_CONTROL_MASK)) &&
-	   ! active)
+	   ! active && ((RectSelect *)tool->private)->core->gc)
     gdisplay_install_tool_cursor (gdisp, GDK_FLEUR);
   else
     gdisplay_install_tool_cursor (gdisp, GDK_TCROSS);

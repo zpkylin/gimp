@@ -19,6 +19,7 @@
 #define __CLONE_H__
 
 #include "gimage.h"
+#include "gdisplay.h"
 
 struct _tool;
 struct _ProcRecord;
@@ -35,6 +36,9 @@ void		clone_x_offset_decrease ();
 void		clone_y_offset_increase ();
 void		clone_y_offset_decrease ();
 void		clone_reset_offset ();
+int		clone_get_x_offset ();
+int		clone_get_y_offset ();
+int		clone_is_src (GDisplay*);
 
 extern struct _ProcRecord clone_proc;
 

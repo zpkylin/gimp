@@ -124,6 +124,7 @@ gint            channel_set_link_paint  (Channel *, gint);
 gint            channel_get_link_paint  (Channel *);
 void            channel_set_link_paint_opacity  (Channel *, gfloat);
 gfloat          channel_get_link_paint_opacity  (Channel *);
+void            channel_as_opacity      (Channel *, gint);
 
 
 extern int channel_get_count;
