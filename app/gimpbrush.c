@@ -143,6 +143,7 @@ gimp_brush_load(char *filename)
   GimpBrush* brush;
   Canvas *brushmask;
   char *brushname;
+  guchar *data, tmp;
 
   /*  Open the requested file  */
   if (! (fp = fopen (filename, "rb")))
@@ -157,6 +158,7 @@ gimp_brush_load(char *filename)
       fclose (fp);
       return NULL;
     }
+
 
   if ((fread (&header_version, 1, sizeof (guint32), fp)) < sizeof (guint32)) 
     {
@@ -174,11 +176,17 @@ gimp_brush_load(char *filename)
     }
 
   /*  rearrange the bytes in each unsigned int  */
+#if 1
   hp = (unsigned int *) &header;
   for (i = 0; i < (sz_BrushHeader / 4); i++)
-    hp [i] = (buf [i * 4] << 24) + (buf [i * 4 + 1] << 16) +
+    hp [i] = (buf [i * 4 ] << 24) + (buf [i * 4 + 1] << 16) +
              (buf [i * 4 + 2] << 8) + (buf [i * 4 + 3]);
-
+#else
+  hp = (unsigned int *) &header;
+  for (i = 0; i < (sz_BrushHeader / 4); i++)
+    hp [i] = (buf [i * 4 + 1] << 24) + (buf [i * 4 + 0] << 16) +
+             (buf [i * 4 + 2] << 8) + (buf [i * 4 + 3]);
+#endif
   /*  Check for correct file format */
   if (header.magic_number != GBRUSH_MAGIC)
     {
@@ -204,10 +212,14 @@ gimp_brush_load(char *filename)
       /* If its version 1 or 2 the bytes field contains just
          the number of bytes and must be converted to a drawable type. */    
 
-      if (header.type == 1)    
- 	header.type = GRAY_GIMAGE;	   
+      if (header.type == 1) 
+	{
+ 	header.type = GRAY_GIMAGE;
+	}	
       else if (header.type == 3)
-        header.type = RGB_GIMAGE;	   
+	{
+        header.type = RGB_GIMAGE;
+	}	
     }
   else if (header.version != FILE_VERSION)
     {
@@ -217,6 +229,7 @@ gimp_brush_load(char *filename)
     }
   
     tag = tag_from_drawable_type ( header.type);
+
 
     if (tag_precision (tag) != default_precision )
        { 
@@ -251,10 +264,18 @@ gimp_brush_load(char *filename)
 
 
   /*  Read the brush mask data  */
-     bytes = tag_bytes (tag); 
+     bytes = tag_bytes (tag);
      canvas_portion_refrw (brushmask, 0, 0); 
-     if ((fread (canvas_portion_data (brushmask,0,0), 1, header.width * header.height * bytes, fp)) 		< header.width * header.height * bytes)
+     data = canvas_portion_data (brushmask,0,0);
+     if ((fread (data, 1, header.width * header.height * bytes, fp)) 		
+	 < header.width * header.height * bytes)
      	g_message ("GIMP brush file appears to be truncated.");
+     for (i=0; i<header.width * header.height * bytes-1; i+=2)
+       {
+	 tmp = data[i];
+	 data[i] = data[i+1];
+	 data[i+1] = tmp; 
+       }
      canvas_portion_unref (brushmask, 0, 0); 
      break;
    default:
