@@ -364,7 +364,8 @@ static gint32 load_image (char *filename)
   matteChans = filehandle->header->matteChans;
   auxChans  += filehandle->header->auxChans;
  
-  if (auxChans && strcmp("fur", filehandle->header->program))
+  if (auxChans && strcmp("fur", filehandle->header->program) && 
+      strcmp("voodoo", filehandle->header->program))
     {
       result = (char**) IM_GetAuxChannelNames (&rllHead);
       if(result == NULL){
@@ -466,6 +467,18 @@ static gint32 load_image (char *filename)
 	  TRUE, FALSE);
     }
   else
+    if(!strcmp("voodoo", filehandle->header->program))
+      {
+	pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn));
+	layer_ID = gimp_layer_new(image_ID, "voodoo", width, height,
+	    layer_type, 100, NORMAL_MODE);
+	gimp_image_add_layer(image_ID, layer_ID, 0);
+	drawable = gimp_drawable_get(layer_ID);
+	gimp_pixel_rgn_init(&(pixel_rgn[0]), drawable,
+	    0, 0, drawable->width, drawable->height,
+	    TRUE, FALSE);
+      }
+  else
     {
       pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn) * nlayers); 
       layer_ID = gimp_layer_new(image_ID, "Background", width, height,
@@ -495,7 +508,7 @@ static gint32 load_image (char *filename)
 
   /* create gimp CHANNELS */
   chan_pixel_rgn = (GPixelRgn*) g_malloc(sizeof(GPixelRgn) * (matteChans + auxChans));
-  if(!strcmp("fur", filehandle->header->program)){
+  if(!strcmp("fur", filehandle->header->program) || !strcmp("voodoo", filehandle->header->program)){
 	result = (char**) IM_GetAuxChannelNames (&rllHead);
 	if(result == NULL){
 	      g_warning("rll load_image: problems with read aux names\n");
@@ -822,6 +835,17 @@ static gint save_image (
 		  return -1;
 	  }
   }
+  else if (!strcmp(bg_name, "voodoo")) 
+  {
+	  if (IM_StuffHeader(&header, fmtString, "voodoo", "RLL") == -1)
+	  {
+		  g_warning("rll save_image: couldnt allocate\n");
+		  if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+		  if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+		  return -1;
+	  }
+  }
+
   else if (IM_StuffHeader(&header, fmtString, "gimp", "RLL") == -1)
   {
 	  g_warning("rll save_image: couldnt allocate\n");
@@ -939,7 +963,7 @@ static gint save_image (
 
       /* float16 gimp types */
     case FLOAT16_GRAY_IMAGE:
-      if(strcmp("fur", bg_name)){
+      if(strcmp("fur", bg_name) && strcmp("voodoo", bg_name)){
 	    if(!nchannels){
 		  header.imageChans = 1;
 		  header.matteChans = 0;
@@ -966,12 +990,30 @@ static gint save_image (
       }
       break;
     case FLOAT16_GRAYA_IMAGE:
-      header.imageChans = 1;
-      header.matteChans = 1;
-      bytes_per_channel = 2;
-      fg_cpp = fg_nlayers ? fg_bpp / bytes_per_channel : 0; 
-      bg_cpp = bg_nlayers ? bg_bpp / bytes_per_channel : 0; 
-      header.auxChans   = fg_cpp * (fg_nlayers) + (nchannels - header.matteChans); 
+      if(strcmp("fur", bg_name) && strcmp("voodoo", bg_name)){
+	    if(!nchannels){ 
+		  header.imageChans = 1;
+		  header.matteChans = 0;
+		  bytes_per_channel = 2;
+		  fg_cpp = fg_nlayers ? fg_bpp / bytes_per_channel : 0; 
+		  bg_cpp = bg_nlayers ? bg_bpp / bytes_per_channel : 0; 
+		  header.auxChans   = fg_cpp * (fg_nlayers) + (nchannels - header.matteChans); 
+	    } else {
+		  header.imageChans = 1;
+		  header.matteChans = 1;
+		  bytes_per_channel = 2;
+		  fg_cpp = fg_nlayers ? fg_bpp / bytes_per_channel : 0; 
+		  bg_cpp = bg_nlayers ? bg_bpp / bytes_per_channel : 0; 
+		  header.auxChans   = fg_cpp * (fg_nlayers) + (nchannels - header.matteChans); 
+	    }
+      } else {
+	    header.imageChans = 0;
+	    header.matteChans = 0;
+	    bytes_per_channel = 2;
+	    fg_cpp = fg_nlayers ? fg_bpp / bytes_per_channel : 0; 
+	    bg_cpp = bg_nlayers ? bg_bpp / bytes_per_channel : 0; 
+	    header.auxChans   = fg_nlayers /*fg_cpp * (fg_nlayers) + (nchannels - header.matteChans)*/; 
+      }
       break;
     case FLOAT16_RGB_IMAGE:
       if(!nchannels){
@@ -1016,11 +1058,11 @@ static gint save_image (
       return -1;
     } 
 
-#if 1	
+#if 0	
   printf("type is %d %d %d %d\n", gimp_drawable_type(drawable_ID), fg_cpp, bg_cpp, bytes_per_channel);
   printf("imagechans is %d\n", header.imageChans);
   printf("mattechans is %d\n", header.matteChans);
-  printf("mattechans is %d %d %d\n", header.auxChans, fg_cpp, fg_bpp);
+  printf("mattechans is %d %d %d %d\n", fg_nlayers, header.auxChans, fg_cpp, fg_bpp);
 #endif
 
   aux_name_tsize = aux_name_size * (1+header.auxChans); 
@@ -1049,14 +1091,59 @@ static gint save_image (
 	for(i=0; i<header.auxChans; i++){
 	      strcpy(aux_name[i+1], gimp_layer_get_name(layers[header.auxChans-1-i]));
 	} 
-	IM_SetAuxChannelIds(&header, header.auxChans, aux_name); 	
+	if(-1 == IM_SetAuxChannelIds(&header, header.auxChans, aux_name))
+	  {
+	    g_warning("rll save_image: wrong fur channel names\n"); 
+	    free(aux_name);
+	    free(a_n);
+	    if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+	    if (fg_pixel_rgn) g_free (fg_pixel_rgn);     
+	    return -1;
+	  } 	
+	free(aux_name);
+	free(a_n);
+	bg_nlayers = 0; 	
+  } 
+  if(!strcmp(bg_name, "voodoo")){
+	a_n = (char*) g_malloc(sizeof(char)*aux_name_tsize);
+	if (!a_n)
+	  {
+	    g_warning("rll save_image: couldnt allocate\n");
+	    if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+	    if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+	    return -1;
+	  }
+	aux_name = (char**) g_malloc(sizeof(char*)*(1+header.auxChans));
+	if (!aux_name)
+	  {
+	    g_warning("rll save_image: couldnt allocate\n");
+	    if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+	    if (fg_pixel_rgn) g_free (fg_pixel_rgn); 
+	    if (a_n) g_free (a_n); 
+	    return -1;
+	  }
+	for(i=0; i<header.auxChans+1; i++)
+	  aux_name[i] = &a_n[i*aux_name_size];
+	strcpy(aux_name[0], "voodoo"); 
+	for(i=0; i<header.auxChans; i++){
+	      strcpy(aux_name[i+1], gimp_layer_get_name(layers[header.auxChans-1-i]));
+	} 
+	if (-1 == IM_SetAuxChannelIds(&header, header.auxChans, aux_name))
+	  {
+	    g_warning("rll save_image: wrong voodoo channel names\n"); 
+	    free(aux_name);
+	    free(a_n);
+	    if (bg_pixel_rgn) g_free (bg_pixel_rgn); 
+	    if (fg_pixel_rgn) g_free (fg_pixel_rgn);     
+	    return -1;
+	  } 	
 	free(aux_name);
 	free(a_n);
 	bg_nlayers = 0; 	
   } 
 
   /* store the aux and extra layer names */
-  if(header.auxChans && strcmp(bg_name, "fur")){
+  if(header.auxChans && strcmp(bg_name, "fur") && strcmp(bg_name, "voodoo")){
 	aux_name_tsize = aux_name_size * (header.auxChans + 1); 
 	a_n = (char*) g_malloc(sizeof(char)*aux_name_tsize);
 	if (!a_n)
@@ -1570,17 +1657,17 @@ static gint save_image (
 			for(i=0; i<fg_cpp; i++){
 			      switch(bytes_per_channel){
 				  case 4:
-				    filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
+				    filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
 				      pow (*(fg_fptr[k])++, 2.2);
 				    break;
 				  case 2:
-				    /*filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
+				    /*filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
 				      FLTT (*(fg_sptr[k])++);*/
-				  ((short*)&(filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[0] = 0; 
-				  ((short*)&(filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[1] = *(fg_sptr[k])++; 
+				  ((short*)&(filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[0] = 0; 
+				  ((short*)&(filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j]))[1] = *(fg_sptr[k])++; 
 				    break;
 				  case 1:
-				    filehandle->rBufPtr[i+((k*fg_cpp)+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
+				    filehandle->rBufPtr[i+((k*(fg_cpp))+(bg_nlayers*header.imageChans)+header.matteChans)][j] = 
 				      charToFloat( *(fg_bptr[k])++ );
 				    break;
 				  default:
@@ -1591,6 +1678,14 @@ static gint save_image (
 				    g_free(bg_buffer);
 				    break;
 
+			      }
+			    if (FLOAT16_GRAYA_IMAGE == gimp_drawable_type(drawable_ID) && (!strcmp("fur", bg_name) ||
+				!strcmp("voodoo", bg_name)))
+			      {
+				(fg_fptr[k])++;
+				(fg_sptr[k])++;
+				(fg_bptr[k])++;
+				i++; 
 			      }
 			}
 
