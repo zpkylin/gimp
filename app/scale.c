@@ -64,6 +64,7 @@ resize_display (GDisplay *gdisp,
 
   /* re-enable the active tool */
   active_tool_control (RESUME, (void *) gdisp);
+  zoom_view_changed(gdisp);
 }
 
 
@@ -134,6 +135,11 @@ change_scale (GDisplay *gdisp,
 	scaledest = 0x10;
       break;
     }
+
+  // dont do it if it will cause no change.
+  if (gdisp->scale == (scaledest << 8) + scalesrc) {
+     return;
+  }
 
   sx = (gdisp->gimage->width * scaledest) / scalesrc;
   sy = (gdisp->gimage->height * scaledest) / scalesrc;

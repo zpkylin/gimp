@@ -72,6 +72,7 @@
 #include "tools.h"
 #include "undo.h"
 #include "gimpbrushgenerated.h"
+#include "zoom.h"
 
 /*  external functions  */
 extern void layers_dialog_layer_merge_query (GImage *, int);
@@ -2091,6 +2092,14 @@ select_save_cmd_callback (GtkWidget *widget,
   gdisp = gdisplay_active ();
   gimage_mask_save (gdisp->gimage);
   gdisplays_flush ();
+}
+
+void 
+view_pan_zoom_window_cb(
+   GtkWidget *widget, 
+   gpointer ptr)
+{
+   zoom_control_open();
 }
 
 void
