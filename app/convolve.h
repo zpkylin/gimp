@@ -27,6 +27,5 @@ void            tools_free_convolve  (struct _tool *);
 extern struct _ProcRecord convolve_proc;
 
 /*  Procedure definition and marshalling function  */
-extern ProcRecord convolve_proc;
 
 #endif  /*  __CONVOLVE_H__  */

@@ -27,6 +27,7 @@ struct _SelectionOptions
   int antialias;
   int feather;
   double feather_radius;
+  double threshold;     
   int sample_merged;
 };
 

@@ -117,10 +117,22 @@ void            channel_shrink          (Channel *, int);
 void            channel_translate       (Channel *, int, int);
 void            channel_load            (Channel *, Channel *);
 void		channel_invalidate_bounds (Channel *);
+struct _PixelRow * channel_color	(Channel *);
+gfloat		channel_opacity		(Channel *);
+gint		channel_visibility	(Channel *);
+gint            channel_set_link_paint  (Channel *, gint);
+gint            channel_get_link_paint  (Channel *);
+void            channel_set_link_paint_opacity  (Channel *, gfloat);
+gfloat          channel_get_link_paint_opacity  (Channel *);
+
 
 extern int channel_get_count;
 
 /* from drawable.c */
 Channel *        drawable_channel       (GimpDrawable *);
+
+void channel_enable_rgbm_painting (int flag);
+
+extern int channel_link_paint;
 
 #endif /* __CHANNEL_H__ */

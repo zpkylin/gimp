@@ -18,7 +18,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
@@ -28,6 +29,7 @@
 #include "paint_core_16.h"
 #include "palette.h"
 #include "pixelarea.h"
+#include "pixelrow.h"
 #include "selection.h"
 #include "tools.h"
 
@@ -45,6 +47,7 @@ static gfloat       sum_matrix           (gfloat *, int);
 static void        *convolve_non_gui_paint_func (PaintCore *, GimpDrawable *, int);
 static void         convolve_motion      (PaintCore *, GimpDrawable *);
 static Argument *   convolve_invoker     (Argument *);
+static void         convolve_painthit_setup (PaintCore *, Canvas *);
 
 #define FIELD_COLS    4
 #define MIN_BLUR      64         /*  (8/9 original pixel)   */
@@ -221,6 +224,7 @@ tools_new_convolve ()
 
   private = (PaintCore *) tool->private;
   private->paint_func = convolve_paint_func;
+  private->painthit_setup = convolve_painthit_setup;
 
   return tool;
 }
@@ -238,8 +242,6 @@ convolve_motion (PaintCore *paint_core,
 {
   GImage *gimage;
   Tag tag = drawable_tag (drawable);
-  Canvas * painthit_canvas; 
-  PixelArea src_area, painthit_area;
 
   if (! (gimage = drawable_gimage (drawable)))
     return;
@@ -247,68 +249,136 @@ convolve_motion (PaintCore *paint_core,
   if (tag_format (tag) == FORMAT_INDEXED )
     return;
   
-  painthit_canvas = paint_core_16_area (paint_core, drawable);
+  paint_core_16_area_setup (paint_core, drawable);
 
-  /* check if the area is large enough to convolve */
-  if (paint_core->w >= matrix_size && paint_core->h >= matrix_size)
-    {
-      Canvas * temp_canvas;
-      PixelArea temp_area;
-
-      /* alloc a scratch space */
-      temp_canvas = canvas_new (tag_set_alpha (tag, ALPHA_YES),
-                                paint_core->w, paint_core->h,
-                                STORAGE_FLAT);
-
-      /* copy data to a flat buffer since convolve_area doesn;t like
-         tiled buffers */
-      pixelarea_init (&src_area, drawable_data (drawable),
-                      paint_core->x, paint_core->y,
-                      paint_core->w, paint_core->h,
-                      FALSE);
-      pixelarea_init (&temp_area, temp_canvas,
-                      0, 0,
-                      0, 0,
-                      TRUE);
-      copy_area (&src_area, &temp_area);
-      
-
-      /* do the convolution */
-      pixelarea_init (&temp_area, temp_canvas,
-                      0, 0,
-                      0, 0,
-                      FALSE);  
-      pixelarea_init (&painthit_area, painthit_canvas,
-                      0, 0,
-                      0, 0,
-                      TRUE);
-      convolve_area (&temp_area, &painthit_area,
-                     custom_matrix, matrix_size, matrix_divisor, NORMAL);
-      
-
-      /* clean up the scratch space */
-      canvas_delete ( temp_canvas );
-    }
-  else
-    {
-      /* the area is too small to convolve, so just copy it */
-      pixelarea_init (&src_area, drawable_data (drawable),
-                      paint_core->x, paint_core->y,
-                      paint_core->w, paint_core->h,
-                      FALSE);
-      pixelarea_init (&painthit_area, painthit_canvas,
-                      0, 0,
-                      0, 0,
-                      TRUE);
-      copy_area (&src_area, &painthit_area);
-    }
-  
   /* Apply the painthit to the drawable */
   paint_core_16_area_replace (paint_core, drawable, 
                               1.0,
-                              (gfloat) get_brush_opacity (),
+                              (gfloat) gimp_brush_get_opacity (),
                               SOFT,
-                              INCREMENTAL); 
+                              INCREMENTAL, NORMAL); 
+}
+
+
+static void
+convolve_painthit_setup (PaintCore * paint_core, Canvas * painthit)
+{
+  /* check if the area is large enough to convolve */
+    if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      PixelArea src_area, painthit_area;
+      Tag tag = drawable_tag (paint_core->drawable);
+      if (paint_core->w >= matrix_size && paint_core->h >= matrix_size)
+	{
+	  Canvas * temp_canvas;
+	  PixelArea temp_area;
+
+	  /* alloc a scratch space */
+	  temp_canvas = canvas_new (tag_set_alpha (tag, ALPHA_YES),
+				    paint_core->w, paint_core->h,
+				    STORAGE_FLAT);
+
+	  /* copy data to a flat buffer since convolve_area doesn;t like
+	     tiled buffers */
+	  pixelarea_init (&src_area, drawable_data (paint_core->drawable),
+			  paint_core->x, paint_core->y,
+			  paint_core->w, paint_core->h,
+			  FALSE);
+	  pixelarea_init (&temp_area, temp_canvas,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  copy_area (&src_area, &temp_area);
+	  
+
+	  /* do the convolution */
+	  pixelarea_init (&temp_area, temp_canvas,
+			  0, 0,
+			  0, 0,
+			  FALSE);  
+	  pixelarea_init (&painthit_area, painthit,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  convolve_area (&temp_area, &painthit_area,
+			 custom_matrix, matrix_size, matrix_divisor, NORMAL);
+	  
+
+	  /* clean up the scratch space */
+	  canvas_delete ( temp_canvas );
+	}
+      else
+	{
+	  /* the area is too small to convolve, so just copy it */
+	  pixelarea_init (&src_area, drawable_data (paint_core->drawable),
+			  paint_core->x, paint_core->y,
+			  paint_core->w, paint_core->h,
+			  FALSE);
+	  pixelarea_init (&painthit_area, painthit,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  copy_area (&src_area, &painthit_area);
+	}
+    }
+    else if (paint_core->setup_mode == LINKED_SETUP)
+    {
+      PixelArea src_area, painthit_area;
+      Tag tag = drawable_tag (paint_core->linked_drawable);
+	  printf("linked\n");
+      if (paint_core->w >= matrix_size && paint_core->h >= matrix_size)
+	{
+	  Canvas * temp_canvas;
+	  PixelArea temp_area;
+
+	  /* alloc a scratch space */
+	  temp_canvas = canvas_new (tag_set_alpha (tag, ALPHA_YES),
+				    paint_core->w, paint_core->h,
+				    STORAGE_FLAT);
+
+	  /* copy data to a flat buffer since convolve_area doesn;t like
+	     tiled buffers */
+	  pixelarea_init (&src_area, drawable_data (paint_core->linked_drawable),
+			  paint_core->x, paint_core->y,
+			  paint_core->w, paint_core->h,
+			  FALSE);
+	  pixelarea_init (&temp_area, temp_canvas,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  copy_area (&src_area, &temp_area);
+	  
+
+	  /* do the convolution */
+	  pixelarea_init (&temp_area, temp_canvas,
+			  0, 0,
+			  0, 0,
+			  FALSE);  
+	  pixelarea_init (&painthit_area, painthit,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  convolve_area (&temp_area, &painthit_area,
+			 custom_matrix, matrix_size, matrix_divisor, NORMAL);
+	  
+
+	  /* clean up the scratch space */
+	  canvas_delete ( temp_canvas );
+	}
+      else
+	{
+	  /* the area is too small to convolve, so just copy it */
+	  pixelarea_init (&src_area, drawable_data (paint_core->linked_drawable),
+			  paint_core->x, paint_core->y,
+			  paint_core->w, paint_core->h,
+			  FALSE);
+	  pixelarea_init (&painthit_area, painthit,
+			  0, 0,
+			  0, 0,
+			  TRUE);
+	  copy_area (&src_area, &painthit_area);
+	}
+    }
 }
 
 static void
@@ -538,7 +608,7 @@ convolve_invoker (Argument *args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&convolve_proc, success);

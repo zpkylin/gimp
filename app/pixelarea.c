@@ -75,10 +75,10 @@ void
 pixelarea_init2  (
                   PixelArea * pa,
                   Canvas * c,
-                  guint x,
-                  guint y,
-                  guint w,
-                  guint h,
+                  gint x,
+                  gint y,
+                  gint w,
+                  gint h,
                   RefType r,
                   EdgeType e
                   )

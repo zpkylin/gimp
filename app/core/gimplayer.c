@@ -223,7 +223,7 @@ layer_new  (
 
   /*  floating selection variables  */
   layer->fs.backing_store = NULL;
-  layer->fs.drawable = NULL;
+  layer->fs.drawable = NULL; 
   layer->fs.initial = TRUE;
   layer->fs.boundary_known = FALSE;
   layer->fs.segs = NULL;
@@ -585,6 +585,52 @@ layer_translate (layer, off_x, off_y)
 }
 
 
+void
+layer_remove_alpha (layer)
+     Layer *layer;
+{
+  PixelArea srcPR, destPR;
+  Canvas * c;
+  Tag t;
+
+  t = drawable_tag (GIMP_DRAWABLE(layer));
+
+  if (tag_alpha (t) == ALPHA_NO)
+    return;
+
+  t = tag_set_alpha (t, ALPHA_NO);
+
+  /*  Allocate the new layer */
+  c = canvas_new (t, 
+                  drawable_width (GIMP_DRAWABLE(layer)),
+                  drawable_height (GIMP_DRAWABLE(layer)),
+                  STORAGE_TILED);
+
+  /*  Configure the pixel areas */
+  pixelarea_init (&srcPR, GIMP_DRAWABLE(layer)->tiles, 
+                  0, 0,
+                  0, 0,
+                  FALSE);
+
+  pixelarea_init (&destPR, c, 
+                  0, 0,
+                  0, 0,
+                  TRUE);
+  
+  /*  remove the alpha channel  */
+  copy_area (&srcPR, &destPR);
+  /*add_alpha_area (&srcPR, &destPR);*/
+
+  canvas_delete (GIMP_DRAWABLE(layer)->tiles);
+
+  /*  Configure the new layer  */
+  GIMP_DRAWABLE(layer)->tiles = c;
+
+  /*  update gdisplay titles to reflect the possibility of
+   *  this layer being the only layer in the gimage
+   */
+  gdisplays_update_title (GIMP_DRAWABLE(layer)->gimage_ID);
+}
 
 
 void
@@ -620,7 +666,8 @@ layer_add_alpha (layer)
                   TRUE);
   
   /*  Add an alpha channel  */
-  add_alpha_area (&srcPR, &destPR);
+  copy_area (&srcPR, &destPR);
+  /*add_alpha_area (&srcPR, &destPR);*/
 
   /*  Push the layer on the undo stack  */
   undo_push_layer_mod (gimage_get_ID (GIMP_DRAWABLE(layer)->gimage_ID), layer);

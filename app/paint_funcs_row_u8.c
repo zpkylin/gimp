@@ -154,48 +154,40 @@ absdiff_row_u8  (
   
   while (width--)
     {
-      /*  if there is an alpha channel, never select transparent regions  */
-      if (has_alpha && src[src_channels] == 0)
+      gint b;
+      gint diff;
+      gint max = 0;
+      
+      for (b = 0; b < src_channels; b++)
         {
-          *dest = 0;
+          diff = src[b] - color[b];
+          diff = abs (diff);
+          if (diff > max)
+            max = diff;
+        }
+      
+      if (antialias && threshold > 0)
+        {
+          float aa;
+          
+          aa = 1.5 - ((float) max / threshold);
+          if (aa <= 0)
+            *dest = 0;
+          else if (aa < 0.5)
+            *dest = (aa * 512);
+          else
+            *dest = 255;
         }
       else
         {
-          gint b;
-          gint diff;
-          gint max = 0;
-          
-          for (b = 0; b < src_channels; b++)
-            {
-              diff = src[b] - color[b];
-              diff = abs (diff);
-              if (diff > max)
-                max = diff;
-            }
-      
-          if (antialias && threshold > 0)
-            {
-              float aa;
-
-              aa = 1.5 - ((float) max / threshold);
-              if (aa <= 0)
-                *dest = 0;
-              else if (aa < 0.5)
-                *dest = (aa * 512);
-              else
-                *dest = 255;
-            }
+          if (max > threshold)
+            *dest = 0;
           else
-            {
-              if (max > threshold)
-                *dest = 0;
-              else
-                *dest = 255;
-            }
-          
-          src += src_channels;
-          dest += dest_channels;
+            *dest = 255;
         }
+  
+      src += src_channels;
+      dest += dest_channels;
     }
 }
 
@@ -1740,9 +1732,8 @@ combine_inten_and_inten_a_row_u8  (
 	  new_alpha = (src2[alpha] * opacity);
 
 	  for (b = 0; b < num_channels; b++)
-	    dest[b] = (affect[b]) ?
-	      (src2[b] * new_alpha + src1[b] * (255 - new_alpha)) / 255 :
-	    src1[b];
+	    dest[b] = (affect[b]) ?  
+		(src2[b] * new_alpha + src1[b] * (255 - new_alpha)) / 255 : src1[b];
 
 	  src1 += num_channels;
 	  src2 += src2_num_channels;
@@ -1934,16 +1925,24 @@ combine_inten_a_and_channel_mask_row_u8  (
   guint8 *dest         = (guint8*)pixelrow_data (dest_row);
   guint8 *channel      = (guint8*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint8 *color        = (guint8*) pixelrow_data (col);
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
   while (width --)
     {
       channel_alpha = INT_MULT (255 - *channel, opacity*255, t);
       if (channel_alpha)
 	{
+	 if (has_alpha)
 	  new_alpha = src[alpha] + INT_MULT ((255 - src[alpha]), channel_alpha, t);
+	 else
+	  new_alpha = 255; 	
 
 	  if (new_alpha != 255)
 	    channel_alpha = (channel_alpha * 255) / new_alpha;
@@ -1952,7 +1951,9 @@ combine_inten_a_and_channel_mask_row_u8  (
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = INT_MULT (color[b], channel_alpha, t) +
 	      INT_MULT (src[b], compl_alpha, s);
-	  dest[b] = new_alpha;
+
+ 	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)
@@ -1984,25 +1985,37 @@ combine_inten_a_and_channel_selection_row_u8  (
   guint8 *dest         = (guint8*)pixelrow_data (dest_row);
   guint8 *channel      = (guint8*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint8 *color        = (guint8*) pixelrow_data (col);
-
-  alpha = num_channels - 1;
+  
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
+	
   while (width --)
     {
       channel_alpha = INT_MULT (*channel, opacity*255, t);
       if (channel_alpha)
 	{
-	  new_alpha = src[alpha] + INT_MULT ((255 - src[alpha]), channel_alpha, t);
+	  if (has_alpha)
+	    new_alpha = src[alpha] + INT_MULT ((255 - src[alpha]), channel_alpha, t);
+	  else
+	    new_alpha = 255;
+		
 
 	  if (new_alpha != 255)
 	    channel_alpha = (channel_alpha * 255) / new_alpha;
+	
 	  compl_alpha = 255 - channel_alpha;
 
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = INT_MULT (color[b], channel_alpha, t) +
 	      INT_MULT (src[b], compl_alpha, s);
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)
@@ -2014,7 +2027,6 @@ combine_inten_a_and_channel_selection_row_u8  (
       channel++;
     }
 }
-
 
 /*  paint "behind" the existing pixel row.
  *  This is similar in appearance to painting on a layer below

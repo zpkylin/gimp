@@ -18,13 +18,20 @@
 #ifndef __BRUSH_HEADER_H__
 #define __BRUSH_HEADER_H__
 
+
 typedef struct _BrushHeader BrushHeader;
 
-#define FILE_VERSION   3
+#define FILE_VERSION   3 
+
+/* 
+   version 1 -- did not have spacing or tag fields.
+   version 2 -- had spacing, but not tag fields. 
+   version 3 -- had spacing but bytes was interpreted as image type
+*/
+
 #define GBRUSH_MAGIC   (('G' << 24) + ('I' << 16) + ('M' << 8) + ('P' << 0))
 #define sz_BrushHeader (sizeof (BrushHeader))
 
-#define BRUSH_HEADER_C_2_cw
 /*  All field entries are MSB  */
 
 struct _BrushHeader
@@ -33,7 +40,7 @@ struct _BrushHeader
   unsigned int   version;     /*  brush file version #  */
   unsigned int   width;       /*  width of brush  */
   unsigned int   height;      /*  height of brush  */
-  unsigned int   type;        /*  = bpp in  version <= 2, but layer type in  version >= 3*/
+  unsigned int   type;        /*  was bytes in version 1,2. type in version >= 3 */
   unsigned int   magic_number;/*  GIMP brush magic number  */
   unsigned int   spacing;     /*  brush spacing  */
 };

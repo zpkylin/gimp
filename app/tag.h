@@ -68,6 +68,19 @@ typedef enum
   ALPHA_YES
 } Alpha;
 
+
+typedef enum
+{
+  Red,
+  Green,
+  Blue,
+  Matte,
+  Gray,
+  Indexed,
+  Auxillary
+} ChannelType;
+
+
 /* if you define DEBUG_TAGS, then actual functions which check
    inputs will be used.  otherwise, the macros below will be used */
 
@@ -115,6 +128,7 @@ Tag       tag_set_alpha         (Tag, Alpha);
 #endif
 
 guint     tag_num_channels      (Tag);
+guint 	  tag_alpha_index 	(Tag);
 guint     tag_bytes             (Tag);
 guint     tag_equal             (Tag, Tag);
 gint      tag_valid             (Tag);
@@ -170,5 +184,15 @@ Tag       tag_from_image_type    (gint);
 #define FLOAT16_RGB 		 8    /*float16*/
 #define FLOAT16_GRAY 		 9
 
+#define GRAY_PIX         0
+#define ALPHA_G_PIX      1
+#define RED_PIX          0
+#define GREEN_PIX        1
+#define BLUE_PIX         2
+#define ALPHA_PIX        3
+#define INDEXED_PIX      0
+#define ALPHA_I_PIX      1
+
+#define MAX_CHANNELS     4
 
 #endif /* __TAG_H__ */

@@ -23,9 +23,10 @@
 #include "actionarea.h"
 #include "app_procs.h"
 #include "brightness_contrast.h"
-#include "brushes.h"
+#include "gimpbrush.h"
 #include "by_color_select.h"
 #include "channels_dialog.h"
+#include "channel.h"
 #include "colormaps.h"
 #include "color_balance.h"
 #include "commands.h"
@@ -33,6 +34,7 @@
 #include "curves.h"
 #include "desaturate.h"
 #include "channel_ops.h"
+#include "channel.h"
 #include "drawable.h"
 #include "equalize.h"
 #include "fileops.h"
@@ -56,6 +58,7 @@
 #include "levels.h"
 #include "paint_funcs_area.h"
 #include "palette.h"
+#include "frame_manager.h"
 #include "patterns.h"
 #include "plug_in.h"
 #include "posterize.h"
@@ -121,6 +124,10 @@ static   int          old_auto_save;
 static   int          old_preview_size;
 static   int          old_no_cursor_updating;
 static   int          old_show_tool_tips;
+static   int          old_enable_rgbm_painting;
+static   int          old_enable_tmp_saving;
+static   int          old_enable_channel_revert; 
+static   int          old_enable_paste_c_disp; 
 static   int          old_cubic_interpolation;
 static   int          old_confirm_on_close;
 static   int          old_default_width;
@@ -137,6 +144,7 @@ static   char *       old_swap_path;
 static   char *       old_brush_path;
 static   char *       old_pattern_path;
 static   char *       old_palette_path;
+static   char *       old_frame_manager_path;
 static   char *       old_plug_in_path;
 static   char *       old_gradient_path;
 
@@ -145,6 +153,7 @@ static   char *       edit_swap_path = NULL;
 static   char *       edit_brush_path = NULL;
 static   char *       edit_pattern_path = NULL;
 static   char *       edit_palette_path = NULL;
+static   char *       edit_frame_manager_path = NULL;
 static   char *       edit_plug_in_path = NULL;
 static   char *       edit_gradient_path = NULL;
 static   int          edit_stingy_memory_use;
@@ -236,7 +245,7 @@ file_new_ok_callback (GtkWidget *widget,
       drawable_fill (GIMP_DRAWABLE(layer), vals->fill_type);
 
     gimage_clean_all (gimage);
-
+    
     gdisplay = gdisplay_new (gimage, 0x0101);
   }
 
@@ -252,7 +261,7 @@ file_new_delete_callback (GtkWidget *widget,
 
   return TRUE;
 }
-
+  
 
 static void
 file_new_cancel_callback (GtkWidget *widget,
@@ -280,9 +289,9 @@ file_new_toggle_callback (GtkWidget *widget,
 }
 
 void
-file_new_cmd_callback (GtkWidget           *widget,
-		       gpointer             callback_data,
-		       guint                callback_action)
+file_new_cmd_callback (GtkWidget *widget,
+		       gpointer   callback_data,
+		       guint      callback_action)
 {
   GDisplay *gdisp;
   NewImageValues *vals;
@@ -300,7 +309,7 @@ file_new_cmd_callback (GtkWidget           *widget,
       last_width = default_width;
       last_height = default_height;
       last_format = default_format;
-      new_dialog_run = 1;  
+      new_dialog_run = 1;
     }
 
   /*  Before we try to determine the responsible gdisplay,
@@ -435,7 +444,7 @@ file_new_cmd_callback (GtkWidget           *widget,
     gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button), TRUE);
   gtk_widget_show (button);
 
-
+#if 0
   frame = gtk_frame_new ("Storage Type");
   gtk_box_pack_start (GTK_BOX (vbox), frame, TRUE, TRUE, 0);
   gtk_widget_show (frame);
@@ -477,7 +486,7 @@ file_new_cmd_callback (GtkWidget           *widget,
   if (vals->storage == STORAGE_SHM)
     gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button), TRUE);
   gtk_widget_show (button);
-
+#endif
 
   frame = gtk_frame_new ("Fill Type");
   gtk_box_pack_start (GTK_BOX (vbox), frame, TRUE, TRUE, 0);
@@ -531,7 +540,7 @@ file_new_cmd_callback (GtkWidget           *widget,
   if (vals->fill_type == FOREGROUND_FILL)
     gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button), TRUE);
   gtk_widget_show (button);
-
+#if 0
   button = gtk_radio_button_new_with_label (group, "No Fill");
   group = gtk_radio_button_group (GTK_RADIO_BUTTON (button));
   gtk_box_pack_start (GTK_BOX (radio_box), button, TRUE, TRUE, 0);
@@ -542,8 +551,16 @@ file_new_cmd_callback (GtkWidget           *widget,
   if (vals->fill_type == NO_FILL)
     gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button), TRUE);
   gtk_widget_show (button);
-
+#endif
   gtk_widget_show (vals->dlg);
+}
+
+void
+file_reload_cmd_callback (GtkWidget *widget,
+			gpointer   client_data)
+{
+ 
+  file_reload_callback (gdisplay_active ());
 }
 
 void
@@ -564,6 +581,14 @@ void
 file_save_as_cmd_callback (GtkWidget *widget,
 			   gpointer   client_data)
 {
+  file_save_as_callback (widget, client_data);
+}
+
+void
+file_save_copy_as_cmd_callback (GtkWidget *widget,
+			   gpointer   client_data)
+{
+  save_a_copy (); 
   file_save_as_callback (widget, client_data);
 }
 
@@ -679,6 +704,9 @@ file_prefs_ok_callback (GtkWidget *widget,
     gtk_tooltips_enable (tool_tips);
   else
     gtk_tooltips_disable (tool_tips);
+
+  file_tmp_save (enable_tmp_saving);
+  file_channel_revert (enable_channel_revert);   
 }
 
 static void
@@ -696,6 +724,7 @@ file_prefs_save_callback (GtkWidget *widget,
   gchar *save_brush_path;
   gchar *save_pattern_path;
   gchar *save_palette_path;
+  gchar *save_frame_manager_path;
   gchar *save_plug_in_path;
   gchar *save_gradient_path;
   int restart_notification = FALSE;
@@ -712,6 +741,7 @@ file_prefs_save_callback (GtkWidget *widget,
   save_brush_path = brush_path;
   save_pattern_path = pattern_path;
   save_palette_path = palette_path;
+  save_frame_manager_path = frame_manager_path;
   save_plug_in_path = plug_in_path;
   save_gradient_path = gradient_path;
 
@@ -735,6 +765,26 @@ file_prefs_save_callback (GtkWidget *widget,
     {
       update = g_list_append (update, "show-tool-tips");
       remove = g_list_append (remove, "dont-show-tool-tips");
+    }
+  if (enable_rgbm_painting != old_enable_rgbm_painting)
+    {
+      update = g_list_append (update, "enable-rgbm-painting");
+      remove = g_list_append (remove, "dont-enable-rgbm-painting");
+    }
+  if (enable_paste_c_disp!= old_enable_paste_c_disp)
+    {
+      update = g_list_append (update, "enable-paste-c-disp");
+      remove = g_list_append (remove, "dont-enable-paste-c-disp");
+    }
+  if (enable_tmp_saving != old_enable_tmp_saving)
+    {
+      update = g_list_append (update, "enable-tmp-saving");
+      remove = g_list_append (remove, "dont-enable-tmp-saving");
+    }
+  if (enable_channel_revert != old_enable_channel_revert)
+    {
+      update = g_list_append (update, "enable-channel-revert");
+      remove = g_list_append (remove, "dont-enable-channel-revert");
     }
   if (cubic_interpolation != old_cubic_interpolation)
     update = g_list_append (update, "cubic-interpolation");
@@ -801,6 +851,12 @@ file_prefs_save_callback (GtkWidget *widget,
       pattern_path = edit_pattern_path;
       restart_notification = TRUE;
     }
+  if (file_prefs_strcmp (frame_manager_path, edit_frame_manager_path))
+    {
+      update = g_list_append (update, "frame_manager-path");
+      frame_manager_path = edit_frame_manager_path;
+      restart_notification = TRUE;
+    }
   if (file_prefs_strcmp (palette_path, edit_palette_path))
     {
       update = g_list_append (update, "palette-path");
@@ -831,6 +887,7 @@ file_prefs_save_callback (GtkWidget *widget,
   brush_path = save_brush_path;
   pattern_path = save_pattern_path;
   palette_path = save_palette_path;
+  frame_manager_path = save_frame_manager_path;
   plug_in_path = save_plug_in_path;
   gradient_path = save_gradient_path;
 
@@ -865,6 +922,10 @@ file_prefs_cancel_callback (GtkWidget *widget,
   auto_save = old_auto_save;
   no_cursor_updating = old_no_cursor_updating;
   show_tool_tips = old_show_tool_tips;
+  enable_rgbm_painting = old_enable_rgbm_painting;
+  enable_paste_c_disp = old_enable_paste_c_disp;
+  enable_tmp_saving = old_enable_tmp_saving;
+  enable_channel_revert = old_enable_channel_revert;
   cubic_interpolation = old_cubic_interpolation;
   confirm_on_close = old_confirm_on_close;
   default_width = old_default_width;
@@ -899,6 +960,7 @@ file_prefs_cancel_callback (GtkWidget *widget,
   file_prefs_strset (&edit_brush_path, old_brush_path);
   file_prefs_strset (&edit_pattern_path, old_pattern_path);
   file_prefs_strset (&edit_palette_path, old_palette_path);
+  file_prefs_strset (&edit_frame_manager_path, old_frame_manager_path);
   file_prefs_strset (&edit_plug_in_path, old_plug_in_path);
   file_prefs_strset (&edit_gradient_path, old_gradient_path);
 }
@@ -917,6 +979,14 @@ file_prefs_toggle_callback (GtkWidget *widget,
     no_cursor_updating = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&show_tool_tips)
     show_tool_tips = GTK_TOGGLE_BUTTON (widget)->active;
+  else if (data==&enable_rgbm_painting)
+    enable_rgbm_painting = GTK_TOGGLE_BUTTON (widget)->active;
+  else if (data==&enable_paste_c_disp)
+    enable_paste_c_disp = GTK_TOGGLE_BUTTON (widget)->active;
+  else if (data==&enable_tmp_saving)
+    enable_tmp_saving = GTK_TOGGLE_BUTTON (widget)->active;
+  else if (data==&enable_channel_revert)
+    enable_channel_revert = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&cubic_interpolation)
     cubic_interpolation = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&confirm_on_close)
@@ -1036,6 +1106,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       {"Gradients dir:", &edit_gradient_path},
       {"Patterns dir:", &edit_pattern_path},
       {"Palette dir:", &edit_palette_path},
+      {"Frame_Manager dir:", &edit_frame_manager_path},
       {"Plug-in dir:", &edit_plug_in_path}
     };
     struct {
@@ -1065,6 +1136,7 @@ file_pref_cmd_callback (GtkWidget *widget,
 	  edit_brush_path = file_prefs_strdup (brush_path);
 	  edit_pattern_path = file_prefs_strdup (pattern_path);
 	  edit_palette_path = file_prefs_strdup (palette_path);
+	  edit_frame_manager_path = file_prefs_strdup (frame_manager_path);
 	  edit_plug_in_path = file_prefs_strdup (plug_in_path);
 	  edit_gradient_path = file_prefs_strdup (gradient_path);
 	  edit_stingy_memory_use = stingy_memory_use;
@@ -1081,6 +1153,10 @@ file_pref_cmd_callback (GtkWidget *widget,
       old_preview_size = preview_size;
       old_no_cursor_updating = no_cursor_updating;
       old_show_tool_tips = show_tool_tips;
+      old_enable_rgbm_painting = enable_rgbm_painting; 
+      old_enable_paste_c_disp = enable_paste_c_disp; 
+      old_enable_tmp_saving = enable_tmp_saving; 
+      old_enable_channel_revert = enable_channel_revert; 
       old_cubic_interpolation = cubic_interpolation;
       old_confirm_on_close = confirm_on_close;
       old_default_width = default_width;
@@ -1096,6 +1172,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       file_prefs_strset (&old_brush_path, edit_brush_path);
       file_prefs_strset (&old_pattern_path, edit_pattern_path);
       file_prefs_strset (&old_palette_path, edit_palette_path);
+      file_prefs_strset (&old_frame_manager_path, edit_frame_manager_path);
       file_prefs_strset (&old_plug_in_path, edit_plug_in_path);
       file_prefs_strset (&old_gradient_path, edit_gradient_path);
 
@@ -1240,6 +1317,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
       
+#if 0
       frame = gtk_frame_new ("Image precision");
       gtk_box_pack_start (GTK_BOX (hbox), frame, TRUE, TRUE, 0);
       gtk_widget_show (frame);
@@ -1292,11 +1370,11 @@ file_pref_cmd_callback (GtkWidget *widget,
       hbox = gtk_hbox_new (FALSE, 2);
       gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, TRUE, 0);
       gtk_widget_show (hbox);
-
+#endif
       label = gtk_label_new ("Preview size:");
       gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
       gtk_widget_show (label);
-
+      
       menu = gtk_menu_new ();
       for (i = 0; i < npreview_sizes; i++)
         {
@@ -1568,6 +1646,56 @@ file_pref_cmd_callback (GtkWidget *widget,
 	}
 
       label = gtk_label_new ("Directories");
+      gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
+
+      /* Global Settings */
+      out_frame = gtk_frame_new ("Global Setting -- Not Implemented yet -- Do not use");
+      gtk_container_border_width (GTK_CONTAINER (out_frame), 10);
+      gtk_widget_set_usize (out_frame, 320, 200);
+      gtk_widget_show (out_frame);
+
+      vbox = gtk_vbox_new (FALSE, 2);
+      gtk_container_border_width (GTK_CONTAINER (vbox), 1);
+      gtk_container_add (GTK_CONTAINER (out_frame), vbox);
+      gtk_widget_show (vbox);
+      
+      button = gtk_check_button_new_with_label("Enable RGBM painting");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_rgbm_painting);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_rgbm_painting);
+      gtk_widget_show (button);
+      
+      button = gtk_check_button_new_with_label("Enable paste in center of display");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_paste_c_disp);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_paste_c_disp);
+      gtk_widget_show (button);
+     
+      button = gtk_check_button_new_with_label("Enable tmp saving");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_tmp_saving);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_tmp_saving);
+      gtk_widget_show (button);
+      
+      button = gtk_check_button_new_with_label("Enable Channel Revert");
+      gtk_toggle_button_set_state (GTK_TOGGLE_BUTTON (button),
+                                   enable_channel_revert);
+      gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
+      gtk_signal_connect (GTK_OBJECT (button), "toggled",
+			  (GtkSignalFunc) file_prefs_toggle_callback,
+			  &enable_channel_revert);
+      gtk_widget_show (button);
+
+      label = gtk_label_new ("Global Settings");
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
 
       gtk_widget_show (notebook);
@@ -2546,6 +2674,26 @@ dialogs_palette_cmd_callback (GtkWidget *widget,
 			      gpointer   client_data)
 {
   palette_create ();
+}
+
+void
+dialogs_frame_manager_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_create ();
+}
+
+void
+dialogs_frame_manager_forward_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_forward_callback (widget, client_data);
+}
+void
+dialogs_frame_manager_backwards_cmd_callback (GtkWidget *widget,
+			      gpointer   client_data)
+{
+  frame_manager_backwards_callback (widget, client_data);
 }
 
 void

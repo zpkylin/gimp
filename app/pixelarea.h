@@ -81,7 +81,7 @@ void              pixelarea_init          (PixelArea *, Canvas *,
                                            int will_dirty);
 
 void              pixelarea_init2         (PixelArea *, Canvas *,
-                                           guint, guint, guint, guint,
+                                           gint, gint, gint, gint,
                                            RefType, EdgeType);
 
 void              pixelarea_getdata       (PixelArea *, struct _PixelRow *, int);

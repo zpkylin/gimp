@@ -24,6 +24,35 @@ gimp_SOURCES = \
 	paint_funcs_row_float16.h \
 	float16.c               \
 	float16.h               \
+	smudge.c               \
+	smudge.h               \
+	dodgeburn.c               \
+	dodgeburn.h               \
+	noise.c                \
+	noise.h                \
+				\
+	gimpbrushgenerated.c    \
+	gimpbrushgenerated.h	\
+	brush_edit.c    \
+	brush_edit.h	\
+	gimpbrush.c    \
+	gimpbrush.h	\
+	gimpbrushlist.c    \
+	gimpbrushlist.h	\
+	gimpbrushlistF.h    \
+	gimpbrushlistP.h	\
+	gimpobject.c    \
+	gimpobject.h	\
+	gimpobjectF.h    \
+	gimpobjectP.h	\
+	gimplist.c    \
+	gimplist.h	\
+	gimplistF.h    \
+	gimpsignal.h	\
+	gimpsignal.c	\
+	vector2d.h    \
+	vector2d.c	\
+				\
 	displaylut.c            \
 	displaylut.h            \
 	paint_funcs_area.c      \
@@ -64,8 +93,6 @@ gimp_SOURCES = \
 	brush_header.h		\
 	brush_select.c		\
 	brush_select.h		\
-	brushes.c		\
-	brushes.h		\
 	bucket_fill.c		\
 	bucket_fill.h		\
 	buildmenu.c		\
@@ -225,6 +252,8 @@ gimp_SOURCES = \
 	ops_buttons.h		\
 	palette.c		\
 	palette.h		\
+	frame_manager.c		\
+	frame_manager.h		\
 	paintbrush.c		\
 	paintbrush.h		\
 	pattern_header.h	\

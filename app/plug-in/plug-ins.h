@@ -31,6 +31,18 @@
 #define RGBA_IMAGE      0x08
 #define GRAYA_IMAGE     0x10
 #define INDEXEDA_IMAGE  0x20
+#define U16_RGB_IMAGE       0x40
+#define U16_GRAY_IMAGE      0x80
+#define U16_RGBA_IMAGE      0x100 
+#define U16_GRAYA_IMAGE     0x200
+#define FLOAT_RGB_IMAGE       0x400
+#define FLOAT_GRAY_IMAGE      0x800
+#define FLOAT_RGBA_IMAGE      0x1000 
+#define FLOAT_GRAYA_IMAGE     0x2000
+#define FLOAT16_RGB_IMAGE       0x4000
+#define FLOAT16_GRAY_IMAGE      0x8000
+#define FLOAT16_RGBA_IMAGE      0x10000 
+#define FLOAT16_GRAYA_IMAGE     0x20000
 
 
 typedef struct _PlugIn             PlugIn;
@@ -167,4 +179,6 @@ void plug_in_add_internal (PlugInProcDef* proc_def);
 GSList* plug_in_extensions_parse  (char     *extensions);
 int     plug_in_image_types_parse (char     *image_types);
 
+gint  tag_to_plugin_image_type ( Tag t );
+void  plug_in_proc_def_print (PlugInProcDef * proc); 
 #endif /* __PLUG_IN_H__ */

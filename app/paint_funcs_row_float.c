@@ -163,48 +163,40 @@ absdiff_row_float  (
 
   while (width--)
     {
-      /*  if there is an alpha channel, never select transparent regions  */
-      if (has_alpha && src[src_channels] == 0)
+      gint b;
+      gdouble diff;
+      gfloat max = 0;
+          
+      for (b = 0; b < src_channels; b++)
         {
-          *dest = 0;
+          diff = src[b] - color[b];
+          diff = fabs (diff);
+          if (diff > max)
+            max = diff;
+        }
+      
+      if (antialias && threshold > 0)
+        {
+          float aa;
+
+          aa = 1.5 - ((float) max / threshold);
+          if (aa <= 0)
+            *dest = 0;
+          else if (aa < 0.5)
+            *dest = (aa * 2.0);
+          else
+            *dest = 1.0;
         }
       else
         {
-          gint b;
-          gdouble diff;
-          gfloat max = 0;
-          
-          for (b = 0; b < src_channels; b++)
-            {
-              diff = src[b] - color[b];
-              diff = fabs (diff);
-              if (diff > max)
-                max = diff;
-            }
-      
-          if (antialias && threshold > 0)
-            {
-              float aa;
-
-              aa = 1.5 - ((float) max / threshold);
-              if (aa <= 0)
-                *dest = 0;
-              else if (aa < 0.5)
-                *dest = (aa * 2.0);
-              else
-                *dest = 1.0;
-            }
+          if (max > threshold)
+            *dest = 0;
           else
-            {
-              if (max > threshold)
-                *dest = 0;
-              else
-                *dest = 1.0;
-            }
-          
-          src += src_channels;
-          dest += dest_channels;
+            *dest = 1.0;
         }
+          
+      src += src_channels;
+      dest += dest_channels;
     }
 }
 
@@ -1589,16 +1581,24 @@ combine_inten_a_and_channel_mask_row_float  (
   gfloat *dest         = (gfloat*)pixelrow_data (dest_row);
   gfloat *channel      = (gfloat*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   gfloat *color        = (gfloat*) pixelrow_data (col);
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
   while (width --)
     {
       channel_alpha =(1.0 - *channel) * opacity;
       if (channel_alpha)
 	{
-	  new_alpha = src[alpha] + (1.0 - src[alpha]) * channel_alpha;
+	  if (has_alpha)
+	    new_alpha = src[alpha] + (1.0 - src[alpha]) * channel_alpha;
+	  else
+	    new_alpha = 1.0;	
 
 	  if (new_alpha != 1.0)
 	    channel_alpha = channel_alpha / new_alpha;
@@ -1606,7 +1606,8 @@ combine_inten_a_and_channel_mask_row_float  (
 
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = color[b] * channel_alpha + src[b] * compl_alpha;
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)
@@ -1637,16 +1638,24 @@ combine_inten_a_and_channel_selection_row_float  (
   gfloat *dest         = (gfloat*)pixelrow_data (dest_row);
   gfloat *channel      = (gfloat*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   gfloat *color        = (gfloat*) pixelrow_data (col);
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
   while (width --)
     {
       channel_alpha = *channel * opacity;
       if (channel_alpha)
 	{
-	  new_alpha = src[alpha] + (1.0 - src[alpha]) * channel_alpha;
+	  if (has_alpha)
+	    new_alpha = src[alpha] + (1.0 - src[alpha]) * channel_alpha;
+	  else
+	    new_alpha = 1.0;
 
 	  if (new_alpha != 1.0)
 	    channel_alpha = channel_alpha  / new_alpha;
@@ -1654,7 +1663,8 @@ combine_inten_a_and_channel_selection_row_float  (
 
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = color[b] * channel_alpha + src[b]* compl_alpha;
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)

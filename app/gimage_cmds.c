@@ -180,7 +180,7 @@ ProcArg gimage_new_args[] =
   },
   { PDB_INT32,
     "type",
-    "The type of image: { RGB (0), GRAY (1), INDEXED (2), U16_RGB (3), U16_GRAY (4), U16_INDEXED (5), FLOAT_RGB (6), FLOAT_GRAY (7)}"
+    "The type of image: { RGB (0), GRAY (1), INDEXED (2), U16_RGB (3), U16_GRAY (4), U16_INDEXED (5), FLOAT16_RGB (6), FLOAT16_GRAY (7)}"
   }
 };
 
@@ -472,6 +472,136 @@ ProcRecord gimage_free_shadow_proc =
   { { gimage_free_shadow_invoker } },
 };
 
+
+/************************/
+/*  GIMAGE_IS_LAYERED  */
+
+static Argument *
+gimage_is_layered_invoker (Argument *args)
+{
+  int gimage_id;
+  int is_layered;
+  Argument *return_args;
+
+  success = TRUE;
+  if (success)
+    gimage_id = args[0].value.pdb_int;
+  if (success)
+    is_layered = gimage_is_layered (gimage_get_ID (gimage_id));
+
+  return_args = procedural_db_return_args (&gimage_is_layered_proc, success);
+
+  if (success)
+   {
+    return_args[1].value.pdb_int = is_layered;
+   }
+
+  return return_args;
+}
+
+/*  The procedure definition  */
+ProcArg gimage_is_layered_args[] =
+{
+  { PDB_IMAGE,
+    "image",
+    "the image"
+  }
+};
+
+ProcArg gimage_is_layered_out_args[] =
+{
+  { PDB_INT32,
+    "is_layered",
+    "is the image layered?"
+  }
+};
+
+ProcRecord gimage_is_layered_proc =
+{
+  "gimp_image_is_layered",
+  "Returns non-zero if the image is layered",
+  "This procedure returns whether the specified image is layered.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  gimage_is_layered_args,
+
+  /*  Output arguments  */
+  1,
+  gimage_is_layered_out_args,
+
+  /*  Exec method  */
+  { { gimage_is_layered_invoker } },
+};
+
+/************************/
+/*  GIMAGE_DIRTY_FLAG  */
+
+static Argument *
+gimage_dirty_flag_invoker (Argument *args)
+{
+  int gimage_id;
+  int dirty_flag;
+  Argument *return_args;
+
+  success = TRUE;
+  if (success)
+    gimage_id = args[0].value.pdb_int;
+  if (success)
+    dirty_flag = gimage_dirty_flag (gimage_get_ID (gimage_id));
+
+  return_args = procedural_db_return_args (&gimage_dirty_flag_proc, success);
+
+  if (success)
+   {
+    return_args[1].value.pdb_int = dirty_flag;
+   }
+
+  return return_args;
+}
+
+/*  The procedure definition  */
+ProcArg gimage_dirty_flag_args[] =
+{
+  { PDB_IMAGE,
+    "image",
+    "the image"
+  }
+};
+
+ProcArg gimage_dirty_flag_out_args[] =
+{
+  { PDB_INT32,
+    "dirty_flag",
+    "the dirty flag of the image"
+  }
+};
+
+ProcRecord gimage_dirty_flag_proc =
+{
+  "gimp_image_dirty_flag",
+  "Returns the dirty flag of the image",
+  "This procedure returns the specified image dirty flag.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  gimage_dirty_flag_args,
+
+  /*  Output arguments  */
+  1,
+  gimage_dirty_flag_out_args,
+
+  /*  Exec method  */
+  { { gimage_dirty_flag_invoker } },
+};
 
 /***********************/
 /*  GIMAGE_GET_LAYERS  */
@@ -1681,7 +1811,7 @@ gimage_merge_visible_layers_invoker (Argument *args)
     }
 
   if (success)
-    success = ((layer = gimage_merge_visible_layers (gimage, merge_type)) != NULL);
+    success = ((layer = gimage_merge_visible_layers (gimage, merge_type, 0)) != NULL);
 
   return_args = procedural_db_return_args (&gimage_merge_visible_layers_proc, success);
 
@@ -2505,7 +2635,7 @@ ProcArg gimage_base_type_out_args[] =
 {
   { PDB_INT32,
     "base_type",
-    "the image's base type: { RGB (0), GRAY (1), INDEXED (2), U16_RGB (3), U16_GRAY (4), U16_INDEXED (5), FLOAT_RGB (6), FLOAT_GRAY (7)  }"
+    "the image's base type: { RGB (0), GRAY (1), INDEXED (2), U16_RGB (3), U16_GRAY (4), U16_INDEXED (5), FLOAT16_RGB (6), FLOAT16_GRAY (7)  }"
   }
 };
 

@@ -43,7 +43,9 @@ channel_new_invoker (Argument *args)
   int width, height;
   char *name;
   gfloat opacity;
-  unsigned char _color[3];
+  unsigned char _color_from_plugin[3];
+  unsigned char _color[TAG_MAX_BYTES];
+  PixelRow color_from_plugin;
   PixelRow color;
   Argument *return_args;
 
@@ -82,11 +84,14 @@ channel_new_invoker (Argument *args)
       unsigned char *color_array;
 
       color_array = (unsigned char *) args[5].value.pdb_pointer;
-      pixelrow_init (&color, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO),
-                     _color, 1);
+      pixelrow_init (&color_from_plugin, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO),
+                     _color_from_plugin, 1);
       
       for (i = 0; i < 3; i++)
-	_color[i] = color_array[i];
+	_color_from_plugin[i] = color_array[i];
+	
+      pixelrow_init (&color, tag_new (default_precision, FORMAT_RGB, ALPHA_NO), _color, 1);
+      copy_row(&color_from_plugin, &color);
     }
 
   if (success)

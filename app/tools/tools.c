@@ -31,6 +31,7 @@
 #include "crop.h"
 #include "cursorutil.h"
 #include "curves.h"
+#include "dodgeburn.h"
 #include "eraser.h"
 #include "gdisplay.h"
 #include "hue_saturation.h"
@@ -49,6 +50,7 @@
 #include "pencil.h"
 #include "posterize.h"
 #include "rect_select.h"
+#include "smudge.h"
 #include "text_tool.h"
 #include "threshold.h"
 #include "tools.h"
@@ -67,6 +69,7 @@ static ToolType active_tool_type = -1;
 
 static int global_tool_ID = 0;
 
+#if 0
 ToolInfo tool_info[] =
 {
   { NULL, "Rect Select", 0 },
@@ -106,6 +109,51 @@ ToolInfo tool_info[] =
   { NULL, "Levels", 28 },
   { NULL, "Histogram", 29 }
 };
+#endif
+
+#if 1
+ToolInfo tool_info[] =
+{
+  { NULL, "Rect Select", 0 },
+  { NULL, "Ellipse Select", 1 },
+  { NULL, "Free Select", 2 },
+  { NULL, "Fuzzy Select", 3 },
+  { NULL, "Bezier Select", 4 },
+  { NULL, "Intelligent Scissors", 5 },
+  { NULL, "Move", 5 },
+  { NULL, "Magnify", 6 },
+  { NULL, "Crop", 7 },
+  { NULL, "Transform", 8 }, /* rotate */
+  { NULL, "Transform", 8 }, /* scale */
+  { NULL, "Transform", 8 }, /* shear */
+  { NULL, "Transform", 8 }, /* perspective */
+  { NULL, "Flip", 9 }, /* horizontal */
+  { NULL, "Flip", 9 }, /* vertical */
+  { NULL, "Text", 11 },
+  { NULL, "Color Picker", 10 },
+  { NULL, "Bucket Fill", 11 },
+  { NULL, "Blend", 12 },
+  { NULL, "Pencil", 13 },
+  { NULL, "Paintbrush", 14 },
+  { NULL, "Eraser", 15 },
+  { NULL, "Airbrush", 16 },
+  { NULL, "Clone", 17 },
+  { NULL, "Convolve", 18 },
+  { NULL, "Dodge Burn", 19 },
+  { NULL, "Dodge Burn", 19 },
+
+  /*  Non-toolbox tools  */
+  { NULL, "By Color Select", 20 },
+  { NULL, "Color Balance", 21 },
+  { NULL, "Brightness-Contrast", 22 },
+  { NULL, "Hue-Saturation", 23 },
+  { NULL, "Posterize", 24 },
+  { NULL, "Threshold", 25 },
+  { NULL, "Curves", 26 },
+  { NULL, "Levels", 27 },
+  { NULL, "Histogram", 28 }
+};
+#endif
 
 
 /*  Local function declarations  */
@@ -119,9 +167,7 @@ static gint tools_options_delete_callback (GtkWidget *, GdkEvent *, gpointer);
 static void
 active_tool_free (void)
 {
-  /*
-    gtk_container_disable_resize (GTK_CONTAINER (options_shell));
-  */
+  /* gtk_container_disable_resize (GTK_CONTAINER (options_shell)); */
 
   if (!active_tool)
     return;
@@ -205,6 +251,12 @@ active_tool_free (void)
       break;
     case CONVOLVE:
       tools_free_convolve (active_tool);
+      break;
+    case DODGEBURN:
+      tools_free_dodgeburn (active_tool);
+      break;
+    case SMUDGE:
+      tools_free_smudge(active_tool);
       break;
     case BY_COLOR_SELECT:
       tools_free_by_color_select (active_tool);
@@ -326,6 +378,12 @@ tools_select (ToolType type)
     case CONVOLVE:
       active_tool = tools_new_convolve ();
       break;
+    case DODGEBURN:
+      active_tool = tools_new_dodgeburn ();
+      break;
+    case SMUDGE:
+      active_tool = tools_new_smudge ();
+      break;
     case BY_COLOR_SELECT:
       active_tool = tools_new_by_color_select ();
       break;
@@ -362,9 +420,7 @@ tools_select (ToolType type)
   if (tool_info[(int) active_tool->type].tool_options)
     gtk_widget_show (tool_info[(int) active_tool->type].tool_options);
 
-  /*
-    gtk_container_enable_resize (GTK_CONTAINER (options_shell));
-  */
+  /* gtk_container_enable_resize (GTK_CONTAINER (options_shell)); */
 
   /*  Set the paused count variable to 0
    */
@@ -463,6 +519,13 @@ tools_initialize (ToolType type, GDisplay *gdisp_ptr)
     case CONVOLVE:
       active_tool = tools_new_convolve ();
       break;
+    case DODGEBURN:
+      active_tool = tools_new_dodgeburn ();
+      break;
+    case SMUDGE:
+      active_tool = tools_new_smudge();
+      break;
+
     case BY_COLOR_SELECT:
       if (gdisp) {
 	active_tool = tools_new_by_color_select ();
@@ -544,9 +607,7 @@ tools_initialize (ToolType type, GDisplay *gdisp_ptr)
   if (tool_info[(int) active_tool->type].tool_options)
     gtk_widget_show (tool_info[(int) active_tool->type].tool_options);
 
-  /*
-    gtk_container_enable_resize (GTK_CONTAINER (options_shell));
-  */
+  /* gtk_container_enable_resize (GTK_CONTAINER (options_shell)); */
 
   /*  Set the paused count variable to 0
    */

@@ -33,9 +33,12 @@
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "undo.h"
+#include "gdisplay.h"
+#include "gimprc.h"
 
 #include "channel_pvt.h"
 
+int channel_link_paint; 
 /*
 enum {
   LAST_SIGNAL
@@ -51,6 +54,7 @@ static gint channel_signals[LAST_SIGNAL] = { 0 };
 */
 
 static GimpDrawableClass *parent_class = NULL;
+
 
 guint
 gimp_channel_get_type ()
@@ -143,6 +147,9 @@ channel_new (int gimage_ID, int width, int height, Precision p, char *name,
   copy_row (col, &channel->col);
   channel->opacity = opacity;
   channel->show_masked = 1;
+
+  
+  channel->link_paint = enable_rgbm_painting;
 
   /*  selection mask variables  */
   channel->empty = TRUE;
@@ -413,6 +420,36 @@ channel_toggle_visibility (Channel *channel)
   return GIMP_DRAWABLE(channel)->visible;
 }
 
+void
+channel_set_link_paint_opacity (Channel *channel, gfloat link_paint_opacity)
+{
+  channel->link_paint_opacity = link_paint_opacity;
+}
+
+gfloat
+channel_get_link_paint_opacity (Channel *channel)
+{
+  if (channel)
+    return channel->link_paint_opacity;
+  else
+    return 0.0; 
+}
+
+gint
+channel_set_link_paint (Channel *channel, gint link_paint)
+{
+  channel->link_paint = link_paint;
+  return channel->link_paint;
+}
+
+gint
+channel_get_link_paint (Channel *channel)
+{
+  if (channel)
+    return channel->link_paint;
+  else
+    return 0;
+}
 
 Canvas *
 channel_preview (Channel *channel, int w, int h)
@@ -486,7 +523,7 @@ Channel *
 channel_new_mask (int gimage_ID, int width, int height, Precision p)
 {
   Channel *new_channel;
-  Tag tag = tag_new (p, FORMAT_GRAY, ALPHA_NO);
+  Tag tag = tag_new (p, FORMAT_RGB, ALPHA_NO);
   COLOR16_NEW (black, tag);
 
   COLOR16_INIT (black);
@@ -796,6 +833,7 @@ channel_bounds (Channel *mask, int *x1, int *y1, int *x2, int *y2)
    * "hits" and x1,y1 are still in their "initialized" (wrong)
    * state.
   */
+#if 0
   if( *x1 > *x2 )
   {
 	  int t = *x1;
@@ -808,6 +846,7 @@ channel_bounds (Channel *mask, int *x1, int *y1, int *x2, int *y2)
 	  *y1 = *y2;
 	  *y2 = t;
   }
+#endif
 
   *x2 = BOUNDS (*x2 + 1, 0, drawable_width (GIMP_DRAWABLE(mask)));
   *y2 = BOUNDS (*y2 + 1, 0, drawable_height (GIMP_DRAWABLE(mask)));
@@ -816,11 +855,11 @@ channel_bounds (Channel *mask, int *x1, int *y1, int *x2, int *y2)
       *y1 == drawable_height (GIMP_DRAWABLE(mask)))
     {
       mask->empty = TRUE;
-      mask->x1 = 0; mask->y1 = 0;
-      mask->x2 = drawable_width (GIMP_DRAWABLE(mask));
-      mask->y2 = drawable_height (GIMP_DRAWABLE(mask));
-      *x1 = mask->x1; *y1 = mask->y1;
-      *x2 = mask->x2; *y2 = mask->y2;
+	
+      *x1 = mask->x1 = 0; 
+      *y1 = mask->y1 = 0;
+      *x2 = mask->x2 = drawable_width (GIMP_DRAWABLE(mask));
+      *y2 = mask->y2 = drawable_height (GIMP_DRAWABLE(mask));
     }
   else
     {
@@ -830,8 +869,6 @@ channel_bounds (Channel *mask, int *x1, int *y1, int *x2, int *y2)
       mask->x2 = *x2;
       mask->y2 = *y2;
     }
-
-	/*printf( "X1: %d, Y1: %d, X2: %d, Y2: %d\n", *x1, *y1, *x2, *y2 );*/
 
   mask->bounds_known = TRUE;
   return (mask->empty) ? FALSE : TRUE;
@@ -847,7 +884,9 @@ channel_is_empty (Channel *mask)
   void * pr;
 
   if (mask->bounds_known)
+  {
     return mask->empty;
+  }
 
   pixelarea_init (&maskPR, GIMP_DRAWABLE(mask)->tiles, 
                   0, 0,
@@ -934,7 +973,7 @@ channel_is_empty (Channel *mask)
   mask->x1 = 0;  mask->y1 = 0;
   mask->x2 = drawable_width (GIMP_DRAWABLE(mask));
   mask->y2 = drawable_height (GIMP_DRAWABLE(mask));
-
+  
   return TRUE;
 }
 
@@ -2075,3 +2114,48 @@ channel_invalidate_bounds (Channel *channel)
 {
   channel->bounds_known = FALSE;
 }
+
+PixelRow *	
+channel_color (Channel *channel)
+{
+  return &channel->col;
+}
+gfloat		
+channel_opacity (Channel *channel)
+{
+  return channel->opacity;
+}
+gint		
+channel_visibility (Channel *channel)
+{
+  return GIMP_DRAWABLE(channel)->visible;
+}
+
+void
+channel_enable_rgbm_painting (int flag)
+{
+ GDisplay *gdisp;
+ Channel * chan; 
+ GSList *dlist = display_list;
+ GSList *clist;
+ 
+ channel_link_paint = flag;
+
+ 
+ while (dlist)
+   {
+     gdisp = (GDisplay *) dlist->data;
+     clist = gdisp->gimage->channels;
+
+     if (clist)
+       {
+	 chan = (Channel *) clist->data;
+
+	 if (chan)
+	   chan->link_paint = flag;	
+       }
+     dlist = g_slist_next (dlist); 
+   }
+
+}
+

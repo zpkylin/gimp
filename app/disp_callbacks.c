@@ -89,6 +89,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
 
   gdisp = (GDisplay *) gtk_object_get_user_data (GTK_OBJECT (canvas));
 
+
   if (!canvas->window) 
     return FALSE;
 
@@ -148,6 +149,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
       switch (bevent->button)
 	{
 	case 1:
+	  
 	  gtk_grab_add (canvas);
 
 	  /* This is a hack to prevent other stuff being run in the middle of
@@ -300,6 +302,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
 	  end_grab_and_scroll (gdisp, bevent);
 	  break;
 
+
 	case 3:
 	  break;
 
@@ -318,7 +321,14 @@ gdisplay_canvas_events (GtkWidget *canvas,
 	  mevent->y = ty;
 	  mevent->state = tmask;
 	}
-
+     
+      if (gdisp->window_info_dialog) 
+      {
+	int x,y;
+        gdisplay_untransform_coords (gdisp, mevent->x, mevent->y, &x, &y, FALSE, 0);
+        info_window_update_xy (gdisp->window_info_dialog, (void *)gdisp, x, y);
+      }
+       
       if (active_tool && ((active_tool->type == MOVE) ||
 			  !gimage_is_empty (gdisp->gimage)) &&
 	  (mevent->state & GDK_BUTTON1_MASK))

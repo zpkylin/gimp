@@ -89,6 +89,7 @@ struct _GDisplay
   GdkCursorType current_cursor;   /*  Currently installed cursor              */
 };
 
+extern GSList *display_list;
 
 
 /* member function declarations */
@@ -122,6 +123,7 @@ void       gdisplay_snap_rectangle         (GDisplay *, int, int, int, int, int 
 GDisplay * gdisplay_active                 (void);
 GDisplay * gdisplay_get_ID                 (int);
 void       gdisplays_update_title          (int);
+void       gdisplay_add_update_area  (GDisplay *, int, int, int, int);
 void       gdisplays_update_area           (int, int, int, int, int);
 void       gdisplays_expose_guides         (int);
 void       gdisplays_expose_guide          (int, Guide *);
@@ -131,6 +133,7 @@ void       gdisplays_expose_full           (void);
 void       gdisplays_selection_visibility  (int, SelectionControl);
 int        gdisplays_dirty                 (void);
 void       gdisplays_delete                (void);
+void 	   gdisplays_delete_image 	   (GImage *image);
 void       gdisplays_flush                 (void);
 
 

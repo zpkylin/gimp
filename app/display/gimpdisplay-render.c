@@ -19,15 +19,33 @@
 #include <string.h>
 #include "appenv.h"
 #include "canvas.h"
+#include "channel.h"
 #include "colormaps.h"
 #include "errors.h"
 #include "float16.h"
 #include "gimprc.h"
 #include "gximage.h"
 #include "image_render.h"
+#include "paint_funcs_area.h"
+#include "pixelarea.h"
+#include "pixelrow.h"
 #include "scale.h"
 #include "tag.h"
+#include "trace.h"
 #include "displaylut.h"
+
+#define MAX_CHANNELS 4
+
+#define ALL_INTEN_VISIBLE 0
+#define NO_INTEN_VISIBLE 1
+#define EXACTLY_ONE_INTEN_VISIBLE 2
+#define TWO_OR_MORE_NOT_ALL_INTEN_VISIBLE 3  
+
+#define EXACTLY_ONE_AUX_VISIBLE 0
+#define NO_AUX_VISIBLE 1 
+#define ONE_OR_MORE_AUX_VISIBLE 2 
+
+TraceTimer trace_timer;
 
 typedef struct _RenderInfo  RenderInfo;
 typedef void (*RenderFunc) (RenderInfo *info);
@@ -46,11 +64,17 @@ struct _RenderInfo
   int scalesrc;
   int scaledest;
   int src_x, src_y;
+  int src_w, src_h;
   int src_bpp;
+  int src_num_channels;
+  int visible[MAX_CHANNELS];
+  int intensity_visible;  
   int dest_bpp;
   int dest_bpl;
   int dest_width;
-  int byte_order;
+  GSList *channels;
+  Channel *single_visible_channel;
+  int aux_channels_visible;  
 };
 
 
@@ -61,6 +85,8 @@ guchar *tile_buf = NULL;
 guchar *check_buf = NULL;
 guchar *empty_buf = NULL;
 guchar *temp_buf = NULL;
+
+Canvas *comp_canvas = NULL;
 
 static guint   check_mod;
 static guint   check_shift;
@@ -203,6 +229,7 @@ static guchar* render_image_accelerate_scaling (int           width,
 						int           scalesrc,
 						int           scaledest);
 static guchar* render_image_tile_fault         (RenderInfo   *info);
+static guchar* render_image_tile_fault1        (RenderInfo   *info);
 
 
 static RenderFunc render_funcs[6] =
@@ -260,6 +287,10 @@ render_image (GDisplay *gdisp,
 
   t = canvas_tag (info.src_canvas);
 
+  /*allocate a row for aux channel compositing and intensity visibility */
+
+  comp_canvas = canvas_new (t, info.src_w, 1, STORAGE_FLAT);
+
   switch (tag_format (t))
     {
     case FORMAT_RGB:
@@ -307,6 +338,7 @@ render_image (GDisplay *gdisp,
         break;
       }
   }
+  canvas_delete (comp_canvas); 
 }
 
 
@@ -322,7 +354,6 @@ render_image_indexed (RenderInfo *info)
   guchar *dest;
   guchar *cmap;
   gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -341,7 +372,6 @@ render_image_indexed (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -392,7 +422,6 @@ render_image_indexed_a (RenderInfo *info)
   gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -412,7 +441,6 @@ render_image_indexed_a (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -477,7 +505,6 @@ render_image_gray (RenderInfo *info)
   guchar *src;
   guchar *dest;
   gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -494,7 +521,6 @@ render_image_gray (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -543,7 +569,6 @@ render_image_gray_a (RenderInfo *info)
   gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -562,7 +587,6 @@ render_image_gray_a (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -616,8 +640,6 @@ render_image_rgb (RenderInfo *info)
 {
   guchar *src;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -634,7 +656,6 @@ render_image_rgb (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -681,10 +702,8 @@ render_image_rgb_a (RenderInfo *info)
   guchar *dest;
   guint *alpha;
   gulong r, g, b;
-  gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -703,7 +722,6 @@ render_image_rgb_a (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -769,6 +787,13 @@ render_image_init_info (RenderInfo *info,
 			int         w,
 			int         h)
 {
+  gint i;
+  Tag src_canvas_tag;
+  gint num_inten, num_visible_inten; 
+  gint num_visible_aux_chans; 
+  Channel *single_visible_channel = NULL;
+  GSList * list;
+
   info->gdisp = gdisp;
   info->x = x + gdisp->offset_x;
   info->y = y + gdisp->offset_y;
@@ -778,16 +803,70 @@ render_image_init_info (RenderInfo *info,
   info->scaledest = SCALEDEST (gdisp);
   info->src_x = UNSCALE (gdisp, info->x);
   info->src_y = UNSCALE (gdisp, info->y);
+  info->src_w = UNSCALE (gdisp, (info->x + info->w)) - UNSCALE (gdisp, info->x) + 1;
 
   info->src_canvas = gimage_projection (gdisp->gimage);
+  info->channels = gimage_channels (gdisp->gimage);
   info->src_width = canvas_width (info->src_canvas);
-  info->src_bpp = tag_bytes (canvas_tag (info->src_canvas));
+  src_canvas_tag = canvas_tag (info->src_canvas);
+  info->src_bpp = tag_bytes (src_canvas_tag);
+  info->src_num_channels = tag_num_channels (src_canvas_tag);
+
+  if (tag_alpha (src_canvas_tag) == ALPHA_YES )
+    num_inten = info->src_num_channels - 1;
+  else
+    num_inten = info->src_num_channels;
+
+  num_visible_inten = 0; 
+  for(i = 0; i < num_inten; i++)
+    {
+      info->visible[i] = gimage_get_component_visible (gdisp->gimage, i); 
+      if(info->visible[i]) 
+	num_visible_inten++; 
+    }
+
+  if (num_visible_inten == num_inten )
+    info->intensity_visible = ALL_INTEN_VISIBLE;
+  else if (num_visible_inten == 0)
+    info->intensity_visible = NO_INTEN_VISIBLE;
+  else if (num_visible_inten == 1)
+    info->intensity_visible = EXACTLY_ONE_INTEN_VISIBLE;
+  else
+    info->intensity_visible = TWO_OR_MORE_NOT_ALL_INTEN_VISIBLE;
+
+  list = info->channels;
+  num_visible_aux_chans = 0; 
+  while (list)
+    {
+      Channel *channel = (Channel *)(list->data);
+      if (channel)
+	{
+	  gint visible = channel_visibility (channel);
+	  if (visible)
+	    {
+	      single_visible_channel = channel;
+	      num_visible_aux_chans++;  
+	    }
+	}
+      list = g_slist_next (list);
+    }
+
+  if (num_visible_aux_chans == 0)
+    info->aux_channels_visible = NO_AUX_VISIBLE;
+  else if (num_visible_aux_chans == 1)
+    info->aux_channels_visible = EXACTLY_ONE_AUX_VISIBLE;
+  else if (num_visible_aux_chans >= 1)
+    info->aux_channels_visible = ONE_OR_MORE_AUX_VISIBLE;
+
+  if (num_visible_aux_chans == 1) 
+    info->single_visible_channel = single_visible_channel;
+  else
+    info->single_visible_channel = NULL;
 
   info->dest = gximage_get_data ();
   info->dest_bpp = gximage_get_bpp ();
   info->dest_bpl = gximage_get_bpl ();
   info->dest_width = info->w * info->dest_bpp;
-  info->byte_order = gximage_get_byte_order ();
 
   info->scale = render_image_accelerate_scaling (w, info->x, info->src_bpp, info->scalesrc, info->scaledest);
   info->alpha = NULL;
@@ -843,8 +922,275 @@ render_image_accelerate_scaling (int width,
   return scale;
 }
 
+void
+set_visible_channels_row_u8(
+             PixelRow * row,
+	     gint *visible
+             )
+{
+  gint    b;
+  guint8 *data         = (guint8*) pixelrow_data (row);
+  gint    num_channels = tag_num_channels (pixelrow_tag (row));
+  gint    n;
+  Alpha   alpha = tag_alpha (pixelrow_tag (row));
+  gint    width        = pixelrow_width (row);  
+
+  if (alpha == ALPHA_YES) 
+    n = num_channels - 1; 
+  else
+    n = num_channels;
+
+  while (width--)
+    {
+      for (b = 0; b < n; b++)
+        data[b] =  visible[b] ? data[b] : 0;
+      data += num_channels;
+    }
+}
+
+void
+set_visible_channels_row_u16(
+             PixelRow * row,
+	     gint *visible
+             )
+{
+  gint    b;
+  guint16 *data         = (guint16*) pixelrow_data (row);
+  gint    num_channels = tag_num_channels (pixelrow_tag (row));
+  gint    n;
+  Alpha   alpha = tag_alpha (pixelrow_tag (row));
+  gint    width        = pixelrow_width (row);  
+
+  if (alpha == ALPHA_YES) 
+    n = num_channels - 1; 
+  else
+    n = num_channels;
+
+  while (width--)
+    {
+      for (b = 0; b < n; b++)
+        data[b] =  visible[b] ? data[b] : 0;
+      data += num_channels;
+    }
+}
+
+void
+set_visible_channels_row_float(
+             PixelRow * row,
+	     gint *visible
+             )
+{
+  gint    b;
+  gfloat *data         = (gfloat*) pixelrow_data (row);
+  gint    num_channels = tag_num_channels (pixelrow_tag (row));
+  gint    n;
+  Alpha   alpha = tag_alpha (pixelrow_tag (row));
+  gint    width        = pixelrow_width (row);  
+
+  if (alpha == ALPHA_YES) 
+    n = num_channels - 1; 
+  else
+    n = num_channels;
+
+  while (width--)
+    {
+      for (b = 0; b < n; b++)
+        data[b] =  visible[b] ? data[b] : 0.0;
+      data += num_channels;
+    }
+}
+
+void
+set_visible_channels_row_float16(
+             PixelRow * row,
+	     gint *visible
+             )
+{
+  gint    b;
+  guint16 *data         = (guint16*) pixelrow_data (row);
+  gint    num_channels = tag_num_channels (pixelrow_tag (row));
+  gint    n;
+  Alpha   alpha = tag_alpha (pixelrow_tag (row));
+  gint    width        = pixelrow_width (row);  
+
+  if (alpha == ALPHA_YES) 
+    n = num_channels - 1; 
+  else
+    n = num_channels;
+
+  while (width--)
+    {
+      for (b = 0; b < n; b++)
+        data[b] =  visible[b] ? data[b] : ZERO_FLOAT16;
+      data += num_channels;
+    }
+}
+
+typedef void (*SetVisibleChannelsFunc) (PixelRow*, gint*);
+static SetVisibleChannelsFunc 
+set_visible_channels_func (
+                   Tag tag
+                   )
+{
+  switch (tag_precision (tag))
+    {
+    case PRECISION_U8:
+      return set_visible_channels_row_u8;
+    case PRECISION_U16:
+      return set_visible_channels_row_u16;
+    case PRECISION_FLOAT16:
+      return set_visible_channels_row_float16;
+    case PRECISION_FLOAT:
+      return set_visible_channels_row_float;
+    case PRECISION_NONE:
+    default:
+      g_warning ("set_visible_channels_func: bad precision");
+    }
+  return NULL;
+}
+
+#if 0
+      pixelarea_init (&aux_channel_area, aux_channel_canvas, src_x, src_y, src_w, 1, FALSE);
+      pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, FALSE); 
+      printf("aux_channel before\n");
+      print_area(&aux_channel_area,0,1); 
+      printf("comp_area before\n");
+      print_area(&comp_area,0,1); 
+#endif
+#if 0
+      pixelarea_init (&aux_channel_area, aux_channel_canvas, src_x, src_y, src_w, 1, FALSE);
+      pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, FALSE); 
+      printf("aux_channel after\n");
+      print_area(&aux_channel_area,0,1); 
+      printf("comp_area after\n");
+      print_area(&comp_area,0,1); 
+#define ALL_INTEN_VISIBLE 0
+#define NO_INTEN_VISIBLE 1
+#define EXACTLY_ONE_INTEN_VISIBLE 2
+#define TWO_OR_MORE_NOT_ALL_INTEN_VISIBLE 3  
+
+#define EXACTLY_ONE_AUX_VISIBLE 0
+#define NO_AUX_VISIBLE 1 
+#define ONE_OR_MORE_AUX_VISIBLE 2 
+#endif
+
+#if 1
 static guchar*
 render_image_tile_fault (RenderInfo *info)
+{
+  PixelArea  area, comp_area;
+  PixelRow comp_row;
+  Tag tag = canvas_tag (info->src_canvas);
+  guchar *data, *dest, *scale;
+  gint src_x, src_y, src_w;
+  gint width;
+  void * pag;
+  gint bytes = tag_bytes (tag); 
+  gint b, step;
+  GSList *list;
+  src_x = info->src_x;
+  src_y = info->src_y;
+  src_w = info->src_w;
+  width = info->w;
+
+  if (info->intensity_visible == NO_INTEN_VISIBLE && 
+	info->single_visible_channel) 
+  {
+      Canvas *aux_channel_canvas;
+      aux_channel_canvas = drawable_data ( GIMP_DRAWABLE (info->single_visible_channel) );
+      pixelarea_init (&area, aux_channel_canvas, src_x, src_y, src_w, 1, FALSE); 
+      pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, TRUE); 
+      copy_area (&area, &comp_area); 
+  }
+  else 
+  {
+	/* if some RGB is visible */
+	if (info->intensity_visible != NO_INTEN_VISIBLE) 
+	{
+	  if (info->intensity_visible == ALL_INTEN_VISIBLE &&
+		info->aux_channels_visible == NO_AUX_VISIBLE)
+	    return render_image_tile_fault1 (info);
+	  
+	  pixelarea_init (&area, info->src_canvas, src_x, src_y, src_w, 1, FALSE); 
+	  pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, TRUE); 
+	  copy_area (&area, &comp_area); 
+
+	  if (info->intensity_visible != ALL_INTEN_VISIBLE)
+	    {	
+	      pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, TRUE); 
+	      pag = pixelarea_register (1, &comp_area);
+	      pixelarea_getdata (&comp_area, &comp_row, 0);
+	      (*set_visible_channels_func (tag)) (&comp_row, info->visible);
+	      pixelarea_process_stop (pag);
+	    }
+	}
+	else    /* NO rgb visible, 0 or 2 or more aux channels visible */
+	{
+	  /* just fill the comp_canvas with black */
+	}
+       
+       /* now if there are any aux channels visible composite them in */
+	if (info->aux_channels_visible != NO_AUX_VISIBLE)
+	{	
+	  list = info->channels;
+	  while (list)
+	    {
+	      Channel *channel = (Channel *)(list->data);
+	      gint visible = channel_visibility (channel);
+	      PixelRow *color;
+	      PixelArea aux_channel_area;
+	      gfloat opacity;
+	      Canvas *aux_channel_canvas;
+	  
+	      if (visible)
+	      {
+		aux_channel_canvas = drawable_data ( GIMP_DRAWABLE (channel) );
+		pixelarea_init (&aux_channel_area, aux_channel_canvas, src_x, src_y, src_w, 1, FALSE);
+		pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, TRUE); 
+		color = channel_color (channel);
+		opacity = channel_opacity (channel);
+		
+#if 0 
+		combine_areas (&comp_area, &aux_channel_area, &comp_area, NULL, 
+		  (unsigned char*)color, opacity, 
+		   NORMAL_MODE, NULL, COMBINE_INTEN_A_CHANNEL_MASK);
+#endif
+#if 1 
+		combine_areas (&comp_area, &aux_channel_area, &comp_area, NULL, 
+		  (unsigned char*)color, opacity, 
+		   NORMAL_MODE, NULL, COMBINE_INTEN_A_CHANNEL_SELECTION);
+#endif
+	      }
+	      list = g_slist_next (list);
+    	     }
+	
+        }
+  }
+
+  dest = tile_buf;
+  scale = info->scale;
+  step = info->scalesrc * info->src_bpp;
+
+  pixelarea_init (&comp_area, comp_canvas, 0, 0, src_w, 1, FALSE); 
+  pag = pixelarea_register (1, &comp_area);
+  data = pixelarea_data (&comp_area);
+  while (width--)
+    {
+      for (b = 0; b < bytes; b++)
+	 *dest++ = data[b];
+
+      if (*scale++ != 0)
+	  data += step;
+    }
+
+  pixelarea_process_stop(pag);
+  return tile_buf;
+}
+#endif
+
+#if 1
+static guchar*
+render_image_tile_fault1 (RenderInfo *info)
 {
   guchar *data;
   guchar *dest;
@@ -911,6 +1257,7 @@ render_image_tile_fault (RenderInfo *info)
   canvas_portion_unref (info->src_canvas, x_portion, y_portion);
   return tile_buf;
 }
+#endif
 
 /*************************/
 /*  16 Bit channel data functions */
@@ -923,7 +1270,6 @@ render_image_gray_u16 (RenderInfo *info)
   guint16 *src;
   guchar *dest;
   gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -940,7 +1286,6 @@ render_image_gray_u16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -987,7 +1332,6 @@ render_image_gray_a_u16 (RenderInfo *info)
   gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1006,7 +1350,6 @@ render_image_gray_a_u16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1058,8 +1401,6 @@ render_image_rgb_u16 (RenderInfo *info)
 {
   guint16 *src;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1076,7 +1417,6 @@ render_image_rgb_u16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1120,10 +1460,8 @@ render_image_rgb_a_u16 (RenderInfo *info)
   guchar *dest;
   guint *alpha;
   gulong r, g, b;
-  gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1142,7 +1480,6 @@ render_image_rgb_a_u16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1209,8 +1546,6 @@ render_image_gray_float (RenderInfo *info)
   gfloat *src;
   gint src8bit;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1227,7 +1562,6 @@ render_image_gray_float (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1274,7 +1608,6 @@ render_image_gray_a_float (RenderInfo *info)
   gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1293,7 +1626,6 @@ render_image_gray_a_float (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1345,8 +1677,6 @@ render_image_rgb_float (RenderInfo *info)
 {
   gfloat *src;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1363,7 +1693,6 @@ render_image_rgb_float (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1407,10 +1736,8 @@ render_image_rgb_a_float (RenderInfo *info)
   guchar *dest;
   guint *alpha;
   gulong r, g, b;
-  gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1429,7 +1756,6 @@ render_image_rgb_a_float (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1495,8 +1821,6 @@ render_image_gray_float16 (RenderInfo *info)
   guint16 *src;
   gint src8bit;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1513,7 +1837,6 @@ render_image_gray_float16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1561,7 +1884,6 @@ render_image_gray_a_float16 (RenderInfo *info)
   gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1580,7 +1902,6 @@ render_image_gray_a_float16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1597,7 +1918,7 @@ render_image_gray_a_float16 (RenderInfo *info)
 	  for (x = info->x; x < xe; x++)
 	    {
 	      src8bit = display_u8_from_float16 (src[GRAY_PIX]); 
-	      a = alpha[ display_u8_from_float16 (src[ALPHA_G_PIX]) ];
+	      a = alpha[ display_u8_alpha_from_float16 (src[ALPHA_G_PIX]) ];
 	      if (dark_light & 0x1)
 		val = blend_dark_check[(a | src8bit)];
 	      else
@@ -1633,8 +1954,6 @@ render_image_rgb_float16 (RenderInfo *info)
 {
   guint16 *src;
   guchar *dest;
-  gulong val;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1651,7 +1970,6 @@ render_image_rgb_float16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1695,10 +2013,8 @@ render_image_rgb_a_float16 (RenderInfo *info)
   guchar *dest;
   guint *alpha;
   gulong r, g, b;
-  gulong val;
   guint a;
   int dark_light;
-  int byte_order;
   int y, ye;
   int x, xe;
   int initial;
@@ -1717,7 +2033,6 @@ render_image_rgb_a_float16 (RenderInfo *info)
   error -= ((int)error) - step;
 
   initial = TRUE;
-  byte_order = info->byte_order;
   info->src = render_image_tile_fault (info);
 
   for (; y < ye; y++)
@@ -1733,7 +2048,7 @@ render_image_rgb_a_float16 (RenderInfo *info)
 
 	  for (x = info->x; x < xe; x++)
 	    {
-	      a = alpha[ display_u8_from_float16 (src[ALPHA_PIX]) ];
+	      a = alpha[ display_u8_alpha_from_float16 (src[ALPHA_PIX]) ];
 	      r = display_u8_from_float16 (src[RED_PIX]);
     	      g = display_u8_from_float16 (src[GREEN_PIX]);
 	      b = display_u8_from_float16 (src[BLUE_PIX]);

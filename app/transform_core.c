@@ -22,6 +22,7 @@
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
+#include "float16.h"
 #include "floating_sel.h"
 #include "general.h"
 #include "gdisplay.h"
@@ -1313,6 +1314,106 @@ tm_interpolate_float  (
 #undef A
 }
 
+static void 
+tm_interpolate_float16  (
+                       TMState * s
+                       )
+{
+#define O    ((guint16*)s->data)            /* output pixel */
+#define D(n) ((guint16*)s->pixels[n].data)  /* input pixel(s) */
+#define P(n) (s->pixels[n].premul_data)    /* premul input pixel(s) */
+#define A(n) (s->pixels[n].alpha)          /* input pixel(s) alpha */  
+
+  gint b, i;
+  ShortsFloat u,v;
+
+  /* grab the alpha values and pre-multiply the input pixels */
+  if (s->in != INTERPOLATION_NONE)
+    {
+      for (i = 0; i < s->num_points; i++)
+        {
+          if (D(i))
+            {
+              A(i) = FLT (D(i)[s->alpha], u);
+              for (b = 0; b < s->alpha; b++)
+                P(i)[b] = FLT (D(i)[b], u) * A(i);
+            }
+          else
+            {
+              A(i) = 0;
+              for (b = 0; b < s->alpha; b++)
+                P(i)[b] = 0;
+            }
+        }
+    }
+  
+  /* interpolate the input values to an output value */
+  switch (s->in)
+    {
+    case INTERPOLATION_NONE:
+      {
+        for (b = 0; b <= s->alpha; b++)
+            O[b] = FLT16 (FLT (D(0)[b], u), v);
+      }
+      break;
+
+    case INTERPOLATION_BILINEAR:
+      {
+        gdouble a_recip = 0.0;
+        gdouble a_val = BILINEAR (A(0), A(1), A(2), A(3),
+                                  s->dx, s->dy);
+
+        if (a_val != 0)
+          {
+            a_recip = 1.0 / a_val;
+          }
+        
+        for (b = 0; b < s->alpha; b++)
+          {
+            O[b] = FLT16 (a_recip * BILINEAR (P(0)[b], P(1)[b], P(2)[b], P(3)[b], s->dx, s->dy), u);
+          }
+        
+        O[s->alpha] = FLT16 (a_val, u);
+      }
+      break;
+
+    case INTERPOLATION_CUBIC:
+      {
+        gfloat a_recip = 0.0;
+        gfloat a_val = cubic (s->dy,
+                               cubic (s->dx, A(0),  A(1),  A(2),  A(3)),
+                               cubic (s->dx, A(4),  A(5),  A(6),  A(7)),
+                               cubic (s->dx, A(8),  A(9),  A(10), A(11)),
+                               cubic (s->dx, A(12), A(13), A(14), A(15)));
+        
+        if (a_val != 0)
+          {
+            a_recip = 1.0 / a_val;
+          }
+        
+        for (b = 0; b < s->alpha; b++)
+          {
+            gfloat newval =
+              a_recip *
+              cubic (s->dy,
+                     cubic (s->dx, P(0)[b],  P(1)[b], P(2)[b],  P(3)[b]),
+                     cubic (s->dx, P(4)[b],  P(5)[b], P(6)[b],  P(7)[b]),
+                     cubic (s->dx, P(8)[b],  P(9)[b], P(10)[b], P(11)[b]),
+                     cubic (s->dx, P(12)[b], P(13)[b], P(14)[b], P(15)[b]));
+            
+            O[b] = FLT16 (CLAMP (newval, 0.0, 1.0), u);
+          }
+        
+        O[s->alpha] = FLT16 (a_val, u);
+      }
+      break;
+    }
+
+#undef O
+#undef D
+#undef P
+#undef A
+}
 
 static TMInterpolateFunc 
 tm_interpolate_funcs (
@@ -1329,6 +1430,7 @@ tm_interpolate_funcs (
     case PRECISION_FLOAT:
       return tm_interpolate_float;
     case PRECISION_FLOAT16:
+      return tm_interpolate_float16;
     default:
       return NULL;
     } 

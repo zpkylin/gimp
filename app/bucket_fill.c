@@ -202,7 +202,7 @@ create_bucket_options (void)
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
   label = gtk_label_new ("Mode:");
   gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 2);
-  menu = create_paint_mode_menu (bucket_fill_paint_mode_callback);
+  menu = create_paint_mode_menu (bucket_fill_paint_mode_callback, NULL);
   option_menu = gtk_option_menu_new ();
   gtk_box_pack_start (GTK_BOX (hbox), option_menu, FALSE, FALSE, 2);
 
@@ -211,6 +211,7 @@ create_bucket_options (void)
   gtk_widget_show (hbox);
 
   /*  the radio frame and box  */
+#if 0
   radio_frame = gtk_frame_new ("Fill Type");
   gtk_box_pack_start (GTK_BOX (vbox), radio_frame, FALSE, FALSE, 0);
 
@@ -231,6 +232,7 @@ create_bucket_options (void)
     }
   gtk_widget_show (radio_box);
   gtk_widget_show (radio_frame);
+#endif
 
   /*  the sample merged toggle  */
   sample_merged_toggle = gtk_check_button_new_with_label ("Sample Merged");
@@ -471,13 +473,25 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
     }
 
   {
-    PixelArea bufPR;
-    Canvas * buf_tiles;
-    
+    PixelArea bufPR, mbufPR;
+    Canvas * buf_tiles, *buf_m_tiles;;
+   
     buf_tiles = canvas_new (tag_set_alpha (drawable_tag (drawable), ALPHA_YES),
                             (x2 - x1), (y2 - y1),
                             STORAGE_TILED);
-    
+   
+    if (gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data)))
+      {
+	buf_m_tiles = canvas_new (tag_set_alpha (
+	      drawable_tag (GIMP_DRAWABLE((Channel*)(gimage->channels->data))), ALPHA_NO),
+	    (x2 - x1), (y2 - y1),
+	    STORAGE_TILED);
+   
+	pixelarea_init (&mbufPR, buf_m_tiles,
+	    0, 0,
+	    0, 0,
+	    TRUE);
+      }       
     pixelarea_init (&bufPR, buf_tiles,
                     0, 0,
                     0, 0,
@@ -497,6 +511,19 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
             palette_get_background (&col);
         
           color_area (&bufPR, &col);
+	  if (gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data)))
+	    {
+	      COLOR16_NEW (col, canvas_tag (buf_m_tiles));
+	      COLOR16_INIT (col);
+
+	      if (fill_mode == FgColorFill)
+		palette_get_foreground (&col);
+	      else
+		palette_get_background (&col);
+
+	      color_area (&mbufPR, &col);
+
+	    }
         }
         break;
       
@@ -537,12 +564,25 @@ bucket_fill (gimage, drawable, fill_mode, paint_mode,
                            0, 0,
                            TRUE,
                            (opacity / 100.0), paint_mode, x1, y1);
-  
+    if (gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data))){
+     
+	  
+	  gimage_apply_painthit (gimage, GIMP_DRAWABLE(((Channel*)(gimage->channels->data))),
+	  NULL, buf_m_tiles,
+	  0, 0,
+	  0, 0,
+	  TRUE,
+	  (opacity / 100.0), paint_mode, x1, y1);
+    canvas_delete (buf_m_tiles);
+    }
     canvas_delete (buf_tiles);
   }
   
   /*  update the image  */
   drawable_update (drawable, x1, y1, (x2 - x1), (y2 - y1));
+  if ( gimage->channels && channel_get_link_paint ((Channel*)(gimage->channels->data)))
+    drawable_update (GIMP_DRAWABLE(((Channel*)(gimage->channels->data))), 
+      x1, y1, (x2 - x1), (y2 - y1));
 
   /* clean up */
   if (mask)

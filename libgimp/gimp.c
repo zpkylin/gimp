@@ -751,6 +751,7 @@ gimp_run_procedure2 (char   *name,
   switch (return_vals[0].data.d_status)
     {
     case STATUS_EXECUTION_ERROR:
+
       /*g_warning ("an execution error occured while trying to run: \"%s\"", name);*/
       break;
     case STATUS_CALLING_ERROR:

@@ -18,7 +18,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
@@ -35,9 +36,9 @@
 static void         paintbrush_motion      (PaintCore *, GimpDrawable *, double, gboolean);
 static Argument *   paintbrush_invoker     (Argument *);
 static Argument *   paintbrush_extended_invoker     (Argument *);
-
+static void         paintbrush_motion      (PaintCore *, GimpDrawable *, double, gboolean);
+static void         paintbrush_painthit_setup (PaintCore *,Canvas *);
 static double non_gui_fade_out, non_gui_incremental;
-
 
 
 /* local types */
@@ -170,6 +171,7 @@ tools_new_paintbrush ()
 
   private = (PaintCore *) tool->private;
   private->paint_func = paintbrush_paint_func;
+  private->painthit_setup = paintbrush_painthit_setup;
 
   return tool;
 }
@@ -201,32 +203,51 @@ paintbrush_motion (PaintCore *paint_core,
   /* apply the next bit of remaining paint */
   if (paint_left > 0.001)
     {
-      Canvas * painthit;
-      PixelArea a;
+      /* Set up the painthit canvas */
+      paint_core_16_area_setup (paint_core, drawable);
       
-      /* Get the working canvas */
-      painthit = paint_core_16_area (paint_core, drawable);
-      pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
-
-      /* construct the paint hit */
-      {
-        COLOR16_NEW (paint, canvas_tag (painthit));
-
-        COLOR16_INIT (paint);
-        palette_get_foreground (&paint);
-        color_area (&a, &paint);
-      }
-    
       /* apply it to the image */
       paint_core_16_area_paste (paint_core, drawable,
                                 (gfloat) paint_left,
-                                (gfloat) get_brush_opacity (),
+                                (gfloat) gimp_brush_get_opacity (),
                                 SOFT,
                                 incremental ? INCREMENTAL : CONSTANT,
-                                get_brush_paint_mode ());
+                                gimp_brush_get_paint_mode ());
     }
 }
 
+
+static void
+paintbrush_painthit_setup (PaintCore * paint_core,Canvas * painthit)
+{
+    PixelArea a;
+    pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+
+    /* Construct the paint hit */
+
+    if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      COLOR16_NEW (paint, canvas_tag (painthit));
+      COLOR16_INIT (paint);
+      palette_get_foreground (&paint);
+      color_area (&a, &paint);
+    }
+    else if (paint_core->setup_mode == LINKED_SETUP)
+    {
+	Channel * channel = GIMP_CHANNEL(paint_core->linked_drawable);
+        gfloat g = channel_get_link_paint_opacity (channel); 
+	{
+	  PixelRow paint;
+	  Tag t = tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO);
+	  gfloat data[3];
+	  data[0] = g;
+	  data[1] = g;
+	  data[2] = g;
+	  pixelrow_init (&paint, t, (guchar*)data, 1);
+          color_area (&a, &paint);
+	}
+    }
+}
 
 static void *
 paintbrush_non_gui_paint_func (PaintCore *paint_core,
@@ -422,7 +443,7 @@ paintbrush_invoker (Argument *args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&paintbrush_proc, success);
@@ -512,7 +533,7 @@ paintbrush_extended_invoker (Argument *args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&paintbrush_proc, success);

@@ -60,6 +60,14 @@ typedef enum
 
 typedef enum
 {
+  PRECISION_U8        = 1,
+  PRECISION_U16       = 2,
+  PRECISION_FLOAT     = 3,
+  PRECISION_FLOAT16     = 4
+} GPrecisionType;
+
+typedef enum
+{
   NORMAL_MODE       = 0,
   DISSOLVE_MODE     = 1,
   MULTIPLY_MODE     = 3,

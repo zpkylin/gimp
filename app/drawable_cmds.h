@@ -32,6 +32,8 @@ extern ProcRecord drawable_color_proc;
 extern ProcRecord drawable_gray_proc;
 extern ProcRecord drawable_indexed_proc;
 extern ProcRecord drawable_bytes_proc;
+extern ProcRecord drawable_precision_proc;
+extern ProcRecord drawable_num_channels_proc;
 extern ProcRecord drawable_width_proc;
 extern ProcRecord drawable_height_proc;
 extern ProcRecord drawable_offsets_proc;

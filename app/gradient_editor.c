@@ -223,7 +223,8 @@ typedef enum {
 	GRAD_CURVED,
 	GRAD_SINE,
 	GRAD_SPHERE_INCREASING,
-	GRAD_SPHERE_DECREASING
+	GRAD_SPHERE_DECREASING,
+	GRAD_LOG
 } grad_type_t;
 
 typedef enum {
@@ -549,6 +550,7 @@ static double calc_curved_factor(double middle, double pos);
 static double calc_sine_factor(double middle, double pos);
 static double calc_sphere_increasing_factor(double middle, double pos);
 static double calc_sphere_decreasing_factor(double middle, double pos);
+static double calc_log_factor(double middle, double pos);
 
 static void calc_rgb_to_hsv(double *r, double *g, double *b);
 static void calc_hsv_to_rgb(double *h, double *s, double *v);
@@ -681,6 +683,9 @@ grad_get_color_at(double pos, double *r, double *g, double *b, double *a)
 			factor = calc_sphere_decreasing_factor(middle, pos);
 			break;
 
+		case GRAD_LOG:
+			factor = calc_log_factor(middle, pos);
+			break; 	
 		default:
 			grad_dump_gradient(curr_gradient, stderr);
 			fatal_error("grad_get_color_at(): aieee, unknown gradient type %d", (int) seg->type);
@@ -5698,6 +5703,24 @@ calc_linear_factor(double middle, double pos)
 	} /* else */
 } /* calc_linear_factor */
 
+static double
+calc_log_factor(double middle, double pos)
+{
+  if (pos <= middle) {
+	if (middle < EPSILON)
+	  return 0.0;
+	else
+	  return (0.5 * pos / middle) *  (0.5 * pos / middle);
+  } else {
+	pos -= middle;
+	middle = 1.0 - middle;
+
+	if (middle < EPSILON)
+	  return 1.0;
+	else
+	  return (0.5 + 0.5 * pos / middle) * (0.5 + 0.5 * pos / middle);
+  } /* else */
+} /* calc_linear_factor */
 
 /*****/
 

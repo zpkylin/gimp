@@ -86,6 +86,24 @@ canvas_fixme_sety  (
   return (c ? c->y=n : 0);
 }
 
+int 
+canvas_fixme_width  (
+                    Canvas * c,
+                    int n
+                    )
+{
+  return (c ? c->width=n : 0);
+}
+
+int 
+canvas_fixme_height  (
+                    Canvas * c,
+                    int n
+                    )
+{
+  return (c ? c->height=n : 0);
+}
+
 
 Canvas *
 canvas_new (

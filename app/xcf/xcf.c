@@ -12,14 +12,18 @@
 #include <glib.h>
 #include <gtk/gtk.h>
 
+#include "canvas.h"
 #include "floating_sel.h"
 #include "gimage.h"
 #include "gimage_mask.h"
 #include "gimprc.h"
 #include "interface.h"
 #include "paint_funcs_area.h"
+#include "palette.h"
+#include "pixelarea.h"
 #include "plug_in.h"
 #include "procedural_db.h"
+#include "tag.h"
 #include "tile_manager.h"
 #include "tile_swap.h"
 #include "xcf.h"
@@ -84,6 +88,8 @@ static void xcf_save_channel_props (XcfInfo     *info,
 static void xcf_save_prop          (XcfInfo     *info,
 				    PropType     prop_type,
 				    ...);
+static void xcf_save_color_prop    (XcfInfo *info, 
+				    PixelRow *row);
 static void xcf_save_layer         (XcfInfo     *info,
 				    GImage      *gimage,
 				    Layer       *layer);
@@ -91,13 +97,15 @@ static void xcf_save_channel       (XcfInfo     *info,
 				    GImage      *gimage,
 				    Channel     *channel);
 static void xcf_save_hierarchy     (XcfInfo     *info,
-				    TileManager *tiles);
+				    Canvas *tiles);
 static void xcf_save_level         (XcfInfo     *info,
 				    TileLevel   *level);
 static void xcf_save_tile          (XcfInfo     *info,
 				    Tile        *tile);
 static void xcf_save_tile_rle      (XcfInfo     *info,
 				    Tile        *tile);
+static void xcf_save_row 	   (XcfInfo *info, 
+				    PixelRow *row);
 
 static GImage*  xcf_load_image         (XcfInfo     *info);
 static gint     xcf_load_image_props   (XcfInfo     *info,
@@ -118,7 +126,7 @@ static Channel* xcf_load_channel       (XcfInfo     *info,
 static LayerMask* xcf_load_layer_mask  (XcfInfo     *info,
 					GImage      *gimage);
 static gint     xcf_load_hierarchy     (XcfInfo     *info,
-					TileManager *tiles);
+					Canvas *tiles);
 static gint     xcf_load_level         (XcfInfo     *info,
 					TileManager *tiles,
 					TileLevel   *level,
@@ -127,6 +135,8 @@ static gint     xcf_load_tile          (XcfInfo     *info,
 					Tile        *tile);
 static gint     xcf_load_tile_rle      (XcfInfo     *info,
 					Tile        *tile);
+static void xcf_load_row 	   (XcfInfo *info, 
+				    PixelRow *row);
 
 #ifdef SWAP_FROM_FILE
 static int      xcf_swap_func          (int          fd,
@@ -140,8 +150,14 @@ static void xcf_seek_pos (XcfInfo *info,
 			  guint    pos);
 static void xcf_seek_end (XcfInfo *info);
 
+static guint xcf_read_float   (FILE     *fp,
+			       gfloat  *data,
+			       gint      count);
 static guint xcf_read_int32   (FILE     *fp,
 			       guint32  *data,
+			       gint      count);
+static guint xcf_read_int16    (FILE     *fp,
+			       guint16   *data,
 			       gint      count);
 static guint xcf_read_int8    (FILE     *fp,
 			       guint8   *data,
@@ -149,8 +165,14 @@ static guint xcf_read_int8    (FILE     *fp,
 static guint xcf_read_string  (FILE     *fp,
 			       gchar   **data,
 			       gint      count);
+static guint xcf_write_float  (FILE     *fp,
+			       gfloat   *data,
+			       gint      count);
 static guint xcf_write_int32  (FILE     *fp,
 			       guint32  *data,
+			       gint      count);
+static guint xcf_write_int16   (FILE     *fp,
+			       guint16   *data,
 			       gint      count);
 static guint xcf_write_int8   (FILE     *fp,
 			       guint8   *data,
@@ -184,7 +206,7 @@ static ProcArg xcf_load_return_vals[] =
 static PlugInProcDef xcf_plug_in_load_proc =
 {
   "gimp_xcf_load",
-  "<Load>/XCF",
+  "<Load>/xcf",
   NULL,
   "xcf",
   "",
@@ -231,12 +253,12 @@ static ProcArg xcf_save_args[] =
 static PlugInProcDef xcf_plug_in_save_proc =
 {
   "gimp_xcf_save",
-  "<Save>/XCF",
+  "<Save>/xcf",
   NULL,
   "xcf",
   "",
   NULL,
-  "RGB*, GRAY*, INDEXED*",
+  "RGB*, GRAY*, INDEXED*, U16_RGB*, U16_GRAY*, FLOAT_RGB*, FLOAT_GRAY*, FLOAT16_RGB*, FLOAT16_GRAY*",
   0, /* fill me in at runtime */
   {
     "gimp_xcf_save",
@@ -334,7 +356,13 @@ xcf_load_invoker (Argument *args)
 	      if (!gimage)
 		success = FALSE;
 	    }
-	  else 
+	  else if (info.file_version == 100)  /* a r & h version */
+	     {
+		gimage = xcf_load_image (&info);
+	      if (!gimage)
+		success = FALSE;
+	     } 
+	  else
 	    {
 	      g_message ("XCF error: unsupported XCF file version %d encountered", info.file_version);
 	      success = FALSE;
@@ -377,7 +405,7 @@ xcf_save_invoker (Argument *args)
       info.floating_sel_offset = 0;
       info.swap_num = 0;
       info.ref_count = NULL;
-      info.compression = COMPRESS_RLE;
+      info.compression = COMPRESS_NONE;
 
       xcf_save_choose_format (&info, gimage);
 
@@ -402,6 +430,8 @@ xcf_save_choose_format (XcfInfo *info,
 
   if (gimage->cmap) 
     save_version = 1;			/* need version 1 for colormaps */
+  
+  save_version = 100;                   /* version 100 -- first r & h version */ 
 
   info->file_version = save_version;
 }
@@ -421,6 +451,9 @@ xcf_save_image (XcfInfo *info,
   int have_selection;
   int t1, t2, t3, t4;
   char version_tag[14];
+  gint width = gimage->width;
+  gint height = gimage->height;
+  Tag tag = gimage->tag;
 
   floating_layer = gimage_floating_sel (gimage);
   if (floating_layer)
@@ -437,10 +470,11 @@ xcf_save_image (XcfInfo *info,
     }
   info->cp += xcf_write_int8 (info->fp, (guint8*) version_tag, 14);
 
-  /* write out the width, height and image type information for the image */
-  info->cp += xcf_write_int32 (info->fp, (guint32*) &gimage->width, 1);
-  info->cp += xcf_write_int32 (info->fp, (guint32*) &gimage->height, 1);
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &gimage->base_type, 1); */
+  /* write out the width, height and tag information for the image */
+
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &width, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &height, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &tag, 1);
 
   /* determine the number of layers and channels in the image */
   nlayers = (guint) g_slist_length (gimage->layers);
@@ -570,8 +604,8 @@ xcf_save_image_props (XcfInfo *info,
   if (gimage->cmap)
     xcf_save_prop (info, PROP_COLORMAP, gimage->num_cols, gimage->cmap);
 
-  if (info->compression != COMPRESS_NONE)
-    xcf_save_prop (info, PROP_COMPRESSION, info->compression);
+/*  if (info->compression != COMPRESS_NONE) */
+  xcf_save_prop (info, PROP_COMPRESSION, info->compression);
 
   if (gimage->guides)
     xcf_save_prop (info, PROP_GUIDES, gimage->guides);
@@ -620,9 +654,22 @@ xcf_save_channel_props (XcfInfo *info,
   xcf_save_prop (info, PROP_OPACITY, channel->opacity);
   xcf_save_prop (info, PROP_VISIBLE, GIMP_DRAWABLE(channel)->visible);
   xcf_save_prop (info, PROP_SHOW_MASKED, channel->show_masked);
-  xcf_save_prop (info, PROP_COLOR, channel->col);
-
+  xcf_save_color_prop (info, &channel->col);
   xcf_save_prop (info, PROP_END);
+}
+
+static void
+xcf_save_color_prop (XcfInfo *info, 
+		     PixelRow *row)
+{
+  guint32 prop_type = PROP_COLOR;
+  Tag t = pixelrow_tag (row);
+  guint32 size = tag_bytes(t) + 8;   /*for tag , width , rgb data*/ 
+
+  info->cp += xcf_write_int32 (info->fp, &prop_type, 1);
+  info->cp += xcf_write_int32 (info->fp, &size, 1);
+
+  xcf_save_row (info, row);
 }
 
 static void
@@ -681,6 +728,7 @@ xcf_save_prop (XcfInfo  *info,
       break;
     case PROP_OPACITY:
       {
+#if 0
 	gint32 opacity;
 
 	opacity = va_arg (args, gint32);
@@ -690,6 +738,14 @@ xcf_save_prop (XcfInfo  *info,
 	info->cp += xcf_write_int32 (info->fp, (guint32*) &prop_type, 1);
 	info->cp += xcf_write_int32 (info->fp, &size, 1);
 	info->cp += xcf_write_int32 (info->fp, (guint32*) &opacity, 1);
+#endif
+	gfloat opacity;
+	opacity = va_arg (args, double);
+	size = 4;
+
+	info->cp += xcf_write_int32 (info->fp, (guint32*) &prop_type, 1);
+	info->cp += xcf_write_int32 (info->fp, &size, 1);
+	info->cp += xcf_write_float (info->fp, (gfloat*) &opacity, 1);
       }
       break;
     case PROP_MODE:
@@ -801,18 +857,6 @@ xcf_save_prop (XcfInfo  *info,
 	info->cp += xcf_write_int32 (info->fp, (guint32*) offsets, 2);
       }
       break;
-    case PROP_COLOR:
-      {
-	guchar *color;
-
-	color = va_arg (args, guchar*);
-	size = 3;
-
-	info->cp += xcf_write_int32 (info->fp, (guint32*) &prop_type, 1);
-	info->cp += xcf_write_int32 (info->fp, &size, 1);
-	info->cp += xcf_write_int8 (info->fp, color, 3);
-      }
-      break;
     case PROP_COMPRESSION:
       {
 	guint8 compression;
@@ -866,6 +910,10 @@ xcf_save_layer (XcfInfo *info,
 {
   guint32 saved_pos;
   guint32 offset;
+  gint width = drawable_width (GIMP_DRAWABLE(layer));
+  gint height = drawable_height (GIMP_DRAWABLE(layer));
+  gint tag = drawable_tag (GIMP_DRAWABLE(layer));
+  gchar * name = GIMP_DRAWABLE(layer)->name;
 
   /* check and see if this is the drawable that the floating
    *  selection is attached to.
@@ -879,15 +927,15 @@ xcf_save_layer (XcfInfo *info,
     }
 
   /* write out the width, height and image type information for the layer */
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(layer)->width, 1); */
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(layer)->height, 1);*/
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(layer)->type, 1); */
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &width, 1); 
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &height, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &tag, 1); 
 
   if (info->compression == COMPRESS_FRACTAL)
     /* xcf_compress_frac_info (GIMP_DRAWABLE(layer)->type); */;
 
   /* write out the layers name */
-  info->cp += xcf_write_string (info->fp, &GIMP_DRAWABLE(layer)->name, 1);
+  info->cp += xcf_write_string (info->fp, &name, 1);
 
   /* write out the layer properties */
   xcf_save_layer_props (info, gimage, layer);
@@ -929,6 +977,9 @@ xcf_save_channel (XcfInfo *info,
 {
   guint32 saved_pos;
   guint32 offset;
+  gint width = drawable_width (GIMP_DRAWABLE(channel));
+  gint height = drawable_height (GIMP_DRAWABLE(channel));
+  gchar * name = GIMP_DRAWABLE(channel)->name;
 
   /* check and see if this is the drawable that the floating
    *  selection is attached to.
@@ -942,11 +993,11 @@ xcf_save_channel (XcfInfo *info,
     }
 
   /* write out the width and height information for the channel */
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(channel)->width, 1); */
-  /* info->cp += xcf_write_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(channel)->height, 1); */
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &width, 1); 
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &height, 1);
 
   /* write out the channels name */
-  info->cp += xcf_write_string (info->fp, &GIMP_DRAWABLE(channel)->name, 1);
+  info->cp += xcf_write_string (info->fp, &name, 1);
 
   /* write out the channel properties */
   xcf_save_channel_props (info, gimage, channel);
@@ -969,53 +1020,87 @@ xcf_save_channel (XcfInfo *info,
 
 static void
 xcf_save_hierarchy (XcfInfo     *info,
-		    TileManager *tiles)
+		    Canvas *tiles)
 {
   guint32 saved_pos;
   guint32 offset;
   int i;
 
-  info->cp += xcf_write_int32 (info->fp, (guint32*) &tiles->levels[0].width, 1);
-  info->cp += xcf_write_int32 (info->fp, (guint32*) &tiles->levels[0].height, 1);
-  info->cp += xcf_write_int32 (info->fp, (guint32*) &tiles->levels[0].bpp, 1);
+  gint w = canvas_width (tiles);
+  gint h = canvas_height (tiles);
+  Tag tag = canvas_tag (tiles);
+  int bytes = canvas_bytes (tiles);
+  Storage storage = canvas_storage (tiles);
+  AutoAlloc auto_alloc = canvas_autoalloc (tiles);
 
-  saved_pos = info->cp;
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &w, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &h, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &tag, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &bytes, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &storage, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*) &auto_alloc, 1);
 
-  xcf_seek_pos (info, info->cp + (tiles->nlevels + 1) * 4);
+  {
+    PixelArea area;
+    void * pag;
 
-  for (i = 0; i < tiles->nlevels; i++)
+    pixelarea_init (&area, tiles, 0,0, w, h, TRUE); 
+    for (pag = pixelarea_register (1, &area);
+	 pag != NULL;
+	 pag = pixelarea_process (pag))
+      {
+	PixelRow row;
+	gint height = pixelarea_height (&area);
+	while (height--)
+	  {
+	    pixelarea_getdata (&area, &row, height);
+	    xcf_save_row ( info, &row);  
+	  }
+      }
+  }
+}
+
+static void
+xcf_save_row (XcfInfo *info,
+	       PixelRow *row
+		)
+{
+  Tag t = pixelrow_tag (row);
+  Precision p = tag_precision (t);
+  gint w = pixelrow_width (row);
+  gint num_channels = tag_num_channels (t);
+
+  /* write out the row tag and width*/
+  info->cp += xcf_write_int32 (info->fp, (guint32*)&t, 1);
+  info->cp += xcf_write_int32 (info->fp, (guint32*)&w, 1);
+  
+  /* write out the data for the row */
+  switch (p) 
     {
-      /* save the start offset of where we are writing
-       *  out the next level.
-       */
-      offset = info->cp;
-
-      /* write out the level. */
-      xcf_save_level (info, &tiles->levels[i]);
-
-      /* seek back to where we are to write out the next
-       *  level offset and write it out.
-       */
-      xcf_seek_pos (info, saved_pos);
-      info->cp += xcf_write_int32 (info->fp, &offset, 1);
-
-      /* increment the location we are to write out the
-       *  next offset.
-       */
-      saved_pos = info->cp;
-
-      /* seek to the end of the file which is where
-       *  we will write out the next level.
-       */
-      xcf_seek_end (info);
+    case PRECISION_U8:
+      {
+	guint8 * data = (guint8*)pixelrow_data (row);
+	info->cp += xcf_write_int8 (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_U16:
+    case PRECISION_FLOAT16:
+      {
+	guint16 * data = (guint16*)pixelrow_data (row);
+	info->cp += xcf_write_int16 (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_FLOAT:
+      {
+	gfloat * data = (gfloat*)pixelrow_data (row);
+	info->cp += xcf_write_float (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_NONE:
+    default:
+      g_print ("xcf_save_row: unrecognized precision\n");	
+      break;
     }
-
-  /* write out a '0' offset position to indicate the end
-   *  of the level offsets.
-   */
-  offset = 0;
-  xcf_seek_pos (info, saved_pos);
-  info->cp += xcf_write_int32 (info->fp, &offset, 1);
 }
 
 static void
@@ -1096,6 +1181,125 @@ xcf_save_tile (XcfInfo *info,
   tile_unref (tile, FALSE);
 }
 
+static void
+xcf_save_row_rle (XcfInfo *info,
+		   Tile    *tile)
+{
+  guchar *data, *t;
+  guchar buffer[1024];
+  unsigned int last;
+  int state;
+  int length;
+  int count;
+  int size;
+  int bpp;
+  int i, j, k;
+
+  tile_ref (tile);
+
+  bpp = tile->bpp;
+
+  for (i = 0; i < bpp; i++)
+    {
+      data = tile->data + i;
+
+      state = 0;
+      length = 0;
+      count = 0;
+      size = tile->ewidth * tile->eheight;
+      last = -1;
+
+      while (size > 0)
+	{
+	  switch (state)
+	    {
+	    case 0:
+	      /* in state 0 we try to find a long sequence of
+	       *  matching values.
+	       */
+	      if ((length == 32768) ||
+		  ((size - length) <= 0) ||
+		  ((length > 1) && (last != *data)))
+		{
+		  count += length;
+		  if (length >= 128)
+		    {
+		      buffer[0] = 127;
+                      buffer[1] = (length >> 8);
+                      buffer[2] = length & 0x00FF;
+		      buffer[3] = last;
+		      info->cp += xcf_write_int8 (info->fp, buffer, 4);
+		    }
+		  else
+		    {
+		      buffer[0] = length - 1;
+		      buffer[1] = last;
+		      info->cp += xcf_write_int8 (info->fp, buffer, 2);
+		    }
+		  size -= length;
+		  length = 0;
+		}
+	      else if ((length == 1) && (last != *data))
+		state = 1;
+	      break;
+	    case 1:
+	      /* in state 1 we try and find a long sequence of
+	       *  non-matching values.
+	       */
+	      if ((length == 32768) ||
+		  ((size - length) == 0) ||
+		  ((length > 0) && (last == *data)))
+		{
+		  count += length;
+		  state = 0;
+
+		  if (length >= 128)
+		    {
+		      buffer[0] = 255 - 127;
+                      buffer[1] = (length >> 8);
+                      buffer[2] = length & 0x00FF;
+		      k = 3;
+		    }
+		  else
+		    {
+		      buffer[0] = 255 - (length - 1);
+		      k = 1;
+		    }
+
+		  t = data - length * bpp;
+		  for (j = 0; j < length; j++)
+		    {
+		      buffer[k++] = *t;
+		      t += bpp;
+
+		      if (k >= 1024)
+			{
+			  info->cp += xcf_write_int8 (info->fp, buffer, 1024);
+			  k = 0;
+			}
+		    }
+
+		  if (k > 0)
+		    info->cp += xcf_write_int8 (info->fp, buffer, k);
+		  size -= length;
+		  length = 0;
+		}
+	      break;
+	    }
+
+	  if (size > 0) {
+	    length += 1;
+	    last = *data;
+	    data += bpp;
+	  }
+	}
+
+      if (count != (tile->ewidth * tile->eheight))
+	g_print ("xcf: uh oh! xcf rle tile saving error: %d\n", count);
+    }
+
+  tile_unref (tile, FALSE);
+}
 static void
 xcf_save_tile_rle (XcfInfo *info,
 		   Tile    *tile)
@@ -1227,15 +1431,16 @@ xcf_load_image (XcfInfo *info)
   guint32 offset;
   int width;
   int height;
-  int image_type;
+  Tag tag;
 
   /* read in the image width, height and type */
   info->cp += xcf_read_int32 (info->fp, (guint32*) &width, 1);
   info->cp += xcf_read_int32 (info->fp, (guint32*) &height, 1);
-  info->cp += xcf_read_int32 (info->fp, (guint32*) &image_type, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &tag, 1);
 
   /* create a new gimage */
-  gimage = gimage_new (width, height, tag_from_drawable_type (image_type));
+
+  gimage = gimage_new (width, height, tag);
   if (!gimage)
     return NULL;
 
@@ -1459,7 +1664,7 @@ xcf_load_layer_props (XcfInfo *info,
 	  info->cp += xcf_read_int32 (info->fp, (guint32*) &info->floating_sel_offset, 1);
 	  break;
 	case PROP_OPACITY:
-	  info->cp += xcf_read_int32 (info->fp, (guint32*) &layer->opacity, 1);
+	  info->cp += xcf_read_float (info->fp, (gfloat*) &layer->opacity, 1);
 	  break;
 	case PROP_VISIBLE:
 	  info->cp += xcf_read_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(layer)->visible, 1);
@@ -1534,7 +1739,7 @@ xcf_load_channel_props (XcfInfo *info,
 	  channel->bounds_known = FALSE;
 	  break;
 	case PROP_OPACITY:
-	  info->cp += xcf_read_int32 (info->fp, (guint32*) &channel->opacity, 1);
+	  info->cp += xcf_read_float (info->fp, (gfloat*) &channel->opacity, 1);
 	  break;
 	case PROP_VISIBLE:
 	  info->cp += xcf_read_int32 (info->fp, (guint32*) &GIMP_DRAWABLE(channel)->visible, 1);
@@ -1543,11 +1748,18 @@ xcf_load_channel_props (XcfInfo *info,
 	  info->cp += xcf_read_int32 (info->fp, (guint32*) &channel->show_masked, 1);
 	  break;
 	case PROP_COLOR:
-	  info->cp += xcf_read_int8 (info->fp, (guint8*) channel->_col, 3);
+	    {
+	      Tag t = drawable_tag ( GIMP_DRAWABLE( channel) );
+	      Tag col_tag = tag_new ( tag_precision (t), FORMAT_RGB, ALPHA_NO);
+	      COLOR16_NEW (color, col_tag);
+	      COLOR16_INIT (color);
+	      xcf_load_row (info, &color);
+	      copy_row (&color, &channel->col);
+	    }
+
 	  break;
 	default:
 	  g_message ("unexpected/unknown channel property: %d (skipping)", prop_type);
-
 	  {
 	    guint8 buf[16];
 	    guint amount;
@@ -1562,7 +1774,6 @@ xcf_load_channel_props (XcfInfo *info,
 	  break;
 	}
     }
-
   return FALSE;
 }
 
@@ -1589,7 +1800,7 @@ xcf_load_layer (XcfInfo *info,
   int show_mask;
   int width;
   int height;
-  int type;
+  Tag tag;
   int add_floating_sel;
   char *name;
 
@@ -1602,11 +1813,13 @@ xcf_load_layer (XcfInfo *info,
   /* read in the layer width, height, type and name */
   info->cp += xcf_read_int32 (info->fp, (guint32*) &width, 1);
   info->cp += xcf_read_int32 (info->fp, (guint32*) &height, 1);
-  info->cp += xcf_read_int32 (info->fp, (guint32*) &type, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &tag, 1);
   info->cp += xcf_read_string (info->fp, &name, 1);
 
   /* create a new layer */
-  layer = layer_new (gimage->ID, width, height, tag_from_drawable_type (type), STORAGE_TILED, name, 1.0, NORMAL_MODE);
+
+  layer = layer_new (gimage->ID, width, height, tag, 
+		STORAGE_TILED, name, 1.0, NORMAL_MODE);
   if (!layer)
     {
       g_free (name);
@@ -1679,21 +1892,24 @@ xcf_load_channel (XcfInfo *info,
   int height;
   int add_floating_sel;
   char *name;
-  guchar color[3] = { 0, 0, 0 };
-
+  Tag tag = tag_new (default_precision, FORMAT_RGB, ALPHA_NO);
+  COLOR16_NEW (black, tag);
+  COLOR16_INIT (black);
+  palette_get_black (&black);
+ 
   /* check and see if this is the drawable the floating selection
    *  is attached to. if it is then we'll do the attachment at
    *  the end of this function.
    */
   add_floating_sel = (info->cp == info->floating_sel_offset);
 
-  /* read in the layer width, height and name */
+  /* read in the channel width, height and name */
   info->cp += xcf_read_int32 (info->fp, (guint32*) &width, 1);
   info->cp += xcf_read_int32 (info->fp, (guint32*) &height, 1);
   info->cp += xcf_read_string (info->fp, &name, 1);
 
   /* create a new channel */
-  channel = channel_new (gimage->ID, width, height, default_precision, name, 1.0, color);
+  channel = channel_new (gimage->ID, width, height, default_precision, name, 1.0, &black);
   if (!channel)
     {
       g_free (name);
@@ -1738,7 +1954,10 @@ xcf_load_layer_mask (XcfInfo *info,
   int height;
   int add_floating_sel;
   char *name;
-  guchar color[3] = { 0, 0, 0 };
+  Tag tag = tag_new (default_precision, FORMAT_RGB, ALPHA_NO);
+  COLOR16_NEW (black, tag);
+  COLOR16_INIT (black);
+  palette_get_black (&black);
 
   /* check and see if this is the drawable the floating selection
    *  is attached to. if it is then we'll do the attachment at
@@ -1752,7 +1971,7 @@ xcf_load_layer_mask (XcfInfo *info,
   info->cp += xcf_read_string (info->fp, &name, 1);
 
   /* create a new layer mask */
-  layer_mask = layer_mask_new (gimage->ID, width, height, default_precision, name, 1.0, color);
+  layer_mask = layer_mask_new (gimage->ID, width, height, default_precision, name, 1.0, &black);
   if (!layer_mask)
     {
       g_free (name);
@@ -1789,7 +2008,7 @@ error:
 
 static gint
 xcf_load_hierarchy (XcfInfo     *info,
-		    TileManager *tiles)
+		    Canvas *tiles)
 {
   guint32 saved_pos;
   guint32 offset;
@@ -1797,60 +2016,98 @@ xcf_load_hierarchy (XcfInfo     *info,
   int height;
   int bpp;
   int i;
+  gint w;
+  gint h;
+  Tag tag;
+  int bytes;
+  Storage storage;
+  AutoAlloc auto_alloc;
 
-  info->cp += xcf_read_int32 (info->fp, (guint32*) &width, 1);
-  info->cp += xcf_read_int32 (info->fp, (guint32*) &height, 1);
-  info->cp += xcf_read_int32 (info->fp, (guint32*) &bpp, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &w, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &h, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &tag, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &bytes, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &storage, 1);
+  info->cp += xcf_read_int32 (info->fp, (guint32*) &auto_alloc, 1);
+  
+  {
+    void * pag;
+    PixelArea area;
 
-  /* make sure the values in the file correspond to the values
-   *  calculated when the TileManager was created.
-   */
-  if ((width != tiles->levels[0].width) ||
-      (height != tiles->levels[0].height) ||
-      (bpp != tiles->levels[0].bpp))
-    return FALSE;
+    pixelarea_init (&area, tiles, 0,0, w, h, TRUE); 
 
-  /* load in the levels...we make sure that the number of levels
-   *  calculated when the TileManager was created is the same
-   *  as the number of levels found in the file.
-   */
-  for (i = 0; i < tiles->nlevels; i++)
-    {
-      /* read in the offset of the next level */
-      info->cp += xcf_read_int32 (info->fp, &offset, 1);
-
-      if (offset == 0)
-	{
-	  g_message ("not enough levels found in hierarchy");
-	  return FALSE;
-	}
-
-      /* save the current position as it is where the
-       *  next level offset is stored.
-       */
-      saved_pos = info->cp;
-
-      /* seek to the level offset */
-      xcf_seek_pos (info, offset);
-
-      /* read in the level */
-      if (!xcf_load_level (info, tiles, &tiles->levels[i], i))
-	return FALSE;
-
-      /* restore the saved position so we'll be ready to
-       *  read the next offset.
-       */
-      xcf_seek_pos (info, saved_pos);
-    }
-
-  info->cp += xcf_read_int32 (info->fp, &offset, 1);
-  if (offset != 0)
-    {
-      g_message ("encountered garbage after reading hierarchy: %d", offset);
-      return FALSE;
-    }
+    for (pag = pixelarea_register (1, &area);
+	 pag != NULL;
+	 pag = pixelarea_process (pag))
+      {
+	PixelRow row;
+	gint height = pixelarea_height (&area);
+	while (height--)
+	  {
+	    pixelarea_getdata (&area, &row, height);
+	    xcf_load_row (info, &row);  
+	  }
+      }
+  }
 
   return TRUE;
+}
+
+static void
+xcf_load_row (XcfInfo *info,
+	       PixelRow *row
+		)
+{
+  Tag t;
+  guint32 w;
+  Precision p;
+  gint num_channels;
+
+  /* read in the tag and width of the row */
+  info->cp += xcf_read_int32 (info->fp, (guint32*)&t, 1);
+  info->cp += xcf_read_int32 (info->fp, &w, 1);
+
+  if (!tag_equal (pixelrow_tag (row), t))
+    {
+      g_print ("xcf_load_row: tags dont match for row\n");
+      return;
+    }
+
+  if (pixelrow_width (row) != w)
+    {
+      g_print ("xcf_load_row: widths dont match for row\n");
+      return;
+    }
+
+  p = tag_precision (t);
+  num_channels = tag_num_channels (t);
+ 
+  switch (p) 
+    {
+    case PRECISION_U8:
+      {
+	guint8 * data = (guint8*)pixelrow_data (row);
+	info->cp += xcf_read_int8 (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_U16:
+    case PRECISION_FLOAT16:
+      {
+	guint16 * data = (guint16*)pixelrow_data (row);
+	info->cp += xcf_read_int16 (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_FLOAT:
+      {
+	gfloat * data = (gfloat*)pixelrow_data (row);
+	info->cp += xcf_read_float (info->fp, data, num_channels * w);
+      }
+      break;
+    case PRECISION_NONE:
+    default:
+      g_print ("xcf_load_row: unrecognized precision\n");	
+      break;
+    }
 }
 
 static gint
@@ -2133,6 +2390,29 @@ xcf_seek_end (XcfInfo *info)
   info->cp = ftell (info->fp);
 }
 
+static guint
+xcf_read_float (FILE     *fp,
+		gfloat   *data,
+		gint      count)
+{
+  guint total;
+  guint32 * tmp_long;
+
+  total = count;
+  if (count > 0)
+    {
+      xcf_read_int8 (fp, (guint8*) data, count * 4);
+
+      while (count--)
+        {
+	  tmp_long = (guint32 *)data;
+          *tmp_long = ntohl (*tmp_long);
+          data++;
+        }
+    }
+
+  return total * 4;
+}
 
 static guint
 xcf_read_int32 (FILE     *fp,
@@ -2154,6 +2434,28 @@ xcf_read_int32 (FILE     *fp,
     }
 
   return total * 4;
+}
+
+static guint
+xcf_read_int16 (FILE     *fp,
+		guint16  *data,
+		gint      count)
+{
+  guint total;
+
+  total = count;
+  if (count > 0)
+    {
+      xcf_read_int8 (fp, (guint8*) data, count * 2);
+
+      while (count--)
+        {
+          *data = ntohl (*data);
+          data++;
+        }
+    }
+
+  return total * 2;
 }
 
 static guint
@@ -2205,6 +2507,28 @@ xcf_read_string (FILE     *fp,
 }
 
 static guint
+xcf_write_float (FILE     *fp,
+		 gfloat  *data,
+		 gint      count)
+{
+  guint32 tmp;
+  guint32 *tmp_long;
+  int i;
+
+  if (count > 0)
+    {
+      for (i = 0; i < count; i++)
+        {
+	  tmp_long = (guint32 *) &data[i];
+          tmp = htonl (*tmp_long);
+          xcf_write_int8 (fp, (guint8*) &tmp, 4);
+        }
+    }
+
+  return count * 4;
+}
+
+static guint
 xcf_write_int32 (FILE     *fp,
 		 guint32  *data,
 		 gint      count)
@@ -2222,6 +2546,26 @@ xcf_write_int32 (FILE     *fp,
     }
 
   return count * 4;
+}
+
+static guint
+xcf_write_int16 (FILE     *fp,
+		 guint16  *data,
+		 gint      count)
+{
+  guint16 tmp;
+  int i;
+
+  if (count > 0)
+    {
+      for (i = 0; i < count; i++)
+        {
+          tmp = htonl (data[i]);
+          xcf_write_int8 (fp, (guint8*) &tmp, 2);
+        }
+    }
+
+  return count * 2;
 }
 
 static guint

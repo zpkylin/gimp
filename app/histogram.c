@@ -51,7 +51,7 @@ typedef struct _HistogramPrivate
   HistogramValues         values;
   int                     start;    /* bin to start with */
   int                     end;      /* bin to end with */
-  int                     bins;
+  int                     bins;     /* number of bins  */
 } HistogramPrivate;
 
 
@@ -100,9 +100,6 @@ histogram_draw (Histogram *histogram,
       for (i = 0; i < histogram_p->bins; i++)
 	{
 	  x = (width * i) / histogram_p->bins + 1;
-#if 0
-	  printf("drawing bin: %d\n", x);
-#endif
 	  if (histogram_p->values[histogram_p->channel][i])
 	    y = (int) ((height * log (histogram_p->values[histogram_p->channel][i])) / max);
 	  else
@@ -113,6 +110,7 @@ histogram_draw (Histogram *histogram,
 			 x, height + 1 - y);
 	}
     }
+
   if ((update & RANGE) && histogram_p->start >= 0)
     {
       x1 = (width * MIN (histogram_p->start, histogram_p->end)) / histogram_p->bins + 1;
@@ -187,7 +185,7 @@ histogram_events (GtkWidget *widget,
 Histogram *
 histogram_create (int                     width,
 		  int                     height,
-		  int			  bins,
+		  int                     bins,
 		  HistogramRangeCallback  range_callback,
 		  void                   *user_data)
 {

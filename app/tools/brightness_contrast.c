@@ -154,6 +154,7 @@ brightness_contrast_funcs (Tag drawable_tag)
 
 /*  brightness contrast machinery  */
 
+#if 0
 static double brightness_func (double x, double b)
 {
   if (b < 0)
@@ -161,7 +162,6 @@ static double brightness_func (double x, double b)
   else
     return x + (1.0 - x) * b; 
 }
-
 
 static double contrast_func (double x, double c)
 {
@@ -180,7 +180,57 @@ static double contrast_func (double x, double c)
   value = BOUNDS (value, 0.0, 1.0);
   return (x > .5) ? (1.0 - value) : value;
 }
+#endif
 
+static float mean = .5;
+
+static double brightness_func (double x, double b)
+{
+  return  (x  + .392 * b);
+}
+
+static double contrast_func (double x, double c)
+{
+  if (c==0.0)
+   return x;
+  else if (c > 0.0 && c <1.0)
+   {                              /* note: clipping here */
+     float x0;
+     float slope;
+     float x1;
+       x0 = c * mean;
+       slope = mean/(mean - x0);
+       x1 = x0 + 1/slope;
+    if (x <= x0)
+	  return 0;
+	else if ( x > x0 && x < x1)
+	  return slope * (x-x0);
+	else if (x >= x1 && x <= 1.0)
+	  return 1.0;
+	else if (x > 1.0)
+	  return x; 
+   }
+  else if (c == 1.0)
+   {
+      if (x < mean) return 0.0;	      /* note: clipping here */
+      else if (x >= mean && x <=1.0) 
+		return 1.0;	
+	  else if (x > 1.0)
+		return x;
+   }
+   else if (c < 0.0 && c > -1.0)
+   {
+      float y0;
+      float slope;
+	y0 = -c * mean;
+	slope = (mean - y0)/mean;
+	return slope * x + y0;
+   }
+  else if (c == -1.0)
+   {
+     return mean; 
+   }
+}
 
 static void 
 brightness_contrast_init_transfers_u8 (void * user_data)
@@ -202,11 +252,11 @@ brightness_contrast_init_transfers_u8 (void * user_data)
   
   for (i = 0; i < 256; i++)
     brightness_data[i] = (guint8) (255.0 * brightness_func ( (gdouble)i/255.0,
-				      brightness));
+				      brightness*2.0));
 
   for (i = 0; i < 256; i++)
     contrast_data[i] = (guint8) (255.0 * contrast_func ( (gdouble)i/255.0,
-				      contrast));
+				      contrast*2.0));
   
   pixelrow_init (&brightness_lut, lut_tag, brightness_data, 256); 
   pixelrow_init (&contrast_lut, lut_tag, contrast_data, 256); 
@@ -232,10 +282,10 @@ brightness_contrast_init_transfers_u16 (void * user_data)
   
   for (i = 0; i < 65536; i++)
     brightness_data[i] = (guint16) (65535.0 * brightness_func ( (gdouble)i/65535.0,
-				      brightness));
+				      brightness*2.0));
   for (i = 0; i < 65536; i++)
     contrast_data[i] = (guint16) (65535.0 * contrast_func ( (double)i/65535.0,
-				      contrast));
+				      contrast*2.0));
   
   pixelrow_init (&brightness_lut, lut_tag, (guchar*)brightness_data, 65536); 
   pixelrow_init (&contrast_lut, lut_tag, (guchar*)contrast_data, 65536); 
@@ -442,7 +492,7 @@ brightness_contrast_float16 (PixelArea *src_area,
 	  for (b = 0; b < alpha; b++)
 	  {
 	    sb = FLT (s[b], u);
-	    db = contrast_func (brightness_func(sb, brightness), contrast);
+	    db = contrast_func (brightness_func(sb, 2.0*brightness), 2.0*contrast);
 	    d[b] = FLT16 (db, u);
 	  }
 

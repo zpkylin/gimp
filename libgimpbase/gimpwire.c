@@ -211,7 +211,7 @@ wire_read_msg (int          fd,
 
   handler = g_hash_table_lookup (wire_ht, &msg->type);
   if (!handler)
-    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, "could not find handler for message: %d\n", msg->type);
+    g_error ("could not find handler for message: %d\n", msg->type);
 
   (* handler->read_func) (fd, msg);
 
@@ -229,7 +229,7 @@ wire_write_msg (int          fd,
 
   handler = g_hash_table_lookup (wire_ht, &msg->type);
   if (!handler)
-    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, "could not find handler for message: %d\n", msg->type);
+    g_error ("could not find handler for message: %d\n", msg->type);
 
   if (!wire_write_int32 (fd, &msg->type, 1))
     return FALSE;
@@ -246,7 +246,7 @@ wire_destroy (WireMessage *msg)
 
   handler = g_hash_table_lookup (wire_ht, &msg->type);
   if (!handler)
-    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_ERROR, "could not find handler for message: %d\n", msg->type);
+    g_error ("could not find handler for message: %d\n", msg->type);
 
   (* handler->destroy_func) (msg);
 }

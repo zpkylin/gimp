@@ -44,6 +44,20 @@ extern gulong new_color_pixel;
 /*  Colormap entries reserved for color cycled marching ants--optional  */
 extern gulong  marching_ants_pixels[8];
 
+extern GtkDitherInfo *red_ordered_dither;
+extern GtkDitherInfo *green_ordered_dither;
+extern GtkDitherInfo *blue_ordered_dither;
+extern GtkDitherInfo *gray_ordered_dither;
+
+extern guchar ***ordered_dither_matrix;
+
+extern gulong *g_lookup_red;
+extern gulong *g_lookup_green;
+extern gulong *g_lookup_blue;
+
+extern gulong *color_pixel_vals;
+extern gulong *gray_pixel_vals;
+
 gulong get_color (struct _PixelRow *);
 void   store_color (gulong *pixel, struct _PixelRow *);
 void   store_display_color (gulong *pixel, struct _PixelRow *);

@@ -58,6 +58,7 @@ gdisplay_new_invoker (Argument *args)
   /*  create the new image  */
   return_args = procedural_db_return_args (&gdisplay_new_proc, success);
 
+
   if (success)
     return_args[1].value.pdb_int = gdisp->ID;
 
@@ -154,6 +155,52 @@ ProcRecord gdisplay_delete_proc =
   { { gdisplay_delete_invoker } },
 };
 
+/*********************/
+/*  GDISPLAYS_DELETE_IMAGE  */
+
+static Argument *
+gdisplays_delete_image_invoker (Argument *args)
+{
+  GDisplay *gdisplay;
+
+  success = TRUE;
+
+  int_value = args[0].value.pdb_int;
+  gdisplays_delete_image (gimage_get_ID(int_value)); 
+
+  return procedural_db_return_args (&gdisplays_delete_image_proc, success);
+}
+
+/*  The procedure definition  */
+ProcArg gdisplays_delete_image_args[] =
+{
+  { PDB_IMAGE,
+    "image",
+    "The image"
+  }
+};
+
+ProcRecord gdisplays_delete_image_proc =
+{
+  "gimp_displays_delete_image",
+  "Delete all the displays for this image",
+  "This procedure removes the specified image  When the last display is removed the image is deleted.",
+  "Calvin Williamson",
+  "Calvin Williamson",
+  "1999",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  gdisplays_delete_image_args,
+
+  /*  Output arguments  */
+  0,
+  NULL,
+
+  /*  Exec method  */
+  { { gdisplays_delete_image_invoker } },
+};
 
 /*********************/
 /*  GDISPLAYS_FLUSH  */

@@ -30,18 +30,25 @@
 #include "tools.h"
 #include "gdisplay.h"
 
+#if 1 
+#define R_AND_H 1
+#endif
+
 static void menus_init (void);
 
 static GtkItemFactoryEntry toolbox_entries[] =
 {
   { "/File/New", "<control>N", file_new_cmd_callback, 0 },
-  { "/File/Open", "<control>O", file_open_cmd_callback, 0 },
+  { "/File/OpenFile", "<control>O", file_open_cmd_callback, 0 },
+  { "/File/OpenPTS", "<alt>O", NULL, 0 },
   { "/File/About...", NULL, about_dialog_cmd_callback, 0 },
   { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/Tip of the day", NULL, tips_dialog_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
   { "/File/Dialogs/Brushes...", "<control><shift>B", dialogs_brushes_cmd_callback, 0 },
+#if 0
   { "/File/Dialogs/Patterns...", "<control><shift>P", dialogs_patterns_cmd_callback, 0 },
+#endif
   { "/File/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
   { "/File/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/File/Dialogs/Tool Options...", "<control><shift>T", dialogs_tools_options_cmd_callback, 0 },
@@ -50,21 +57,23 @@ static GtkItemFactoryEntry toolbox_entries[] =
 };
 static guint n_toolbox_entries = sizeof (toolbox_entries) / sizeof (toolbox_entries[0]);
 static GtkItemFactory *toolbox_factory = NULL;
- 
+
 static GtkItemFactoryEntry image_entries[] =
 {
   { "/File/New", "<control>N", file_new_cmd_callback, 1 },
-  { "/File/Open", "<control>O", file_open_cmd_callback, 0 },
-  { "/File/Save", "<control>S", file_save_cmd_callback, 0 },
-  { "/File/Save as", NULL, file_save_as_cmd_callback, 0 },
+  { "/File/Revert to Saved", "<alt>R", file_reload_cmd_callback, 0 },
+  { "/File/OpenFile", "<control>O", file_open_cmd_callback, 0 },
+  { "/File/SaveFile", "<control>S", file_save_cmd_callback, 0 },
+  { "/File/SaveFile as", NULL, file_save_as_cmd_callback, 0 },
+  { "/File/SaveFile copy as", NULL, file_save_copy_as_cmd_callback, 0 }, 
+  { "/File/OpenPTS", "<alt>O", NULL, 0 },
+  { "/File/SavePTS", "<alt>S", NULL, 0 },
+  { "/File/SavePTS as", NULL, NULL, 0 },
   { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
-  
-  
   { "/File/Close", "<control>W", file_close_cmd_callback, 0 },
   { "/File/Quit", "<control>Q", file_quit_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
-  
   { "/Edit/Cut", "<control>X", edit_cut_cmd_callback, 0 },
   { "/Edit/Copy", "<control>C", edit_copy_cmd_callback, 0 },
   { "/Edit/Paste", "<control>V", edit_paste_cmd_callback, 0 },
@@ -79,20 +88,22 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Edit/Copy Named", "<control><shift>C", edit_named_copy_cmd_callback, 0 },
   { "/Edit/Paste Named", "<control><shift>V", edit_named_paste_cmd_callback, 0 },
   { "/Edit/---", NULL, NULL, 0, "<Separator>" },
-  
   { "/Select/Toggle", "<control>T", select_toggle_cmd_callback, 0 },
   { "/Select/Invert", "<control>I", select_invert_cmd_callback, 0 },
   { "/Select/All", "<control>A", select_all_cmd_callback, 0 },
   { "/Select/None", "<control><shift>A", select_none_cmd_callback, 0 },
   { "/Select/Float", "<control><shift>L", select_float_cmd_callback, 0 },
+#if 0
   { "/Select/Sharpen", "<control><shift>H", select_sharpen_cmd_callback, 0 },
   { "/Select/Border", "<control><shift>B", select_border_cmd_callback, 0 },
+#endif
   { "/Select/Feather", "<control><shift>F", select_feather_cmd_callback, 0 },
   { "/Select/Grow", NULL, select_grow_cmd_callback, 0 },
   { "/Select/Shrink", NULL, select_shrink_cmd_callback, 0 },
   { "/Select/Save To Channel", NULL, select_save_cmd_callback, 0 },
+#if 0
   { "/Select/By Color...", NULL, select_by_color_cmd_callback, 0 },
-  
+#endif
   { "/View/Zoom In", "equal", view_zoomin_cmd_callback, 0 },
   { "/View/Zoom Out", "minus", view_zoomout_cmd_callback, 0 },
   { "/View/Zoom/16:1", NULL, view_zoom_16_1_callback, 0 },
@@ -111,7 +122,6 @@ static GtkItemFactoryEntry image_entries[] =
   { "/View/---", NULL, NULL, 0, "<Separator>" },
   { "/View/New View", NULL, view_new_view_cmd_callback, 0 },
   { "/View/Shrink Wrap", "<control>E", view_shrink_wrap_cmd_callback, 0 },
-  
   { "/Image/Colors/Equalize", NULL, image_equalize_cmd_callback, 0 },
   { "/Image/Colors/Invert", NULL, image_invert_cmd_callback, 0 },
   { "/Image/Colors/Posterize", NULL, image_posterize_cmd_callback, 0 },
@@ -120,47 +130,58 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Image/Colors/Color Balance", NULL, image_color_balance_cmd_callback, 0 },
   { "/Image/Colors/Brightness-Contrast", NULL, image_brightness_contrast_cmd_callback, 0 },
   { "/Image/Colors/Hue-Saturation", NULL, image_hue_saturation_cmd_callback, 0 },
+#if 0 
   { "/Image/Colors/Curves", NULL, image_curves_cmd_callback, 0 },
+#endif
   { "/Image/Colors/Levels", NULL, image_levels_cmd_callback, 0 },
+#if 0
   { "/Image/Colors/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/Colors/Desaturate", NULL, image_desaturate_cmd_callback, 0 },
+#endif
   { "/Image/Channel Ops/Duplicate", "<control>D", channel_ops_duplicate_cmd_callback, 0 },
   { "/Image/Channel Ops/Offset", "<control><shift>O", channel_ops_offset_cmd_callback, 0 },
+#if 0
   { "/Image/Alpha/Add Alpha Channel", NULL, layers_add_alpha_channel_cmd_callback, 0 },
-  
+#endif
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/RGB", NULL, image_convert_rgb_cmd_callback, 0 },
   { "/Image/Grayscale", NULL, image_convert_grayscale_cmd_callback, 0 },
+#if 0
   { "/Image/Indexed", NULL, image_convert_indexed_cmd_callback, 0 },
+#endif
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/Resize", NULL, image_resize_cmd_callback, 0 },
   { "/Image/Scale", NULL, image_scale_cmd_callback, 0 },
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/Histogram", NULL, image_histogram_cmd_callback, 0 },
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
-  
   { "/Layers/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
   { "/Layers/Raise Layer", "<control>F", layers_raise_cmd_callback, 0 },
   { "/Layers/Lower Layer", "<control>B", layers_lower_cmd_callback, 0 },
   { "/Layers/Anchor Layer", "<control>H", layers_anchor_cmd_callback, 0 },
   { "/Layers/Merge Visible Layers", "<control>M", layers_merge_cmd_callback, 0 },
   { "/Layers/Flatten Image", NULL, layers_flatten_cmd_callback, 0 },
+#if 0
   { "/Layers/Alpha To Selection", NULL, layers_alpha_select_cmd_callback, 0 },
+#endif
   { "/Layers/Mask To Selection", NULL, layers_mask_select_cmd_callback, 0 },
+#if 0
   { "/Layers/Add Alpha Channel", NULL, layers_add_alpha_channel_cmd_callback, 0 },
-  
+#endif
+  { "/Layers/Make Layer", NULL, layers_add_alpha_channel_cmd_callback, 0 },
+#if 1
   { "/Tools/Rect Select", "R", tools_select_cmd_callback, RECT_SELECT },
   { "/Tools/Ellipse Select", "E", tools_select_cmd_callback, ELLIPSE_SELECT },
   { "/Tools/Free Select", "F", tools_select_cmd_callback, FREE_SELECT },
   { "/Tools/Fuzzy Select", "Z", tools_select_cmd_callback, FUZZY_SELECT },
   { "/Tools/Bezier Select", "B", tools_select_cmd_callback, BEZIER_SELECT },
-  { "/Tools/Intelligent Scissors", "I", tools_select_cmd_callback, ISCISSORS },
+  /*{ "/Tools/Intelligent Scissors", "I", tools_select_cmd_callback, ISCISSORS },*/
   { "/Tools/Move", "M", tools_select_cmd_callback, MOVE },
   { "/Tools/Magnify", "<shift>M", tools_select_cmd_callback, MAGNIFY },
   { "/Tools/Crop", "<shift>C", tools_select_cmd_callback, CROP },
   { "/Tools/Transform", "<shift>T", tools_select_cmd_callback, ROTATE },
   { "/Tools/Flip", "<shift>F", tools_select_cmd_callback, FLIP_HORZ },
-  { "/Tools/Text", "T", tools_select_cmd_callback, TEXT },
+  /*{ "/Tools/Text", "T", tools_select_cmd_callback, TEXT },*/
   { "/Tools/Color Picker", "O", tools_select_cmd_callback, COLOR_PICKER },
   { "/Tools/Bucket Fill", "<shift>B", tools_select_cmd_callback, BUCKET_FILL },
   { "/Tools/Blend", "L", tools_select_cmd_callback, BLEND },
@@ -174,20 +195,28 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Tools/Swap Colors", "X", tools_swap_colors_cmd_callback, 0 },  
   { "/Tools/---", NULL, NULL, 0, "<Separator>" },
   { "/Tools/Toolbox", NULL, toolbox_raise_callback, 0 },
-  
+#endif
   { "/Filters/", NULL, NULL, 0 },
   { "/Filters/Repeat last", "<alt>F", filters_repeat_cmd_callback, 0x0 },
   { "/Filters/Re-show last", "<alt><shift>F", filters_repeat_cmd_callback, 0x1 },
   { "/Filters/---", NULL, NULL, 0, "<Separator>" },
-  
-  { "/Script-Fu/", NULL, NULL, 0 },
-  
+#if 0
+  { "/Parsley/", NULL, NULL, 0 },
+#endif
   { "/Dialogs/Brushes...", "<control><shift>B", dialogs_brushes_cmd_callback, 0 },
+#if 0
   { "/Dialogs/Patterns...", "<control><shift>P", dialogs_patterns_cmd_callback, 0 },
+#endif
   { "/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/create", "<alt>F", dialogs_frame_manager_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/forward", "greater", dialogs_frame_manager_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/backwards", "less", dialogs_frame_manager_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/create", "<alt>F", dialogs_frame_manager_cmd_callback, 0 },
   { "/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/Dialogs/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
+#if 0
   { "/Dialogs/Indexed Palette...", NULL, dialogs_indexed_palette_cmd_callback, 0 },
+#endif
   { "/Dialogs/Tool Options...", NULL, dialogs_tools_options_cmd_callback, 0 },
 };
 static guint n_image_entries = sizeof (image_entries) / sizeof (image_entries[0]);
@@ -197,10 +226,10 @@ static GtkItemFactoryEntry load_entries[] =
 {
   { "/Automatic", NULL, file_load_by_extension_callback, 0 },
   { "/---", NULL, NULL, 0, "<Separator>" },
- };
+};
 static guint n_load_entries = sizeof (load_entries) / sizeof (load_entries[0]);
 static GtkItemFactory *load_factory = NULL;
-  
+ 
 static GtkItemFactoryEntry save_entries[] =
 {
   { "/By extension", NULL, file_save_by_extension_callback, 0 },

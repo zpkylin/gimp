@@ -231,7 +231,8 @@ offset (GImage *gimage,
   int width, height;
   int src_x, src_y;
   int dest_x, dest_y;
-  Tag tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);
+  Tag tag = drawable_tag (drawable);
+  /*Tag tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);*/
 
   if (!drawable) 
     return;

@@ -22,7 +22,6 @@
 #include "tools.h"
 #include "procedural_db.h"
 
-
 /*  fuzzy select functions  */
 Tool *        tools_new_fuzzy_select      (void);
 void          tools_free_fuzzy_select     (Tool *);

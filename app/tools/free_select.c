@@ -237,7 +237,6 @@ scan_convert_helper_u8 (
     }
 }
 
-
 static void
 scan_convert_helper_u16 (
                          Channel * mask,
@@ -349,12 +348,11 @@ scan_convert_helper_float (
   gfloat * buf = NULL;
   gfloat * b = NULL;
   gfloat * vals = NULL;
-  int val;
+  gfloat val;
   int start, end;
   int x, x2, w;
   int i, j;
 
-  
   pixelarea_init (&maskPR, drawable_data (GIMP_DRAWABLE(mask)),
                   0, 0, 
                   0, 0,
@@ -362,7 +360,7 @@ scan_convert_helper_float (
 
   if (antialias)
     {
-      buf = (gfloat *) g_malloc (width / SUPERSAMPLE * sizeof (gfloat));
+      buf = (gfloat *) g_malloc ( (width / SUPERSAMPLE) * sizeof (gfloat));
       vals = (gfloat *) g_malloc (sizeof (gfloat) * width);
       pixelrow_init (&bufRow, drawable_tag (GIMP_DRAWABLE (mask)),
                      (guchar*) buf, width/SUPERSAMPLE);
@@ -414,11 +412,11 @@ scan_convert_helper_float (
 	  end = width;
 	  for (j = start; j < end; j += SUPERSAMPLE)
 	    {
-	      val = 0;
+	      val = 0.0;
 	      for (x = 0; x < SUPERSAMPLE; x++)
 		val += vals[j + x];
 
-	      *b++ = (gfloat) (val / SUPERSAMPLE2);
+	      *b++ = (val / SUPERSAMPLE2);
 	    }
 
 	  pixelarea_write_row (&maskPR, &bufRow, 0, (i / SUPERSAMPLE), (width / SUPERSAMPLE));
@@ -449,7 +447,7 @@ scan_convert_helper_float16 (
   guint16 * buf = NULL;
   guint16 * b = NULL;
   gfloat * vals = NULL;
-  int val;
+  gfloat val;
   int start, end;
   int x, x2, w;
   int i, j;
@@ -515,7 +513,7 @@ scan_convert_helper_float16 (
 	  end = width;
 	  for (j = start; j < end; j += SUPERSAMPLE)
 	    {
-	      val = 0;
+	      val = 0.0;
 	      for (x = 0; x < SUPERSAMPLE; x++)
 		val += vals[j + x];
 

@@ -18,6 +18,19 @@
  */                                                                             
 #include "gimp.h"
 
+void
+gimp_displays_delete_image (gint32 image_ID)
+{
+  GParam *return_vals;
+  int nreturn_vals;
+
+  return_vals = gimp_run_procedure ("gimp_displays_delete_image",
+                                    &nreturn_vals,
+                                    PARAM_IMAGE, image_ID,
+                                    PARAM_END);
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+}
 
 gint32
 gimp_display_new (gint32 image_ID)

@@ -37,6 +37,7 @@ gimp_drawable_get (gint32 drawable_ID)
   drawable->width = gimp_drawable_width (drawable_ID);
   drawable->height = gimp_drawable_height (drawable_ID);
   drawable->bpp = gimp_drawable_bpp (drawable_ID);
+  drawable->num_channels = gimp_drawable_num_channels (drawable_ID);
   drawable->ntile_rows = (drawable->height + TILE_HEIGHT - 1) / TILE_HEIGHT;
   drawable->ntile_cols = (drawable->width + TILE_WIDTH - 1) / TILE_WIDTH;
   drawable->tiles = NULL;
@@ -230,6 +231,49 @@ gimp_drawable_bpp (gint32 drawable_ID)
   gimp_destroy_params (return_vals, nreturn_vals);
 
   return bpp;
+}
+
+guint
+gimp_drawable_num_channels (gint32 drawable_ID)
+{
+  GParam *return_vals;
+  int nreturn_vals;
+  guint num_channels;
+
+  return_vals = gimp_run_procedure ("gimp_drawable_num_channels",
+				    &nreturn_vals,
+				    PARAM_DRAWABLE, drawable_ID,
+				    PARAM_END);
+
+  num_channels = 0;
+  if (return_vals[0].data.d_int32 == STATUS_SUCCESS)
+    num_channels = return_vals[1].data.d_int32;
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+
+  return num_channels; 
+}
+
+
+GPrecisionType
+gimp_drawable_precision (gint32 drawable_ID)
+{
+  GParam *return_vals;
+  int nreturn_vals;
+  int precision;
+
+  return_vals = gimp_run_procedure ("gimp_drawable_precision",
+				    &nreturn_vals,
+				    PARAM_DRAWABLE, drawable_ID,
+				    PARAM_END);
+
+  precision = -1; 
+  if (return_vals[0].data.d_int32 == STATUS_SUCCESS)
+    precision = return_vals[1].data.d_int32;
+
+  gimp_destroy_params (return_vals, nreturn_vals);
+
+  return (GPrecisionType)precision; 
 }
 
 GDrawableType

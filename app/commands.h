@@ -7,9 +7,11 @@
 void file_new_cmd_callback (GtkWidget           *widget,
 			    gpointer             callback_data,
 			    guint                callback_action);
+void file_reload_cmd_callback (GtkWidget *, gpointer);
 void file_open_cmd_callback (GtkWidget *, gpointer);
 void file_save_cmd_callback (GtkWidget *, gpointer);
 void file_save_as_cmd_callback (GtkWidget *, gpointer);
+void file_save_copy_as_cmd_callback (GtkWidget *, gpointer);
 void file_pref_cmd_callback (GtkWidget *, gpointer);
 void file_close_cmd_callback (GtkWidget *, gpointer);
 void file_quit_cmd_callback (GtkWidget *, gpointer);
@@ -91,6 +93,9 @@ void filters_repeat_cmd_callback (GtkWidget           *widget,
 void dialogs_brushes_cmd_callback (GtkWidget *, gpointer);
 void dialogs_patterns_cmd_callback (GtkWidget *, gpointer);
 void dialogs_palette_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_forward_cmd_callback (GtkWidget *, gpointer);
+void dialogs_frame_manager_backwards_cmd_callback (GtkWidget *, gpointer);
 void dialogs_gradient_editor_cmd_callback (GtkWidget *, gpointer);
 void dialogs_lc_cmd_callback (GtkWidget *, gpointer);
 void dialogs_indexed_palette_cmd_callback (GtkWidget *, gpointer);

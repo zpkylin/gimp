@@ -29,6 +29,7 @@
 #include "color_area.h"
 #include "color_select.h"
 #include "datafiles.h"
+#include "displaylut.h"
 #include "errors.h"
 #include "general.h"
 #include "gimprc.h"
@@ -494,7 +495,9 @@ palette_free_palettes (void)
       /*  If the palette has been changed, save it, if possible  */
       if (entries->changed)
 	/*  save the palette  */
+	{
 	palette_entries_save (entries, entries->filename);
+	}
 
       palette_entries_free (entries);
       list = g_slist_next (list);
@@ -1058,6 +1061,7 @@ palette_add_entries_callback (GtkWidget *w,
   if (palette && palette_name)
     {
       entries = g_malloc (sizeof (_PaletteEntries));
+
       if (palette_path)
 	{
 	  /*  Get the first path specified in the palette path list  */
@@ -1256,9 +1260,9 @@ palette_draw_color_row (gfloat        **colors,
 
 	  for (j = 0; j < entry_width; j++)
 	    {
-	      *p++ = colors[i][0] * 255;
-	      *p++ = colors[i][1] * 255;
-	      *p++ = colors[i][2] * 255;
+	      *p++ = display_u8_from_float (colors[i][0]);
+	      *p++ = display_u8_from_float (colors[i][1]);
+	      *p++ = display_u8_from_float (colors[i][2]);
 	    }
 	}
 

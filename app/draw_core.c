@@ -94,6 +94,7 @@ draw_core_resume (core, tool)
      DrawCore * core;
      Tool * tool;
 {
+
   core->paused_count = (core->paused_count > 0) ? core->paused_count - 1 : 0;
   if (core->paused_count == 0)
     {

@@ -18,7 +18,8 @@
 #include <stdlib.h>
 #include "appenv.h"
 #include "airbrush.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
@@ -43,6 +44,7 @@ struct _AirbrushTimeout
 static void         airbrush_motion   (PaintCore *, GimpDrawable *, double);
 static gint         airbrush_time_out (gpointer);
 static Argument *   airbrush_invoker  (Argument *);
+static void         airbrush_painthit_setup (PaintCore *,Canvas *);
 
 static double non_gui_pressure;
 
@@ -145,7 +147,7 @@ airbrush_paint_func (PaintCore *paint_core,
 		     GimpDrawable *drawable,
 		     int        state)
 {
-  GBrushP brush;
+  GimpBrushP brush;
 
   if (!drawable) 
     return NULL;
@@ -201,6 +203,7 @@ tools_new_airbrush ()
 
   private = (PaintCore *) tool->private;
   private->paint_func = airbrush_paint_func;
+  private->painthit_setup = airbrush_painthit_setup;
 
   return tool;
 }
@@ -233,7 +236,6 @@ airbrush_time_out (gpointer client_data)
     return FALSE;
 }
 
-
 static void 
 airbrush_motion  (
                   PaintCore * paint_core,
@@ -245,27 +247,50 @@ airbrush_motion  (
   PixelArea a;
       
   /* Get the working canvas */
-  painthit = paint_core_16_area (paint_core, drawable);
-  pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
 
-  /* construct the paint hit */
-  {
-    COLOR16_NEW (paint, canvas_tag (painthit));
+  /* Set up the painthit canvas */
+  paint_core_16_area_setup (paint_core, drawable);
 
-    COLOR16_INIT (paint);
-    palette_get_foreground (&paint);
-    color_area (&a, &paint);
-  }
-  
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
                             (gfloat) pressure / 100.0,
-                            (gfloat) get_brush_opacity (),
+                            (gfloat) gimp_brush_get_opacity (),
                             SOFT,
                             CONSTANT,
-                            get_brush_paint_mode ());
+                            gimp_brush_get_paint_mode ());
 }
 
+static void
+airbrush_painthit_setup (PaintCore * paint_core,Canvas * painthit)
+{
+    PixelArea a;
+    pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+
+    /* Construct the paint hit */
+
+    if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      COLOR16_NEW (paint, canvas_tag (painthit));
+      COLOR16_INIT (paint);
+      palette_get_foreground (&paint);
+      color_area (&a, &paint);
+    }
+    else if (paint_core->setup_mode == LINKED_SETUP)
+    {
+	Channel * channel = GIMP_CHANNEL(paint_core->linked_drawable);
+        gfloat g = channel_get_link_paint_opacity (channel); 
+	{
+	  PixelRow paint;
+	  Tag t = tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO);
+	  gfloat data[3];
+	  data[0] = g;
+	  data[1] = g;
+	  data[2] = g;
+	  pixelrow_init (&paint, t, (guchar*)data, 1);
+          color_area (&a, &paint);
+	}
+    }
+}
 
 static void *
 airbrush_non_gui_paint_func (PaintCore *paint_core,
@@ -411,7 +436,7 @@ airbrush_invoker (Argument *args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&airbrush_proc, success);

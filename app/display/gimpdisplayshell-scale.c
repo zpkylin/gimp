@@ -59,6 +59,7 @@ resize_display (GDisplay *gdisp,
     {
       gdisplay_expose_full (gdisp);
       gdisplays_flush ();
+      gdisplays_update_title (gdisp->gimage->ID);
     }
 
   /* re-enable the active tool */

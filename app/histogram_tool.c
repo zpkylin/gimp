@@ -22,6 +22,7 @@
 #include "actionarea.h"
 #include "buildmenu.h"
 #include "drawable.h"
+#include "float16.h"
 #include "general.h"
 #include "gdisplay.h"
 #include "histogram.h"
@@ -82,12 +83,28 @@ static void                   histogram_tool_blue_callback    (GtkWidget *, gpoi
 static void *histogram_tool_options = NULL;
 static HistogramToolDialog *histogram_tool_dialog = NULL;
 
-static void       histogram_tool_histogram_info  (PixelArea *, PixelArea *, HistogramValues, void *);
-static void       histogram_tool_histogram_range (int, int, int, HistogramValues, void *);
-static void       histogram_tool_dialog_update   (HistogramToolDialog *, int, int);
+typedef void (*HistogramToolHistogramInfoFunc)(PixelArea*, PixelArea*, HistogramValues, void *);
+static HistogramToolHistogramInfoFunc histogram_tool_histogram_info;
+static void  histogram_tool_histogram_info_u8 (PixelArea*, PixelArea*, HistogramValues, void *);
+static void  histogram_tool_histogram_info_u16 (PixelArea*, PixelArea*, HistogramValues, void *);
+static void  histogram_tool_histogram_info_float (PixelArea*, PixelArea*, HistogramValues, void *);
+static void  histogram_tool_histogram_info_float16 (PixelArea*, PixelArea*, HistogramValues, void *);
+
+typedef void (*HistogramToolHistogramRangeFunc)(int, int, int, HistogramValues, void *);
+static HistogramToolHistogramRangeFunc histogram_tool_histogram_range;
+static void       histogram_tool_histogram_range_u8 (int, int, int, HistogramValues, void *);
+static void       histogram_tool_histogram_range_u16 (int, int, int, HistogramValues, void *);
+static void       histogram_tool_histogram_range_float (int, int, int, HistogramValues, void *);
+static void       histogram_tool_histogram_range_float16 (int, int, int, HistogramValues, void *);
+
+typedef void (*HistogramToolDialogUpdataFunc)(HistogramToolDialog *, int, int);
+static HistogramToolDialogUpdataFunc histogram_tool_dialog_update;
+static void       histogram_tool_dialog_update_u8 (HistogramToolDialog *, int, int);
+static void       histogram_tool_dialog_update_u16 (HistogramToolDialog *, int, int);
+static void       histogram_tool_dialog_update_float (HistogramToolDialog *, int, int);
+static void       histogram_tool_dialog_update_float16 (HistogramToolDialog *, int, int);
 
 static Argument * histogram_invoker (Argument *args);
-
 
 static char * histogram_info_names[7] =
 {
@@ -100,31 +117,37 @@ static char * histogram_info_names[7] =
   "Percentile: "
 };
 
-typedef void (*HistogramToolHistogramInfoFunc)(PixelArea*, PixelArea*, HistogramValues, void *);
-static HistogramToolHistogramInfoFunc histogram_tool_histogram_info_func (Tag tag);
-static void  histogram_tool_histogram_info_u8 (PixelArea*, PixelArea*, HistogramValues, void *);
-static void  histogram_tool_histogram_info_u16 (PixelArea*, PixelArea*, HistogramValues, void *);
-static void  histogram_tool_histogram_info_float (PixelArea*, PixelArea*, HistogramValues, void *);
-static void  histogram_tool_histogram_info_float16 (PixelArea*, PixelArea*, HistogramValues, void *);
-
-
 /*  Histogram Tool Histogram Info  */
-static
-HistogramToolHistogramInfoFunc
-histogram_tool_histogram_info_func (Tag tag)
+static void
+histogram_tool_histogram_funcs (Tag tag)
 {
   switch (tag_precision (tag))
   {
   case PRECISION_U8:
-    return histogram_tool_histogram_info_u8; 
+     histogram_tool_histogram_info = histogram_tool_histogram_info_u8; 
+     histogram_tool_dialog_update = histogram_tool_dialog_update_u8; 
+     histogram_tool_histogram_range = histogram_tool_histogram_range_u8;
+     break;
   case PRECISION_U16:
-    return histogram_tool_histogram_info_u16; 
+     histogram_tool_histogram_info = histogram_tool_histogram_info_u16; 
+     histogram_tool_dialog_update = histogram_tool_dialog_update_u16; 
+     histogram_tool_histogram_range = histogram_tool_histogram_range_u16;
+     break;
   case PRECISION_FLOAT:
-    return histogram_tool_histogram_info_float; 
+     histogram_tool_histogram_info = histogram_tool_histogram_info_float; 
+     histogram_tool_dialog_update = histogram_tool_dialog_update_float; 
+     histogram_tool_histogram_range = histogram_tool_histogram_range_float;
+     break;
   case PRECISION_FLOAT16:
-    return histogram_tool_histogram_info_float16; 
+     histogram_tool_histogram_info = histogram_tool_histogram_info_float16; 
+     histogram_tool_dialog_update = histogram_tool_dialog_update_float16; 
+     histogram_tool_histogram_range = histogram_tool_histogram_range_float16;
+     break;
   default:
-    return NULL;
+     histogram_tool_histogram_info = NULL; 
+     histogram_tool_dialog_update = NULL; 
+     histogram_tool_histogram_range = NULL;
+    break;
   } 
 }
 
@@ -222,7 +245,7 @@ histogram_tool_histogram_info_u16 (PixelArea       *src_area,
   guchar *src, *mask = NULL;
   guint16 *s, *m = NULL;
   gint    value, red, green, blue;
-  gfloat  scale = 1./255.;
+  gfloat  scale = 1./65535.;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
   gint                 alpha = tag_alpha (src_tag);
@@ -254,12 +277,12 @@ histogram_tool_histogram_info_u16 (PixelArea       *src_area,
 	       green = s[GREEN_PIX];
 	       blue  = s[BLUE_PIX];
 
-	       /* figure out which bin to place it in for drawing */ 
+	       /* figure out which bin to place it in */ 
   
-	       value_bin = (int)((value/65535.0) * bins);
-	       red_bin = (int)((red/65535.0) * bins);   	
-	       green_bin = (int)((green/65535.0) * bins);
-	       blue_bin = (int)((blue/65535.0) * bins);
+	       value_bin = value/bins;
+	       red_bin = red/bins;   	
+	       green_bin = green/bins;
+	       blue_bin = blue/bins;
 
 	       if (mask_area)
 		 {
@@ -309,8 +332,7 @@ histogram_tool_histogram_info_float (PixelArea *src_area,
   int                  w, h;
   guchar *src, *mask = NULL;
   gfloat *s, *m = NULL;
-  gint    value, red, green, blue;
-  gfloat  scale = 1.0/bins;
+  gfloat    value, red, green, blue;
   Tag                  src_tag = pixelarea_tag (src_area);
   gint                 s_num_channels = tag_num_channels (src_tag);
   gint                 alpha = tag_alpha (src_tag);
@@ -337,23 +359,28 @@ histogram_tool_histogram_info_float (PixelArea *src_area,
 	 {
 	   if (htd->color)
 	     {
-	       value = MAX (s[RED_PIX], s[GREEN_PIX]);
-	       value = MAX (value, s[BLUE_PIX]);
 	       red   = s[RED_PIX];
 	       green = s[GREEN_PIX];
 	       blue  = s[BLUE_PIX];
+		
+	       red = CLAMP (red, 0.0, 1.0);
+	       green = CLAMP (green, 0.0, 1.0);
+	       blue = CLAMP (blue, 0.0, 1.0);
 
-	       value_bin = (int)(value * bins);
-	       red_bin = (int)(red * bins);   	
-	       green_bin = (int)(green * bins);
-	       blue_bin = (int)(blue * bins);
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+
+	       value_bin = (int)(value * (bins-1));
+	       red_bin = (int)(red * (bins-1));   	
+	       green_bin = (int)(green * (bins-1));
+	       blue_bin = (int)(blue * (bins-1));
 
 	       if (mask_area)
 		 {
-		   values[HISTOGRAM_VALUE][value_bin] += (double) *m * scale;
-		   values[HISTOGRAM_RED][red_bin] += (double) *m * scale;
-		   values[HISTOGRAM_GREEN][green_bin] += (double) *m * scale;
-		   values[HISTOGRAM_BLUE][blue_bin]   += (double) *m * scale;
+		   values[HISTOGRAM_VALUE][value_bin] += (double) *m;
+		   values[HISTOGRAM_RED][red_bin] += (double) *m;
+		   values[HISTOGRAM_GREEN][green_bin] += (double) *m;
+		   values[HISTOGRAM_BLUE][blue_bin]   += (double) *m;
 		 }
 	       else
 		 {
@@ -367,7 +394,7 @@ histogram_tool_histogram_info_float (PixelArea *src_area,
 	     {
 	       value = s[GRAY_PIX];
 	       if (mask_area)
-		 values[HISTOGRAM_VALUE][value_bin] += (double) *m * scale;
+		 values[HISTOGRAM_VALUE][value_bin] += (double) *m;
 	       else
 		 values[HISTOGRAM_VALUE][value_bin] += 1.0;
 	     }
@@ -391,18 +418,282 @@ histogram_tool_histogram_info_float16 (PixelArea *src_area,
 			       HistogramValues  values,
 			       void            *user_data)
 {
-  g_warning ("histogram_tool_histogram_info_float16 not implemented\n");
+  HistogramToolDialog *htd = (HistogramToolDialog *) user_data;
+  gint bins = histogram_bins (htd->histogram); 
+  int                  w, h;
+  guchar *src, *mask = NULL;
+  guint16 *s, *m = NULL;
+  gfloat    value, red, green, blue;
+  Tag                  src_tag = pixelarea_tag (src_area);
+  gint                 s_num_channels = tag_num_channels (src_tag);
+  gint                 alpha = tag_alpha (src_tag);
+  Tag                  mask_tag = pixelarea_tag (mask_area);
+  gint                 m_num_channels = tag_num_channels (mask_tag);
+  gint value_bin, red_bin, green_bin, blue_bin;
+  ShortsFloat u;
+  gfloat m_val;
+  htd = (HistogramToolDialog *) user_data;
+  h = pixelarea_height (src_area);
+  src = (guchar*)pixelarea_data (src_area);
+
+  if (mask_area)
+    mask = (guchar*)pixelarea_data (mask_area);
+
+   while (h--)
+     {
+       w = pixelarea_width (src_area);
+       s = (guint16*)src;
+
+       if (mask_area)
+	 m = (guint16*)mask;
+
+       while (w--)
+	 {
+	   if (htd->color)
+	     {
+	       red   = FLT (s[RED_PIX], u);
+	       green = FLT (s[GREEN_PIX], u);
+	       blue  = FLT (s[BLUE_PIX], u);
+
+	       red = CLAMP (red, 0.0, 1.0);
+	       green = CLAMP (green, 0.0, 1.0);
+	       blue = CLAMP (blue, 0.0, 1.0);
+
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+
+	       value_bin = (int)(value * (bins-1));
+	       red_bin = (int)(red * (bins-1));   	
+	       green_bin = (int)(green * (bins-1));
+	       blue_bin = (int)(blue * (bins-1));
+
+	       if (mask_area)
+		 {
+		   m_val = FLT (*m, u);
+		   values[HISTOGRAM_VALUE][value_bin] += (double)m_val;
+		   values[HISTOGRAM_RED][red_bin] += (double)m_val;
+		   values[HISTOGRAM_GREEN][green_bin] += (double)m_val;
+		   values[HISTOGRAM_BLUE][blue_bin]   += (double)m_val;
+		 }
+	       else
+		 {
+		   values[HISTOGRAM_VALUE][value_bin] += 1.0;
+		   values[HISTOGRAM_RED][red_bin]     += 1.0;
+		   values[HISTOGRAM_GREEN][green_bin] += 1.0;
+		   values[HISTOGRAM_BLUE][blue_bin]   += 1.0;
+		 }
+	     }
+	   else
+	     {
+	       value = s[GRAY_PIX];
+	       if (mask_area)
+		 values[HISTOGRAM_VALUE][value_bin] += (double) FLT(*m, u);
+	       else
+		 values[HISTOGRAM_VALUE][value_bin] += 1.0;
+	     }
+
+	   s += s_num_channels;
+
+	   if (mask_area)
+	     m += m_num_channels;
+	 }
+
+	 src += pixelarea_rowstride (src_area);
+
+	 if (mask_area)
+	   mask += pixelarea_rowstride (mask_area);
+     }
 }
 
 static void
-histogram_tool_histogram_info (PixelArea       *src_area,
-			       PixelArea       *mask_area,
-			       HistogramValues  values,
-			       void            *user_data)
+histogram_tool_histogram_range_float16 (int          start,
+				int              end,
+				int		 bins,
+				HistogramValues  values,
+				void            *user_data)
 {
-   Tag tag = pixelarea_tag (src_area);
-   HistogramToolHistogramInfoFunc h = histogram_tool_histogram_info_func (tag);
-   (*h)(src_area, mask_area, values, user_data);
+  HistogramToolDialog	*htd;
+  double		 pixels;
+  double 		 mean;
+  double 		 std_dev;
+  double		 median;
+  double 		 count;
+  double 		 percentile;
+  double 		 tmp;
+  int 			 i;
+  double 		 bin_width = 1.0/(double)bins;
+
+  htd = (HistogramToolDialog *) user_data;
+
+  count = 0.0;
+  pixels = 0.0;
+  for (i = 0; i < bins; i++)
+    {
+      pixels += values[htd->channel][i];
+
+      if (i >= start && i <= end)
+	count += values[htd->channel][i];
+    }
+
+  mean = 0.0;
+  tmp = 0.0;
+  median = -1;
+  for (i = start; i <= end; i++)
+    {
+      mean += (i*bin_width) * values[htd->channel][i];
+      tmp += values[htd->channel][i];
+      if (median == -1 && tmp > count / 2)
+	median = (i*bin_width);
+    }
+
+  if (count)
+    mean /= count;
+
+  std_dev = 0.0;
+  for (i = start; i <= end; i++)
+    std_dev += values[htd->channel][i] * (i*bin_width - mean) * (i*bin_width - mean);
+
+  if (count)
+    std_dev = sqrt (std_dev / count);
+
+  percentile = count / pixels;
+
+  htd->mean = mean;
+  htd->std_dev = std_dev;
+  htd->median = median;
+  htd->pixels = pixels;
+  htd->count = count;
+  htd->percentile = percentile;
+
+  if (htd->shell)
+    histogram_tool_dialog_update (htd, start, end);
+}
+
+static void
+histogram_tool_histogram_range_float (int        start,
+				int              end,
+				int		 bins,
+				HistogramValues  values,
+				void            *user_data)
+{
+  HistogramToolDialog	*htd;
+  double		 pixels;
+  double 		 mean;
+  double 		 std_dev;
+  double		 median;
+  double 		 count;
+  double 		 percentile;
+  double 		 tmp;
+  int 			 i;
+  double 		 bin_width = 1.0/(double)(bins);
+
+  htd = (HistogramToolDialog *) user_data;
+
+  count = 0.0;
+  pixels = 0.0;
+  for (i = 0; i < bins; i++)
+    {
+      pixels += values[htd->channel][i];
+
+      if (i >= start && i <= end)
+	count += values[htd->channel][i];
+    }
+
+  mean = 0.0;
+  tmp = 0.0;
+  median = -1;
+  for (i = start; i <= end; i++)
+    {
+      mean += (i*bin_width) * values[htd->channel][i];
+      tmp += values[htd->channel][i];
+      if (median == -1 && tmp > count / 2)
+	median = (i*bin_width);
+    }
+
+  if (count)
+    mean /= count;
+
+  std_dev = 0.0;
+  for (i = start; i <= end; i++)
+    std_dev += values[htd->channel][i] * (i*bin_width - mean) * (i*bin_width - mean);
+
+  if (count)
+    std_dev = sqrt (std_dev / count);
+
+  percentile = count / pixels;
+
+  htd->mean = mean;
+  htd->std_dev = std_dev;
+  htd->median = median;
+  htd->pixels = pixels;
+  htd->count = count;
+  htd->percentile = percentile;
+
+  if (htd->shell)
+    histogram_tool_dialog_update (htd, start, end);
+}
+
+static void
+histogram_tool_histogram_range_u16 (int          start,
+				int              end,
+				int		 bins,
+				HistogramValues  values,
+				void            *user_data)
+{
+  HistogramToolDialog	*htd;
+  double		 pixels;
+  double 		 mean;
+  double 		 std_dev;
+  int 			 median;
+  double 		 count;
+  double 		 percentile;
+  double 		 tmp;
+  int 			 i;
+
+  htd = (HistogramToolDialog *) user_data;
+
+  count = 0.0;
+  pixels = 0.0;
+  for (i = 0; i < bins; i++)
+    {
+      pixels += values[htd->channel][i];
+
+      if (i >= start && i <= end)
+	count += values[htd->channel][i];
+    }
+
+  mean = 0.0;
+  tmp = 0.0;
+  median = -1;
+  for (i = start; i <= end; i++)
+    {
+      mean += i * 256 * values[htd->channel][i];
+      tmp += values[htd->channel][i];
+      if (median == -1 && tmp > count / 2)
+	median = i * 256;
+    }
+
+  if (count)
+    mean /= count;
+
+  std_dev = 0.0;
+  for (i = start; i <= end; i++)
+    std_dev += values[htd->channel][i] * (256 * i - mean) * (256 * i - mean);
+
+  if (count)
+    std_dev = sqrt (std_dev / count);
+
+  percentile = count / pixels;
+
+  htd->mean = mean;
+  htd->std_dev = std_dev;
+  htd->median = median;
+  htd->pixels = pixels;
+  htd->count = count;
+  htd->percentile = percentile;
+
+  if (htd->shell)
+    histogram_tool_dialog_update (htd, start * 256, end * 256 + 255);
 }
 
 static void
@@ -468,75 +759,57 @@ histogram_tool_histogram_range_u8 (int              start,
     histogram_tool_dialog_update (htd, start, end);
 }
 
-static void
-histogram_tool_histogram_range (int              start,
-				int              end,
-				int		 bins,
-				HistogramValues  values,
-				void            *user_data)
-{
-  HistogramToolDialog	*htd;
-  double		 pixels;
-  double 		 mean;
-  double 		 std_dev;
-  int 			 median;
-  double 		 count;
-  double 		 percentile;
-  double 		 tmp;
-  int 			 i;
-
-  htd = (HistogramToolDialog *) user_data;
-
-  count = 0.0;
-  pixels = 0.0;
-  for (i = 0; i < bins; i++)
-    {
-      pixels += values[htd->channel][i];
-
-      if (i >= start && i <= end)
-	count += values[htd->channel][i];
-    }
-
-  mean = 0.0;
-  tmp = 0.0;
-  median = -1;
-  for (i = start; i <= end; i++)
-    {
-      mean += i * values[htd->channel][i];
-      tmp += values[htd->channel][i];
-      if (median == -1 && tmp > count / 2)
-	median = i;
-    }
-
-  if (count)
-    mean /= count;
-
-  std_dev = 0.0;
-  for (i = start; i <= end; i++)
-    std_dev += values[htd->channel][i] * (i - mean) * (i - mean);
-
-  if (count)
-    std_dev = sqrt (std_dev / count);
-
-  percentile = count / pixels;
-
-  htd->mean = mean;
-  htd->std_dev = std_dev;
-  htd->median = median;
-  htd->pixels = pixels;
-  htd->count = count;
-  htd->percentile = percentile;
-
-  if (htd->shell)
-    histogram_tool_dialog_update (htd, start, end);
-}
 
 static void
-histogram_tool_dialog_update (HistogramToolDialog *htd,
+histogram_tool_dialog_update_float16 (HistogramToolDialog *htd,
 			      int                  start,
 			      int                  end)
 {
-  char text[12];
+  histogram_tool_dialog_update_float (htd, start, end);
+}
+
+static void
+histogram_tool_dialog_update_float (HistogramToolDialog *htd,
+			      int                  start,
+			      int                  end)
+{
+  char text[32];
+
+  /*  mean  */
+  sprintf (text, "%.4f", htd->mean);
+  gtk_label_set (GTK_LABEL (htd->info_labels[0]), text);
+
+  /*  std dev  */
+  sprintf (text, "%.4f", htd->std_dev);
+  gtk_label_set (GTK_LABEL (htd->info_labels[1]), text);
+
+  /*  median  */
+  sprintf (text, "%.4f", htd->median);
+  gtk_label_set (GTK_LABEL (htd->info_labels[2]), text);
+
+  /*  pixels  */
+  sprintf (text, "%8.1f", htd->pixels);
+  gtk_label_set (GTK_LABEL (htd->info_labels[3]), text);
+
+  /*  intensity  */
+  sprintf (text, "%f..%f", start/256.0, (end+1)/256.0);
+  gtk_label_set (GTK_LABEL (htd->info_labels[4]), text);
+
+  /*  count  */
+  sprintf (text, "%8.1f", htd->count);
+  gtk_label_set (GTK_LABEL (htd->info_labels[5]), text);
+
+  /*  percentile  */
+  sprintf (text, "%2.2f", htd->percentile * 100);
+  gtk_label_set (GTK_LABEL (htd->info_labels[6]), text);
+}
+
+static void
+histogram_tool_dialog_update_u8 (HistogramToolDialog *htd,
+			      int                  start,
+			      int                  end)
+{
+  char text[32];
 
   /*  mean  */
   sprintf (text, "%3.1f", htd->mean);
@@ -568,6 +841,14 @@ histogram_tool_dialog_update (HistogramToolDialog *htd,
   /*  percentile  */
   sprintf (text, "%2.2f", htd->percentile * 100);
   gtk_label_set (GTK_LABEL (htd->info_labels[6]), text);
+}
+
+static void
+histogram_tool_dialog_update_u16 (HistogramToolDialog *htd,
+			      int                  start,
+			      int                  end)
+{
+  histogram_tool_dialog_update_u8 (htd, start, end);
 }
 
 /*  histogram_tool action functions  */
@@ -669,9 +950,6 @@ tools_free_histogram_tool (Tool *tool)
   g_free (hist);
 }
 
-/*
- *  TBD - WRB -make work with float data
-*/
 void
 histogram_tool_initialize (void *gdisp_ptr)
 {
@@ -704,6 +982,7 @@ histogram_tool_initialize (void *gdisp_ptr)
       return;
   }
 
+  histogram_tool_histogram_funcs (gimage_tag (gdisp->gimage));
 
   /*  The histogram_tool dialog  */
   if (!histogram_tool_dialog)

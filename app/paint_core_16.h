@@ -45,7 +45,6 @@ typedef enum
   EXACT    /* no modification of brush mask */
 } BrushHardness;
 
-
 /* paint application modes  */
 typedef enum
 {
@@ -53,10 +52,17 @@ typedef enum
   INCREMENTAL  /* convolve, smudge */
 } ApplyMode;
 
+/* init mode  */
+typedef enum
+{
+  NORMAL_SETUP,    
+  LINKED_SETUP 
+} SetUpMode;
 
 /* structure definitions */
 typedef struct _PaintCore16 PaintCore16;
-typedef void * (* PaintFunc16)   (PaintCore16 *, struct _GimpDrawable *, int);
+typedef void (*PaintFunc16)(PaintCore16 *, struct _GimpDrawable *, int);
+typedef void (*PainthitSetup)(PaintCore16 *, struct _Canvas *); 
 
 struct _PaintCore16
 {
@@ -75,6 +81,9 @@ struct _PaintCore16
   double   distance;
   double   spacing;
 
+  /* noise information */
+  int noise_mode;
+
   /* undo extents in image space coords */
   int      x1, y1;
   int      x2, y2;
@@ -83,26 +92,59 @@ struct _PaintCore16
   int      x, y;
   int      w, h;
 
-  /* mask for current brush */
+  struct _GimpDrawable * drawable;
+
+  /* mask for current brush --dont delete */
   struct _Canvas * brush_mask;
+
+  /* stuff for a noise brush --delete every painthit */
+  struct _Canvas * noise_mask;
+
+  /* the solid brush --delete every painthit if noise, else delete on mouse up*/
+  struct _Canvas * solid_mask;
+
+  /* the subsampled brush --delete every painthit*/
+  struct _Canvas * subsampled_mask;
+
+  /* the portions of the original drawable which have been modified */
+  struct _Canvas *  undo_tiles;
+
+  /* a mask holding the cumulative brush stroke */
+  struct _Canvas *  canvas_tiles;
+
+  /* the paint hit to mask and apply */
+  struct _Canvas *  canvas_buf;
+  guint canvas_buf_height;
+  guint canvas_buf_width;
+
+  /* original image for clone tool */
+  struct _Canvas *  orig_buf; 
 
   /* tool-specific paint function */
   PaintFunc16     paint_func;
+
+  PaintFunc16     cursor_func;
+
+  /* linked drawable stuff*/ 
+  struct _GimpDrawable * linked_drawable;
+  struct _Canvas *  linked_undo_tiles;
+  struct _Canvas *  linked_canvas_buf;
+ 
+  /* tool-specific painthit set-up function */
+  PainthitSetup painthit_setup; 
+
+  SetUpMode setup_mode;
 };
 
 
-
 /* create and destroy a paint_core based tool */
+int                paint_core_16_init            (PaintCore16 *, struct _GimpDrawable *, double x, double y);
 struct _tool *     paint_core_16_new             (int type);
 
 void               paint_core_16_free            (struct _tool *);
 
 
 /* high level tool control functions */
-int                paint_core_16_init            (PaintCore16 *,
-                                                  struct _GimpDrawable *,
-                                                  double x,
-                                                  double y);
 
 void               paint_core_16_interpolate     (PaintCore16 *,
                                                   struct _GimpDrawable *);
@@ -111,15 +153,25 @@ void               paint_core_16_finish          (PaintCore16 *,
                                                   struct _GimpDrawable *,
                                                   int toolid);
 
-void               paint_core_16_cleanup         (void);
+void               paint_core_16_cleanup         (PaintCore16 *);
 
+void               paint_core_16_setnoise (PaintCore16 *, int apply_noise); 
+void               paint_core_16_setnoise_params (PaintCore16 *, gdouble, gdouble, gdouble); 
+			
 
 
 /* painthit buffer functions */
-struct _Canvas *   paint_core_16_area            (PaintCore16 *,
+void   paint_core_16_area_setup                  (PaintCore16 *,
                                                   struct _GimpDrawable *);
 
 struct _Canvas *   paint_core_16_area_original   (PaintCore16 *,
+                                                  struct _GimpDrawable *,
+                                                  int x1,
+                                                  int y1,
+                                                  int x2,
+                                                  int y2);
+
+struct _Canvas *   paint_core_16_area_original2   (PaintCore16 *,
                                                   struct _GimpDrawable *,
                                                   int x1,
                                                   int y1,
@@ -140,7 +192,8 @@ void               paint_core_16_area_replace    (PaintCore16 *,
                                                   gfloat brush_opacity,
                                                   gfloat image_opacity,
                                                   BrushHardness brush_hardness,
-                                                  ApplyMode apply_mode);
+                                                  ApplyMode apply_mode,
+						  int paint_mode);
 
 
 

@@ -8,6 +8,7 @@
 #  3) Create brushes, gradients, palettes, patterns, plug-ins subdirs
 #  4) Create the tmp subdirectory for disk-swapping undo buffers
 #  5) Copy the palette files in system palette directory
+#  6) Copy the vbr brush files in system vbr to ~/.gimp/brushes directory
 #
 
 echo "mkdir $2"
@@ -40,3 +41,6 @@ mkdir $2/gflares
 
 echo "cp $1/palettes/* $2/palettes"
 cp $1/palettes/* $2/palettes
+
+echo "cp $1/vbr/* $2/brushes"
+cp $1/vbr/* $2/brushes

@@ -370,8 +370,6 @@ rotate_invoker (args)
 
       if (new_tiles)
 	success = (layer = transform_core_paste (gimage, drawable, new_tiles, new_layer)) != NULL;
-      else
-	success = FALSE;
 
       /*  push the undo group end  */
       undo_push_group_end (gimage);

@@ -17,7 +17,8 @@
  */
 #include <stdlib.h>
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "eraser.h"
@@ -34,6 +35,7 @@
 static void        eraser_motion   (PaintCore *, GimpDrawable *, gboolean, gboolean);
 static Argument *  eraser_invoker  (Argument *);
 static Argument *  eraser_extended_invoker  (Argument *);
+static void        eraser_painthit_setup (PaintCore *, Canvas *);
 
 static gboolean non_gui_hard, non_gui_incremental;
 
@@ -145,6 +147,7 @@ tools_new_eraser ()
 
   private = (PaintCore *) tool->private;
   private->paint_func = eraser_paint_func;
+  private->painthit_setup = eraser_painthit_setup;
 
   return tool;
 }
@@ -169,28 +172,50 @@ eraser_motion  (
   Canvas * painthit;
   PixelArea a;
       
-  /* Get the working canvas */
-  painthit = paint_core_16_area (paint_core, drawable);
-  pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
-  
-  /* construct the paint hit */
-  {
-    COLOR16_NEW (paint, canvas_tag (painthit));
-    
-    COLOR16_INIT (paint);
-    palette_get_background (&paint);
-    color_area (&a, &paint);
-  }
+  /* Set up the working painthit */
+  paint_core_16_area_setup (paint_core, drawable);
   
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
                             (gfloat) 1.0,
-                            (gfloat) get_brush_opacity (),
+                            (gfloat) gimp_brush_get_opacity (),
                             hard ? HARD : SOFT,
                             incremental ? INCREMENTAL : CONSTANT,
                             ERASE_MODE);
 }
 
+
+static void
+eraser_painthit_setup (PaintCore * paint_core,Canvas * painthit)
+{
+    PixelArea a;
+    pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+
+    /* Construct the paint hit */
+
+    if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      COLOR16_NEW (paint, canvas_tag (painthit));
+      COLOR16_INIT (paint);
+      palette_get_background (&paint);
+      color_area (&a, &paint);
+    }
+    else if (paint_core->setup_mode == LINKED_SETUP)
+    {
+	Channel * channel = GIMP_CHANNEL(paint_core->linked_drawable);
+        gfloat g = channel_get_link_paint_opacity (channel); 
+	{
+	  PixelRow paint;
+	  Tag t = tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO);
+	  gfloat data[3];
+	  data[0] = g;
+	  data[1] = g;
+	  data[2] = g;
+	  pixelrow_init (&paint, t, (guchar*)data, 1);
+          color_area (&a, &paint);
+	}
+    }
+}
 
 static void *
 eraser_non_gui_paint_func (PaintCore *paint_core, GimpDrawable *drawable, int state)
@@ -371,7 +396,7 @@ eraser_invoker (args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&eraser_proc, success);
@@ -458,7 +483,7 @@ eraser_extended_invoker (args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&eraser_proc, success);

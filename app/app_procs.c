@@ -26,10 +26,13 @@
 
 #include "libgimp/gimpfeatures.h"
 
+#include "libgimp/gimpfeatures.h"
+
 #include "appenv.h"
 #include "app_procs.h"
 #include "batch.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "color_transfer.h"
 #include "curves.h"
 #include "gdisplay.h"
@@ -591,8 +594,8 @@ app_exit (int kill_it)
     really_quit_dialog ();
   else if (no_interface == FALSE)
     toolbox_free ();
-  else
-    app_exit_finish ();
+
+  app_exit_finish ();
 }
 
 /********************************************************

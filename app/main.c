@@ -76,11 +76,13 @@ static int xSize = 0;
 static int ySize = 0;
 
 /*
- *  argv processing: 
+ *  argv processing:
  *      Arguments are either switches, their associated
  *      values, or image files.  As switches and their
  *      associated values are processed, those slots in
- *      the argv[] array are NULLed.
+ *      the argv[] array are NULLed. We do this because
+ *      unparsed args are treated as images to load on
+ *      startup.
  *
  *      The GTK switches are processed first (X switches are
  *      processed here, not by any X routines).  Then the
@@ -99,9 +101,11 @@ main (int argc, char **argv)
   int show_version;
   int show_help;
   int i, j;
+#ifdef HAVE_PUTENV
   gchar *display_name, *display_env;
+#endif
 
-  ATEXIT (g_mem_profile);
+  /* ATEXIT (g_mem_profile); */
 
   /* Initialize variables */
   prog_name = argv[0];
@@ -111,18 +115,24 @@ main (int argc, char **argv)
   setlocale(LC_NUMERIC, "C");  /* must use dot, not comma, as decimal separator */
   gtk_init (&argc, &argv);
 
+#ifdef HAVE_PUTENV
   display_name = gdk_get_display ();
   display_env = g_new (gchar, strlen (display_name) + 9);
   *display_env = 0;
   strcat (display_env, "DISPLAY=");
   strcat (display_env, display_name);
   putenv (display_env);
+#endif
 
   no_interface = FALSE;
   no_data = FALSE;
   no_splash = FALSE;
   no_splash_image = FALSE;
+#ifdef HAVE_SHM_H
   use_shm = TRUE;
+#else
+  use_shm = FALSE;
+#endif
   use_debug_handler = FALSE;
   console_messages = FALSE;
 
@@ -156,39 +166,48 @@ main (int argc, char **argv)
 	       (strcmp (argv[i], "-h") == 0))
 	{
 	  show_help = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--version") == 0 ||
 	       strcmp (argv[i], "-v") == 0)
 	{
 	  show_version = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--no-data") == 0)
 	{
 	  no_data = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--no-splash") == 0)
 	{
 	  no_splash = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--no-splash-image") == 0)
 	{
 	  no_splash_image = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--verbose") == 0)
 	{
 	  be_verbose = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--no-shm") == 0)
 	{
 	  use_shm = FALSE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--debug-handlers") == 0)
 	{
 	  use_debug_handler = TRUE;
+	  argv[i] = NULL;
 	}
       else if (strcmp (argv[i], "--console-messages") == 0)
         {
           console_messages = TRUE;
+	  argv[i] = NULL;
         }
       else if( strcmp( argv[i], "--sharedmem" ) == 0 )
 	{
@@ -244,7 +263,7 @@ main (int argc, char **argv)
   if (show_version || show_help)
     exit (0);
 
-  g_set_message_handler ((GPrintFunc) &message_func);
+  g_set_message_handler (&message_func);
 
   /* Handle some signals */
   signal (SIGHUP, on_signal);
@@ -280,11 +299,13 @@ main (int argc, char **argv)
   {
     extern int ref_ro, ref_rw,ref_un, ref_fa , ref_uf;
     
+#if 0
     g_warning ("Refs:   %d+%d = %d", ref_ro, ref_rw, (ref_ro+ref_rw));
     g_warning ("Unrefs: %d", ref_un);
     
     g_warning ("Frefs:   %d", ref_fa);
     g_warning ("Funrefs: %d", ref_uf);
+#endif
   }
 
   return 0;

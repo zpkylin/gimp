@@ -27,18 +27,6 @@
 struct _PixelArea;
 struct _Canvas;
 
-
-#define GRAY_PIX         0
-#define ALPHA_G_PIX      1
-#define RED_PIX          0
-#define GREEN_PIX        1
-#define BLUE_PIX         2
-#define ALPHA_PIX        3
-#define INDEXED_PIX      0
-#define ALPHA_I_PIX      1
-
-#define MAX_CHANNELS     4
-
 /* the image fill types */
 #define BACKGROUND_FILL  0
 #define WHITE_FILL       1
@@ -51,15 +39,7 @@ struct _Canvas;
 #define HORIZONTAL_GUIDE 1
 #define VERTICAL_GUIDE   2
 
-typedef enum
-{
-  Red,
-  Green,
-  Blue,
-  Gray,
-  Indexed,
-  Auxillary
-} ChannelType;
+
 
 typedef enum
 {
@@ -150,6 +130,7 @@ GImage *        gimage_get_ID                 (int);
 struct _Canvas *gimage_shadow                 (GImage *, int, int, Tag);
 void            gimage_free_shadow            (GImage *);
 void            gimage_delete                 (GImage *);
+void            gimage_delete_caro            (GImage *);
 
 void            gimage_apply_painthit         (GImage *, GimpDrawable *,
                                                struct _Canvas *,
@@ -159,7 +140,9 @@ void            gimage_apply_painthit         (GImage *, GimpDrawable *,
                                                gfloat, int mode,
                                                int x, int y);
 void            gimage_replace_painthit       (GImage *, GimpDrawable *,
-                                               struct _Canvas *, int undo,
+                                               struct _Canvas *, 
+                                               struct _Canvas *, 
+					       int undo,
                                                gfloat, struct _Canvas *,
                                                int x, int y);
 
@@ -189,11 +172,13 @@ Layer *         gimage_pick_correlate_layer   (GImage *, int, int);
 void            gimage_set_layer_mask_apply   (GImage *, int);
 void            gimage_set_layer_mask_edit    (GImage *, Layer *, int);
 void            gimage_set_layer_mask_show    (GImage *, int);
+void            gimage_adjust_background_layer_visibility (GImage *);
 Layer *         gimage_raise_layer            (GImage *, Layer *);
 Layer *         gimage_lower_layer            (GImage *, Layer *);
-Layer *         gimage_merge_visible_layers   (GImage *, MergeType);
+Layer *         gimage_merge_visible_layers   (GImage *, MergeType, char);
 Layer *         gimage_flatten                (GImage *);
 Layer *         gimage_merge_layers           (GImage *, GSList *, MergeType);
+Layer *         gimage_merge_copy_layers      (GImage *, GSList *, MergeType);
 Layer *         gimage_add_layer              (GImage *, Layer *, int);
 Layer *         gimage_remove_layer           (GImage *, Layer *);
 LayerMask *     gimage_add_layer_mask         (GImage *, Layer *, LayerMask *);
@@ -204,17 +189,23 @@ Channel *       gimage_add_channel            (GImage *, Channel *, int);
 Channel *       gimage_remove_channel         (GImage *, Channel *);
 void            gimage_construct              (GImage *, int, int, int, int);
 
+GSList * 	gimage_channels		      (GImage *);
+
+
 
 /*  Access functions  */
 
 int             gimage_is_empty               (GImage *);
+int             gimage_is_layered             (GImage *);
 GimpDrawable *  gimage_active_drawable        (GImage *);
+GimpDrawable *  gimage_linked_drawable        (GImage *);
 Tag             gimage_tag                    (GImage *);
 Format          gimage_format                 (GImage *);
 char *          gimage_filename               (GImage *);
 int             gimage_enable_undo            (GImage *);
 int             gimage_disable_undo           (GImage *);
 int             gimage_dirty                  (GImage *);
+int             gimage_dirty_flag             (GImage *);
 int             gimage_clean                  (GImage *);
 void            gimage_clean_all              (GImage *);
 Layer *         gimage_floating_sel           (GImage *);

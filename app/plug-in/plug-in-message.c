@@ -323,6 +323,7 @@ plug_in_init ()
 	      shm_ID = -1;
 	    }
 
+/* I dont think this will work, as it makes the shmat of the plugin fail*/
 #ifdef	IPC_RMID_DEFERRED_RELEASE
 	  if (shm_addr != (guchar*) -1)
 	    shmctl (shm_ID, IPC_RMID, 0);
@@ -457,7 +458,7 @@ plug_in_kill ()
 {
   GSList *tmp;
   PlugIn *plug_in;
-
+ 
 #ifdef HAVE_SHM_H
 #ifndef	IPC_RMID_DEFERRED_RELEASE
   if (shm_ID != -1)
@@ -1208,6 +1209,42 @@ plug_in_set_menu_sensitivity (Tag t)
 	      break;
 	    case INDEXEDA_GIMAGE:
 	      sensitive = proc_def->image_types_val & INDEXEDA_IMAGE;
+	      break;
+	    case U16_RGB_GIMAGE:
+	      sensitive = proc_def->image_types_val & U16_RGB_IMAGE;
+	      break;
+	    case U16_RGBA_GIMAGE:
+	      sensitive = proc_def->image_types_val & U16_RGBA_IMAGE;
+	      break;
+	    case U16_GRAY_GIMAGE:
+	      sensitive = proc_def->image_types_val & U16_GRAY_IMAGE;
+	      break;
+	    case U16_GRAYA_GIMAGE:
+	      sensitive = proc_def->image_types_val & U16_GRAYA_IMAGE;
+	      break;
+	    case FLOAT_RGB_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT_RGB_IMAGE;
+	      break;
+	    case FLOAT_RGBA_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT_RGBA_IMAGE;
+	      break;
+	    case FLOAT_GRAY_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT_GRAY_IMAGE;
+	      break;
+	    case FLOAT_GRAYA_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT_GRAYA_IMAGE;
+	      break;
+	    case FLOAT16_RGB_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT16_RGB_IMAGE;
+	      break;
+	    case FLOAT16_RGBA_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT16_RGBA_IMAGE;
+	      break;
+	    case FLOAT16_GRAY_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT16_GRAY_IMAGE;
+	      break;
+	    case FLOAT16_GRAYA_GIMAGE:
+	      sensitive = proc_def->image_types_val & FLOAT16_GRAYA_IMAGE;
 	      break;
 	    }
 
@@ -2996,7 +3033,10 @@ plug_in_image_types_parse (char *image_types)
   int types;
 
   if (!image_types)
-    return (RGB_IMAGE | GRAY_IMAGE | INDEXED_IMAGE);
+    return (RGB_IMAGE | GRAY_IMAGE | INDEXED_IMAGE | 
+		U16_RGB_IMAGE | U16_GRAY_IMAGE |
+		FLOAT_RGB_IMAGE | FLOAT_GRAY_IMAGE |
+		FLOAT16_RGB_IMAGE | FLOAT16_GRAY_IMAGE );
 
   types = 0;
 
@@ -3055,12 +3095,104 @@ plug_in_image_types_parse (char *image_types)
 	      types |= INDEXED_IMAGE;
 	      image_types += 7;
 	    }
+	  else if (strncmp (image_types, "U16_RGBA", 8) == 0)
+	    {
+	      types |= U16_RGBA_IMAGE;
+	      image_types += 8;
+	    }
+	  else if (strncmp (image_types, "U16_RGB*", 8) == 0)
+	    {
+	      types |= U16_RGB_IMAGE | U16_RGBA_IMAGE;
+	      image_types += 8;
+	    }
+	  else if (strncmp (image_types, "U16_RGB", 7) == 0)
+	    {
+	      types |= U16_RGB_IMAGE;
+	      image_types += 7;
+	    }
+	  else if (strncmp (image_types, "U16_GRAYA", 9) == 0)
+	    {
+	      types |= U16_GRAYA_IMAGE;
+	      image_types += 9;
+	    }
+	  else if (strncmp (image_types, "U16_GRAY*", 9) == 0)
+	    {
+	      types |= U16_GRAY_IMAGE | U16_GRAYA_IMAGE;
+	      image_types += 9;
+	    }
+	  else if (strncmp (image_types, "U16_GRAY", 8) == 0)
+	    {
+	      types |= U16_GRAY_IMAGE;
+	      image_types += 8;
+	    }
+	  else if (strncmp (image_types, "FLOAT_RGBA", 10) == 0)
+	    {
+	      types |= FLOAT_RGBA_IMAGE;
+	      image_types += 10;
+	    }
+	  else if (strncmp (image_types, "FLOAT_RGB*", 10) == 0)
+	    {
+	      types |= FLOAT_RGB_IMAGE | FLOAT_RGBA_IMAGE;
+	      image_types += 10;
+	    }
+	  else if (strncmp (image_types, "FLOAT_RGB", 9) == 0)
+	    {
+	      types |= FLOAT_RGB_IMAGE;
+	      image_types += 9;
+	    }
+	  else if (strncmp (image_types, "FLOAT_GRAYA", 11) == 0)
+	    {
+	      types |= FLOAT_GRAYA_IMAGE;
+	      image_types += 11;
+	    }
+	  else if (strncmp (image_types, "FLOAT_GRAY*", 11) == 0)
+	    {
+	      types |= FLOAT_GRAY_IMAGE | FLOAT_GRAYA_IMAGE;
+	      image_types += 11;
+	    }
+	  else if (strncmp (image_types, "FLOAT_GRAY", 10) == 0)
+	    {
+	      types |= FLOAT_GRAY_IMAGE;
+	      image_types += 10;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_RGBA", 12) == 0)
+	    {
+	      types |= FLOAT16_RGBA_IMAGE;
+	      image_types += 12;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_RGB*", 12) == 0)
+	    {
+	      types |= FLOAT16_RGB_IMAGE | FLOAT16_RGBA_IMAGE;
+	      image_types += 12;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_RGB", 11) == 0)
+	    {
+	      types |= FLOAT16_RGB_IMAGE;
+	      image_types += 11;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_GRAYA", 13) == 0)
+	    {
+	      types |= FLOAT16_GRAYA_IMAGE;
+	      image_types += 13;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_GRAY*", 13) == 0)
+	    {
+	      types |= FLOAT16_GRAY_IMAGE | FLOAT16_GRAYA_IMAGE;
+	      image_types += 13;
+	    }
+	  else if (strncmp (image_types, "FLOAT16_GRAY", 12) == 0)
+	    {
+	      types |= FLOAT16_GRAY_IMAGE;
+	      image_types += 12;
+	    }
 	  else
 	    {
 	      while (*image_types &&
 		     (*image_types != 'R') &&
 		     (*image_types != 'G') &&
-		     (*image_types != 'I'))
+		     (*image_types != 'I') &&
+		     (*image_types != 'U') &&
+		     (*image_types != 'F'))
 		image_types++;
 	    }
 	}
@@ -3215,4 +3347,73 @@ message_handler_set_invoker (Argument *args)
     success = FALSE;
 
   return procedural_db_return_args (&message_handler_set_proc, success);
+}
+
+gint  
+tag_to_plugin_image_type (
+             Tag t 
+            )
+{
+  Alpha a = tag_alpha (t);
+  Precision p = tag_precision (t);
+  Format f = tag_format (t);
+  
+  if ( !tag_valid (t) )
+    return -1;
+  
+  switch (p)
+    {
+    case PRECISION_U8:
+      switch (f)
+	{
+        case FORMAT_RGB:
+          return (a == ALPHA_YES)?  RGBA_IMAGE: RGB_IMAGE;
+        case FORMAT_GRAY:
+          return (a == ALPHA_YES)?  GRAYA_IMAGE: GRAY_IMAGE;
+        case FORMAT_INDEXED:      
+          return (a == ALPHA_YES)?  INDEXEDA_IMAGE: INDEXED_IMAGE;
+        default:
+          break; 
+	} 
+      break;
+    
+    case PRECISION_U16:
+      switch (f)
+	{
+        case FORMAT_RGB:
+          return (a == ALPHA_YES)?  U16_RGBA_IMAGE: U16_RGB_IMAGE;
+        case FORMAT_GRAY:
+          return (a == ALPHA_YES)?  U16_GRAYA_IMAGE: U16_GRAY_IMAGE;
+        default:
+          break; 
+	} 
+      break;
+    
+    case PRECISION_FLOAT:
+      switch (f)
+	{
+        case FORMAT_RGB:
+          return (a == ALPHA_YES)?  FLOAT_RGBA_IMAGE: FLOAT_RGB_IMAGE;
+        case FORMAT_GRAY:
+          return (a == ALPHA_YES)?  FLOAT_GRAYA_IMAGE: FLOAT_GRAY_IMAGE;
+        default:
+          break; 
+	} 
+      break;
+
+    case PRECISION_FLOAT16:
+      switch (f)
+	{
+        case FORMAT_RGB:
+          return (a == ALPHA_YES)?  FLOAT16_RGBA_IMAGE: FLOAT16_RGB_IMAGE;
+        case FORMAT_GRAY:
+          return (a == ALPHA_YES)?  FLOAT16_GRAYA_IMAGE: FLOAT16_GRAY_IMAGE;
+        default:
+          break; 
+	} 
+      break;
+    default:
+      break;
+    }
+    return -1;
 }

@@ -153,48 +153,40 @@ absdiff_row_u16  (
   
   while (width--)
     {
-      /*  if there is an alpha channel, never select transparent regions  */
-      if (has_alpha && src[src_channels] == 0)
+      gint b;
+      gint diff;
+      gint max = 0;
+          
+      for (b = 0; b < src_channels; b++)
         {
-          *dest = 0;
+          diff = src[b] - color[b];
+          diff = abs (diff);
+          if (diff > max)
+            max = diff;
+        }
+      
+      if (antialias && threshold > 0)
+        {
+          float aa;
+
+          aa = 1.5 - ((float) max / threshold);
+          if (aa <= 0)
+            *dest = 0;
+          else if (aa < 0.5)
+            *dest = (aa * 65536 * 2);
+          else
+            *dest = 65535;
         }
       else
         {
-          gint b;
-          gint diff;
-          gint max = 0;
-          
-          for (b = 0; b < src_channels; b++)
-            {
-              diff = src[b] - color[b];
-              diff = abs (diff);
-              if (diff > max)
-                max = diff;
-            }
-      
-          if (antialias && threshold > 0)
-            {
-              float aa;
-
-              aa = 1.5 - ((float) max / threshold);
-              if (aa <= 0)
-                *dest = 0;
-              else if (aa < 0.5)
-                *dest = (aa * 65536 * 2);
-              else
-                *dest = 65535;
-            }
+          if (max > threshold)
+            *dest = 0;
           else
-            {
-              if (max > threshold)
-                *dest = 0;
-              else
-                *dest = 65535;
-            }
-          
-          src += src_channels;
-          dest += dest_channels;
+            *dest = 65535;
         }
+          
+      src += src_channels;
+      dest += dest_channels;
     }
 }
 
@@ -1982,17 +1974,26 @@ combine_inten_a_and_channel_mask_row_u16  (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   guint16 *channel      = (guint16*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint16 *color        = (guint16*) pixelrow_data (col);
   guint16 opac = opacity * 65535;
-
-  alpha = num_channels - 1;
+ 
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
+	
   while (width --)
     {
       channel_alpha = INT_MULT_16 (65535 - *channel, opac, t);
       if (channel_alpha)
 	{
-	  new_alpha = src[alpha] + INT_MULT_16 (65535 - src[alpha], channel_alpha, t);
+	  if (has_alpha)
+	    new_alpha = src[alpha] + INT_MULT_16 (65535 - src[alpha], channel_alpha, t);
+	  else
+	    new_alpha = 65535;
 
 	  if (new_alpha != 65535)
 	    channel_alpha = (channel_alpha * 65535) / new_alpha;
@@ -2001,7 +2002,8 @@ combine_inten_a_and_channel_mask_row_u16  (
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = INT_MULT_16 (color[b], channel_alpha, t) +
 	      INT_MULT_16 (src[b], compl_alpha, s);
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)
@@ -2033,17 +2035,25 @@ combine_inten_a_and_channel_selection_row_u16 (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   guint16 *channel      = (guint16*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint16 *color        = (guint16*) pixelrow_data (col);
   guint16 opac = opacity * 65535;
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
   while (width --)
     {
       channel_alpha = INT_MULT_16 (*channel, opac, t);
       if (channel_alpha)
 	{
-	  new_alpha = src[alpha] + INT_MULT_16 (65535 - src[alpha], channel_alpha, t);
+	  if (has_alpha)
+	    new_alpha = src[alpha] + INT_MULT_16 (65535 - src[alpha], channel_alpha, t);
+	  else
+	    new_alpha = 65535;
 
 	  if (new_alpha != 65535)
 	    channel_alpha = (channel_alpha * 65535) / new_alpha;
@@ -2052,7 +2062,8 @@ combine_inten_a_and_channel_selection_row_u16 (
 	  for (b = 0; b < alpha; b++)
 	    dest[b] = INT_MULT_16 (color[b], channel_alpha, t) +
 	      INT_MULT_16 (src[b], compl_alpha, s);
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = new_alpha;
 	}
       else
 	for (b = 0; b < num_channels; b++)

@@ -70,6 +70,38 @@ struct _ToolButton
   gpointer callback_data;
 };
 
+/*
+  0   RECT_SELECT
+  1   ELLIPSE_SELECT
+  2   FREE_SELECT
+  3   FUZZY_SELECT
+  4   BEZIER_SELECT
+  5   MOVE
+  6   MAGNIFY
+  7   CROP
+  8   ROTATE
+  9   FLIP_HORZ
+  10  COLOR_PICKER
+  11  BUCKET_FILL
+  12  BLEND
+  13  PENCIL
+  14   PAINTBRUSH
+  15   ERASER
+  16   AIRBRUSH
+  17   CLONE
+  18   CONVOLVE
+  19   DODGEBURN
+  20   SMUDGE
+  21   COLOR_BALANCE
+  22   BRIGHTNESS_CONTRAST
+  23   HUE_SATURATION
+  24   POSTERIZE
+  25   THRESHOLD
+  26   CURVES
+  27   LEVELS
+  28   HISTOGRAM
+*/
+
 static ToolButton tool_data[] =
 {
   { (char **) rect_bits,
@@ -87,9 +119,11 @@ static ToolButton tool_data[] =
   { (char **) bezier_bits,
     "Select regions using Bezier curves",
     (gpointer) BEZIER_SELECT },
+#if 0
   { (char **) iscissors_bits,
     "Select shapes from image",
     (gpointer) ISCISSORS },
+#endif
   { (char **) move_bits,
     "Move layers & selections",
     (gpointer) MOVE },
@@ -105,9 +139,11 @@ static ToolButton tool_data[] =
   { (char **) horizflip_bits,
     "Flip the layer or selection",
     (gpointer) FLIP_HORZ },
+#if 0
   { (char **) text_bits,
     "Add text to the image",
     (gpointer) TEXT },
+#endif
   { (char **) colorpicker_bits,
     "Pick colors from the image",
     (gpointer) COLOR_PICKER },
@@ -135,9 +171,17 @@ static ToolButton tool_data[] =
   { (char **) blur_bits,
     "Blur or sharpen",
     (gpointer) CONVOLVE },
+  { (char **) dodge_bits,
+    "Dodge or burn",
+    (gpointer) DODGEBURN },
+  { (char **) smudge_bits,
+    "Smudge",
+    (gpointer) SMUDGE },
+#if 0
   { NULL,
     NULL,
     (gpointer) BY_COLOR_SELECT },
+#endif
   { NULL,
     NULL,
     (gpointer) COLOR_BALANCE },
@@ -178,7 +222,10 @@ static int pixmap_colors[8][3] =
 
 #define NUM_TOOLS (sizeof (tool_data) / sizeof (ToolButton))
 #define COLUMNS   3
-#define ROWS      7
+#if 0
+#define ROWS      7 
+#endif
+#define ROWS      6 
 #define MARGIN    2
 
 /*  Widgets for each tool button--these are used from command.c to activate on
@@ -344,7 +391,7 @@ create_tools (GtkWidget *parent)
 
   group = NULL;
 
-  for (i = 0; i < 21; i++)
+  for (i = 0; i <= 20; i++)
     {
       tool_widgets[i] = button = gtk_radio_button_new (group);
       gtk_container_border_width (GTK_CONTAINER (button), 0);
@@ -380,7 +427,6 @@ create_tools (GtkWidget *parent)
       gtk_widget_show (alignment);
       gtk_widget_show (button);
     }
-
   /*  The non-visible tool buttons  */
   for (i = 21; i < NUM_TOOLS; i++)
     {

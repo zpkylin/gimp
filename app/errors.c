@@ -69,5 +69,8 @@ terminate (char *fmt, ...)
 
   if (use_debug_handler)
     g_on_error_query (prog_name);
+
+  app_exit (1);
   gdk_exit (1);
+
 }

@@ -128,14 +128,14 @@ static guint pixeliter_first        (PixelIter *, BBox *, guint *, guint *);
 
 
 
-typedef struct _fuzzy_select FuzzySelect;
+typedef struct _fuzzy_options FuzzyOptions;
 typedef struct _SeedFillData SeedFillData;
 
 /* the precision-specific kernel for the seed fill */
 typedef guint (*SFFunc) (PixelIter * p, SeedFillData * d);
 
 
-struct _fuzzy_select
+struct _fuzzy_options
 {
   DrawCore *     core;         /*  Core select object                      */
 
@@ -193,7 +193,7 @@ static GdkSegment *   fuzzy_select_calculate (Tool *, void *, int *);
 static GdkSegment *segs = NULL;
 static int         num_segs = 0;
 static Channel *   fuzzy_mask = NULL;
-static SelectionOptions *fuzzy_options = NULL;
+static SelectionOptions *fuzzy_selection_options = NULL;
 
 static void fuzzy_select (GImage *, GimpDrawable *, int, int, double);
 static Argument *fuzzy_select_invoker (Argument *);
@@ -769,16 +769,17 @@ fuzzy_select_button_press (Tool *tool, GdkEventButton *bevent,
 			   gpointer gdisp_ptr)
 {
   GDisplay *gdisp;
-  FuzzySelect *fuzzy_sel;
+  FuzzyOptions *fuzzy_opts;
 
   gdisp = (GDisplay *) gdisp_ptr;
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
 
-  fuzzy_sel->x = bevent->x;
-  fuzzy_sel->y = bevent->y;
-  fuzzy_sel->last_x = fuzzy_sel->x;
-  fuzzy_sel->last_y = fuzzy_sel->y;
-  fuzzy_sel->threshold = default_threshold;
+  fuzzy_opts->x = bevent->x;
+  fuzzy_opts->y = bevent->y;
+  fuzzy_opts->last_x = fuzzy_opts->x;
+  fuzzy_opts->last_y = fuzzy_opts->y;
+  /*fuzzy_opts->threshold = default_threshold;*/
+  fuzzy_opts->threshold = fuzzy_selection_options->threshold;
 
   gdk_pointer_grab (gdisp->canvas->window, FALSE,
 		    GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON1_MOTION_MASK | GDK_BUTTON_RELEASE_MASK,
@@ -793,11 +794,11 @@ fuzzy_select_button_press (Tool *tool, GdkEventButton *bevent,
       return;
     }
   else if ((bevent->state & GDK_SHIFT_MASK) && !(bevent->state & GDK_CONTROL_MASK))
-    fuzzy_sel->op = ADD;
+    fuzzy_opts->op = ADD;
   else if ((bevent->state & GDK_CONTROL_MASK) && !(bevent->state & GDK_SHIFT_MASK))
-    fuzzy_sel->op = SUB;
+    fuzzy_opts->op = SUB;
   else if ((bevent->state & GDK_CONTROL_MASK) && (bevent->state & GDK_SHIFT_MASK))
-    fuzzy_sel->op = INTERSECT;
+    fuzzy_opts->op = INTERSECT;
   else
     {
       if (! (layer_is_floating_sel (gimage_get_active_layer (gdisp->gimage))) &&
@@ -806,45 +807,50 @@ fuzzy_select_button_press (Tool *tool, GdkEventButton *bevent,
 	  init_edit_selection (tool, gdisp_ptr, bevent, MaskToLayerTranslate);
 	  return;
 	}
-      fuzzy_sel->op = REPLACE;
+      fuzzy_opts->op = REPLACE;
     }
 
   /*  calculate the region boundary  */
-  segs = fuzzy_select_calculate (tool, gdisp_ptr, &num_segs);
+  /*segs = fuzzy_select_calculate (tool, gdisp_ptr, &num_segs);*/
 
-  draw_core_start (fuzzy_sel->core,
+#if 0
+  draw_core_start (fuzzy_opts->core,
 		   gdisp->canvas->window,
 		   tool);
+#endif
 }
 
 static void
 fuzzy_select_button_release (Tool *tool, GdkEventButton *bevent,
 			     gpointer gdisp_ptr)
 {
-  FuzzySelect * fuzzy_sel;
+  FuzzyOptions * fuzzy_opts;
   GDisplay * gdisp;
   GimpDrawable *drawable;
 
   gdisp = (GDisplay *) gdisp_ptr;
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
 
   gdk_pointer_ungrab (bevent->time);
   gdk_flush ();
 
-  draw_core_stop (fuzzy_sel->core, tool);
+#if 0
+  draw_core_stop (fuzzy_opts->core, tool);
+#endif
   tool->state = INACTIVE;
 
   /*  First take care of the case where the user "cancels" the action  */
   if (! (bevent->state & GDK_BUTTON3_MASK))
     {
-      drawable = (fuzzy_options->sample_merged) ? NULL : gimage_active_drawable (gdisp->gimage);
-      fuzzy_select (gdisp->gimage, drawable, fuzzy_sel->op,
-		    fuzzy_options->feather, fuzzy_options->feather_radius);
+      segs = fuzzy_select_calculate (tool, gdisp_ptr, &num_segs);
+      drawable = (fuzzy_selection_options->sample_merged) ? NULL : gimage_active_drawable (gdisp->gimage);
+      fuzzy_select (gdisp->gimage, drawable, fuzzy_opts->op,
+		    fuzzy_selection_options->feather, fuzzy_selection_options->feather_radius);
 
       gdisplays_flush ();
 
       /*  adapt the threshold based on the final value of this use  */
-      default_threshold = fuzzy_sel->threshold;
+      /*default_threshold = fuzzy_opts->threshold;*/
     }
 
   /*  If the segment array is allocated, free it  */
@@ -856,7 +862,13 @@ fuzzy_select_button_release (Tool *tool, GdkEventButton *bevent,
 static void
 fuzzy_select_motion (Tool *tool, GdkEventMotion *mevent, gpointer gdisp_ptr)
 {
-  FuzzySelect * fuzzy_sel;
+}
+
+#if 0
+static void
+fuzzy_select_motion (Tool *tool, GdkEventMotion *mevent, gpointer gdisp_ptr)
+{
+  FuzzyOptions * fuzzy_opts;
   GdkSegment * new_segs;
   int num_new_segs;
   int diff, diff_x, diff_y;
@@ -864,24 +876,24 @@ fuzzy_select_motion (Tool *tool, GdkEventMotion *mevent, gpointer gdisp_ptr)
   if (tool->state != ACTIVE)
     return;
 
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
 
-  diff_x = mevent->x - fuzzy_sel->last_x;
-  diff_y = mevent->y - fuzzy_sel->last_y;
+  diff_x = mevent->x - fuzzy_opts->last_x;
+  diff_y = mevent->y - fuzzy_opts->last_y;
 
   diff = ((ABS (diff_x) > ABS (diff_y)) ? diff_x : diff_y) / 2;
 
-  fuzzy_sel->last_x = mevent->x;
-  fuzzy_sel->last_y = mevent->y;
+  fuzzy_opts->last_x = mevent->x;
+  fuzzy_opts->last_y = mevent->y;
 
-  fuzzy_sel->threshold += diff/255.0;
-  fuzzy_sel->threshold = BOUNDS (fuzzy_sel->threshold, 0, 1);
+  fuzzy_opts->threshold += diff/255.0;
+  fuzzy_opts->threshold = BOUNDS (fuzzy_opts->threshold, 0, 1);
 
   /*  calculate the new fuzzy boundary  */
   new_segs = fuzzy_select_calculate (tool, gdisp_ptr, &num_new_segs);
 
   /*  stop the current boundary  */
-  draw_core_pause (fuzzy_sel->core, tool);
+  draw_core_pause (fuzzy_opts->core, tool);
 
   /*  make sure the XSegment array is freed before we assign the new one  */
   if (segs)
@@ -890,13 +902,14 @@ fuzzy_select_motion (Tool *tool, GdkEventMotion *mevent, gpointer gdisp_ptr)
   num_segs = num_new_segs;
 
   /*  start the new boundary  */
-  draw_core_resume (fuzzy_sel->core, tool);
+  draw_core_resume (fuzzy_opts->core, tool);
 }
+#endif
 
 static GdkSegment *
 fuzzy_select_calculate (Tool *tool, void *gdisp_ptr, int *nsegs)
 {
-  FuzzySelect *fuzzy_sel;
+  FuzzyOptions *fuzzy_opts;
   GDisplay *gdisp;
   Channel *new;
   GdkSegment *segs;
@@ -905,17 +918,17 @@ fuzzy_select_calculate (Tool *tool, void *gdisp_ptr, int *nsegs)
   GimpDrawable *drawable;
   int use_offsets;
 
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
   gdisp = (GDisplay *) gdisp_ptr;
   drawable = gimage_active_drawable (gdisp->gimage);
 
-  use_offsets = (fuzzy_options->sample_merged) ? FALSE : TRUE;
+  use_offsets = (fuzzy_selection_options->sample_merged) ? FALSE : TRUE;
 
-  gdisplay_untransform_coords (gdisp, fuzzy_sel->x,
-			       fuzzy_sel->y, &x, &y, FALSE, use_offsets);
+  gdisplay_untransform_coords (gdisp, fuzzy_opts->x,
+			       fuzzy_opts->y, &x, &y, FALSE, use_offsets);
 
-  new = find_contiguous_region (gdisp->gimage, drawable, fuzzy_options->antialias,
-				fuzzy_sel->threshold, x, y, fuzzy_options->sample_merged);
+  new = find_contiguous_region (gdisp->gimage, drawable, fuzzy_selection_options->antialias,
+				fuzzy_opts->threshold, x, y, fuzzy_selection_options->sample_merged);
 
   if (fuzzy_mask)
     channel_delete (fuzzy_mask);
@@ -951,31 +964,31 @@ fuzzy_select_calculate (Tool *tool, void *gdisp_ptr, int *nsegs)
 static void
 fuzzy_select_draw (Tool *tool)
 {
-  FuzzySelect * fuzzy_sel;
+  FuzzyOptions * fuzzy_opts;
 
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
 
   if (segs)
-    gdk_draw_segments (fuzzy_sel->core->win, fuzzy_sel->core->gc, segs, num_segs);
+    gdk_draw_segments (fuzzy_opts->core->win, fuzzy_opts->core->gc, segs, num_segs);
 }
 
 static void
 fuzzy_select_control (Tool *tool, int action, gpointer gdisp_ptr)
 {
-  FuzzySelect * fuzzy_sel;
+  FuzzyOptions * fuzzy_opts;
 
-  fuzzy_sel = (FuzzySelect *) tool->private;
+  fuzzy_opts = (FuzzyOptions *) tool->private;
 
   switch (action)
     {
     case PAUSE :
-      draw_core_pause (fuzzy_sel->core, tool);
+      draw_core_pause (fuzzy_opts->core, tool);
       break;
     case RESUME :
-      draw_core_resume (fuzzy_sel->core, tool);
+      draw_core_resume (fuzzy_opts->core, tool);
       break;
     case HALT :
-      draw_core_stop (fuzzy_sel->core, tool);
+      draw_core_stop (fuzzy_opts->core, tool);
       break;
     }
 }
@@ -984,14 +997,11 @@ Tool *
 tools_new_fuzzy_select (void)
 {
   Tool * tool;
-  FuzzySelect * private;
+  FuzzyOptions * private;
 
-  /*  The tool options  */
-  if (!fuzzy_options)
-    fuzzy_options = create_selection_options (FUZZY_SELECT);
-
+  /*  Fuzzy options  */
   tool = (Tool *) g_malloc (sizeof (Tool));
-  private = (FuzzySelect *) g_malloc (sizeof (FuzzySelect));
+  private = (FuzzyOptions *) g_malloc (sizeof (FuzzyOptions));
 
   private->core = draw_core_new (fuzzy_select_draw);
 
@@ -1007,17 +1017,21 @@ tools_new_fuzzy_select (void)
   tool->cursor_update_func = rect_select_cursor_update;
   tool->control_func = fuzzy_select_control;
 
+  /*  The selection options  */
+  if (!fuzzy_selection_options)
+    fuzzy_selection_options = create_selection_options (FUZZY_SELECT);
+
   return tool;
 }
 
 void
 tools_free_fuzzy_select (Tool *tool)
 {
-  FuzzySelect * fuzzy_sel;
+  FuzzyOptions * fuzzy_opts;
 
-  fuzzy_sel = (FuzzySelect *) tool->private;
-  draw_core_free (fuzzy_sel->core);
-  g_free (fuzzy_sel);
+  fuzzy_opts = (FuzzyOptions *) tool->private;
+  draw_core_free (fuzzy_opts->core);
+  g_free (fuzzy_opts);
 }
 
 /*  The fuzzy_select procedure definition  */

@@ -24,6 +24,7 @@
 #include "canvas.h"
 #include "colormaps.h"
 #include "drawable.h"
+#include "float16.h"
 #include "general.h"
 #include "gdisplay.h"
 #include "histogram.h"
@@ -89,7 +90,7 @@ struct _LevelsDialog
   gint           preview;
  
   PixelRow       high_input_pr;  /* length 5 */
-  double         gamma[5];
+  gfloat         gamma[5];
   PixelRow 	 low_input_pr;   /* length 5 */
   PixelRow       low_output_pr;  /* length 5 */
   PixelRow 	 high_output_pr; /* length 5 */
@@ -103,6 +104,7 @@ struct _LevelsDialog
 PixelRow input[5];
 PixelRow output[5];
 
+
 /*  levels action functions  */
 
 static void   levels_button_press   (Tool *, GdkEventButton *, gpointer);
@@ -111,7 +113,7 @@ static void   levels_motion         (Tool *, GdkEventMotion *, gpointer);
 static void   levels_cursor_update  (Tool *, GdkEventMotion *, gpointer);
 static void   levels_control        (Tool *, int, gpointer);
 
-static LevelsDialog *  levels_new_dialog              (gint);
+static LevelsDialog *  levels_new_dialog              (void);
 static void            levels_update                  (LevelsDialog *, int);
 static void            levels_preview                 (LevelsDialog *);
 static void            levels_value_callback          (GtkWidget *, gpointer);
@@ -133,6 +135,9 @@ static gint            levels_input_da_events         (GtkWidget *, GdkEvent *, 
 static gint            levels_output_da_events        (GtkWidget *, GdkEvent *, LevelsDialog *);
 static void            levels_free_transfers          (LevelsDialog *);
 static void            levels_calculate_transfers_ui  (LevelsDialog *);
+
+static gfloat compute_input(gfloat val, gfloat low, gfloat high, gfloat gamma, gint clip);
+static gfloat compute_output(gfloat val, gfloat low, gfloat high, gint clip);
 
 static void *levels_options = NULL;
 static LevelsDialog *levels_dialog = NULL;
@@ -164,10 +169,10 @@ typedef void (*LevelsUpdateLowInputSetTextFunc)(LevelsDialog *, char *);
 typedef void (*LevelsUpdateHighInputSetTextFunc)(LevelsDialog *, char *);
 typedef void (*LevelsUpdateLowOutputSetTextFunc)(LevelsDialog *, char *);
 typedef void (*LevelsUpdateHighOutputSetTextFunc)(LevelsDialog *, char *);
-typedef gdouble (*LevelsGetLowInputFunc)(LevelsDialog *);
-typedef gdouble (*LevelsGetHighInputFunc)(LevelsDialog *);
-typedef gdouble (*LevelsGetLowOutputFunc)(LevelsDialog *);
-typedef gdouble (*LevelsGetHighOutputFunc)(LevelsDialog *);
+typedef gfloat (*LevelsGetLowInputFunc)(LevelsDialog *);
+typedef gfloat (*LevelsGetHighInputFunc)(LevelsDialog *);
+typedef gfloat (*LevelsGetLowOutputFunc)(LevelsDialog *);
+typedef gfloat (*LevelsGetHighOutputFunc)(LevelsDialog *);
 typedef void (*LevelsInitHighLowInputOutputFunc)(LevelsDialog *);
 
 static LevelsFunc levels;
@@ -206,10 +211,10 @@ static void       levels_update_low_input_set_text_u8 ( LevelsDialog *, char *);
 static void       levels_update_high_input_set_text_u8 ( LevelsDialog *, char *);
 static void       levels_update_low_output_set_text_u8 ( LevelsDialog *, char *);
 static void       levels_update_high_output_set_text_u8 ( LevelsDialog *, char *);
-static gdouble    levels_get_low_input_u8 ( LevelsDialog *);
-static gdouble    levels_get_high_input_u8 ( LevelsDialog *); 
-static gdouble    levels_get_low_output_u8 ( LevelsDialog *);
-static gdouble    levels_get_high_output_u8 ( LevelsDialog *);
+static gfloat     levels_get_low_input_u8 ( LevelsDialog *);
+static gfloat     levels_get_high_input_u8 ( LevelsDialog *); 
+static gfloat     levels_get_low_output_u8 ( LevelsDialog *);
+static gfloat     levels_get_high_output_u8 ( LevelsDialog *);
 static void       levels_init_high_low_input_output_u8 (LevelsDialog *ld);
 
 static gchar ui_strings_u16[4][8] = {"0","65535","0","65535"};
@@ -228,11 +233,55 @@ static void       levels_update_low_input_set_text_u16 ( LevelsDialog *, char *)
 static void       levels_update_high_input_set_text_u16 ( LevelsDialog *, char *);
 static void       levels_update_low_output_set_text_u16 ( LevelsDialog *, char *);
 static void       levels_update_high_output_set_text_u16 ( LevelsDialog *, char *);
-static gdouble    levels_get_low_input_u16 ( LevelsDialog *);
-static gdouble    levels_get_high_input_u16 ( LevelsDialog *); 
-static gdouble    levels_get_low_output_u16 ( LevelsDialog *);
-static gdouble    levels_get_high_output_u16 ( LevelsDialog *);
+static gfloat     levels_get_low_input_u16 ( LevelsDialog *);
+static gfloat     levels_get_high_input_u16 ( LevelsDialog *); 
+static gfloat     levels_get_low_output_u16 ( LevelsDialog *);
+static gfloat     levels_get_high_output_u16 ( LevelsDialog *);
 static void       levels_init_high_low_input_output_u16 (LevelsDialog *ld);
+
+static gchar ui_strings_float[4][8] = {"0.0","1.0","0.0","1.0"};
+
+static void       levels_float (PixelArea *, PixelArea *, void *);
+static void       levels_calculate_transfers_float (LevelsDialog *ld);
+static void       levels_input_da_setui_values_float(LevelsDialog *, gint);
+static void       levels_output_da_setui_values_float(LevelsDialog *, gint);
+static gint       levels_high_output_text_check_float(LevelsDialog *, char *);
+static gint       levels_low_output_text_check_float(LevelsDialog *, char *);
+static gint       levels_high_input_text_check_float(LevelsDialog *, char *);
+static gint       levels_low_input_text_check_float (LevelsDialog *, char *);
+static void 	  levels_alloc_transfers_float (LevelsDialog *);
+static void       levels_build_input_da_transfer_float(LevelsDialog *, guchar *);
+static void       levels_update_low_input_set_text_float ( LevelsDialog *, char *);
+static void       levels_update_high_input_set_text_float ( LevelsDialog *, char *);
+static void       levels_update_low_output_set_text_float ( LevelsDialog *, char *);
+static void       levels_update_high_output_set_text_float ( LevelsDialog *, char *);
+static gfloat     levels_get_low_input_float ( LevelsDialog *);
+static gfloat     levels_get_high_input_float ( LevelsDialog *); 
+static gfloat     levels_get_low_output_float ( LevelsDialog *);
+static gfloat     levels_get_high_output_float ( LevelsDialog *);
+static void       levels_init_high_low_input_output_float (LevelsDialog *ld);
+
+static gchar ui_strings_float16[4][8] = {"0.0","1.0","0.0","1.0"};
+
+static void       levels_float16 (PixelArea *, PixelArea *, void *);
+static void       levels_calculate_transfers_float16 (LevelsDialog *ld);
+static void       levels_input_da_setui_values_float16(LevelsDialog *, gint);
+static void       levels_output_da_setui_values_float16(LevelsDialog *, gint);
+static gint       levels_high_output_text_check_float16(LevelsDialog *, char *);
+static gint       levels_low_output_text_check_float16(LevelsDialog *, char *);
+static gint       levels_high_input_text_check_float16(LevelsDialog *, char *);
+static gint       levels_low_input_text_check_float16 (LevelsDialog *, char *);
+static void 	  levels_alloc_transfers_float16 (LevelsDialog *);
+static void       levels_build_input_da_transfer_float16(LevelsDialog *, guchar *);
+static void       levels_update_low_input_set_text_float16 ( LevelsDialog *, char *);
+static void       levels_update_high_input_set_text_float16 ( LevelsDialog *, char *);
+static void       levels_update_low_output_set_text_float16 ( LevelsDialog *, char *);
+static void       levels_update_high_output_set_text_float16 ( LevelsDialog *, char *);
+static gfloat     levels_get_low_input_float16 ( LevelsDialog *);
+static gfloat     levels_get_high_input_float16 ( LevelsDialog *); 
+static gfloat     levels_get_low_output_float16 ( LevelsDialog *);
+static gfloat     levels_get_high_output_float16 ( LevelsDialog *);
+static void       levels_init_high_low_input_output_float16 (LevelsDialog *ld);
 
 static void
 levels_u8 (PixelArea *src_area,
@@ -327,7 +376,7 @@ levels_init_high_low_input_output_u8 (LevelsDialog *ld)
 static void
 levels_calculate_transfers_u8 (LevelsDialog *ld)
 {
-  double inten;
+  gfloat inten;
   int i, j;
   guint8* low_input = (guint8*)pixelrow_data (&ld->low_input_pr);
   guint8* high_input = (guint8*)pixelrow_data (&ld->high_input_pr);
@@ -341,31 +390,11 @@ levels_calculate_transfers_u8 (LevelsDialog *ld)
       guint8 *in = (guint8*)pixelrow_data (&input[j]); 
       for (i = 0; i < 256; i++)
 	{
-	  /*  determine input intensity  */
-	  if (high_input[j] != low_input[j])
-	    inten = (double) (i - low_input[j]) /
-	      (double) (high_input[j] - low_input[j]);
-	  else
-	    inten = (double) (i - low_input[j]);
-
-	  inten = BOUNDS (inten, 0.0, 1.0);
-	  if (ld->gamma[j] != 0.0)
-	    inten = pow (inten, (1.0 / ld->gamma[j]));
-	  in[i] = (unsigned char) (inten * 255.0 + 0.5);
-
-	  /*  determine the output intensity  */
-	  inten = (double) i / 255.0;
-	  if (high_output[j] >= low_output[j])
-	    inten = (double) (inten * (high_output[j] - low_output[j]) + low_output[j]);
-	  else if (high_output[j] < low_output[j])
-	    inten = (double) (low_output[j] - inten * (low_output[j] - high_output[j]));
-
-	  inten = BOUNDS (inten, 0.0, 255.0);
-	  out[i] = (unsigned char) (inten + 0.5);
+	  in[i] = 255.0 * compute_input (i/255.0, low_input[j]/255.0, high_input[j]/255.0, ld->gamma[j], TRUE) + .5;
+	  out[i] = 255.0 * compute_output (i/255.0, low_output[j]/255.0, high_output[j]/255.0, TRUE) + .5;
 	}
     }
 }
-
 
 static void
 levels_input_da_setui_values_u8 (
@@ -376,21 +405,21 @@ levels_input_da_setui_values_u8 (
   char text[12];
   guint8* low_input = (guint8*)pixelrow_data (&ld->low_input_pr);
   guint8* high_input = (guint8*)pixelrow_data (&ld->high_input_pr);
-  double width, mid, tmp;
+  gfloat width, mid, tmp;
 
   switch (ld->active_slider)
     {
     case 0:  /*  low input  */
-      tmp =  ((double) x / (double) DA_WIDTH) * 255.0;
+      tmp =  ((gfloat) x / (gfloat) DA_WIDTH) * 255.0;
       low_input[ld->channel] = BOUNDS (tmp, 0, high_input[ld->channel]);
       break;
 
     case 1:  /*  gamma  */
-      width = (double) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
+      width = (gfloat) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
       mid = ld->slider_pos[0] + width;
 
       x = BOUNDS (x, ld->slider_pos[0], ld->slider_pos[2]);
-      tmp = (double) (x - mid) / width;
+      tmp = (gfloat) (x - mid) / width;
       ld->gamma[ld->channel] = 1.0 / pow (10, tmp);
 
       /*  round the gamma value to the nearest 1/100th  */
@@ -399,7 +428,7 @@ levels_input_da_setui_values_u8 (
       break;
 
     case 2:  /*  high input  */
-      tmp = ((double) x / (double) DA_WIDTH) * 255.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 255.0;
       high_input[ld->channel] = BOUNDS (tmp, low_input[ld->channel], 255);
       break;
     }
@@ -411,19 +440,19 @@ levels_output_da_setui_values_u8(
 				gint x	
 				)
 {
-  gdouble tmp;
+  gfloat tmp;
   guint8* low_output = (guint8*)pixelrow_data (&ld->low_output_pr);
   guint8* high_output = (guint8*)pixelrow_data (&ld->high_output_pr);
 
   switch (ld->active_slider)
     {
     case 3:  /*  low output  */
-      tmp = ((double) x / (double) DA_WIDTH) * 255.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 255.0;
       low_output[ld->channel] = BOUNDS (tmp, 0, 255);
       break;
 
     case 4:  /*  high output  */
-      tmp = ((double) x / (double) DA_WIDTH) * 255.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 255.0;
       high_output[ld->channel] = BOUNDS (tmp, 0, 255);
       break;
     }
@@ -585,40 +614,882 @@ levels_update_high_output_set_text_u8 (
  sprintf (text, "%d", high_output[ld->channel]);
 }
 
-static gdouble 
+static gfloat 
 levels_get_low_input_u8 (
 			 LevelsDialog *ld
 			)
 {
  guint8 * low_input = (guint8*)pixelrow_data (&ld->low_input_pr);
- return (gdouble)low_input[ld->channel]/255.0;
+ return (gfloat)low_input[ld->channel]/255.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_high_input_u8 (
 			 LevelsDialog *ld
 			)
 {
  guint8 * high_input = (guint8*)pixelrow_data (&ld->high_input_pr);
- return (gdouble)high_input[ld->channel]/255.0;
+ return (gfloat)high_input[ld->channel]/255.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_low_output_u8 (
 			 LevelsDialog *ld
 			)
 {
  guint8 * low_output = (guint8*)pixelrow_data (&ld->low_output_pr);
- return (gdouble)low_output[ld->channel]/255.0;
+ return (gfloat)low_output[ld->channel]/255.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_high_output_u8 (
 			 LevelsDialog *ld
 			)
 {
  guint8 * high_output = (guint8*)pixelrow_data (&ld->high_output_pr);
- return (gdouble)high_output[ld->channel]/255.0;
+ return (gfloat)high_output[ld->channel]/255.0;
+}
+
+static void
+levels_float (PixelArea *src_area,
+	PixelArea *dest_area,
+	void        *user_data)
+{
+  Tag src_tag = pixelarea_tag (src_area);
+  Tag dest_tag = pixelarea_tag (dest_area);
+  gint src_num_channels = tag_num_channels (src_tag);
+  gint dest_num_channels = tag_num_channels (dest_tag);
+  LevelsDialog *ld = (LevelsDialog *) user_data;
+  guchar *src, *dest;
+  gfloat *s, *d;
+  int has_alpha, alpha;
+  int w, h;
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+  gfloat input, output;
+
+
+  src = pixelarea_data (src_area);
+  dest = pixelarea_data (dest_area);
+  has_alpha = tag_alpha (src_tag) == ALPHA_YES ? TRUE: FALSE;
+  alpha = has_alpha ? src_num_channels - 1 : src_num_channels;
+
+  h = pixelarea_height (src_area);
+  while (h--)
+    {
+      s = (gfloat*)src;
+      d = (gfloat*)dest;
+      w = pixelarea_width (src_area);
+      while (w--)
+	{
+	  if (ld->color)
+	    {
+	      /*  The contributions from the individual channel level settings  */
+
+	      input = compute_input (s[RED_PIX], 
+					low_input[HISTOGRAM_RED], 
+					high_input[HISTOGRAM_RED], 
+					ld->gamma[HISTOGRAM_RED], FALSE); 
+
+	      d[RED_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_RED], 
+					high_output[HISTOGRAM_RED], FALSE); 
+
+	      input = compute_input (s[GREEN_PIX], 
+					low_input[HISTOGRAM_GREEN], 
+					high_input[HISTOGRAM_GREEN], 
+					ld->gamma[HISTOGRAM_GREEN], FALSE); 
+
+	      d[GREEN_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_GREEN], 
+					high_output[HISTOGRAM_GREEN], FALSE); 
+
+	      input = compute_input (s[BLUE_PIX], 
+					low_input[HISTOGRAM_BLUE], 
+					high_input[HISTOGRAM_BLUE], 
+					ld->gamma[HISTOGRAM_BLUE], FALSE); 
+
+	      d[BLUE_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_BLUE], 
+					high_output[HISTOGRAM_BLUE], FALSE); 
+		
+		/* now do the value contribution */
+
+	      input = compute_input (d[RED_PIX], 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      d[RED_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      input = compute_input (d[GREEN_PIX], 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      d[GREEN_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      input = compute_input (d[BLUE_PIX], 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      d[BLUE_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+	    }
+	  else
+	    {
+	      input = compute_input (s[GRAY_PIX], 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      d[GRAY_PIX] = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+	    }
+
+	  if (has_alpha)
+	    {
+	      input = compute_input (s[alpha], 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      d[alpha] = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	    }
+	  s += src_num_channels;
+	  d += dest_num_channels;
+	}
+
+      src += pixelarea_rowstride (src_area);
+      dest += pixelarea_rowstride (dest_area);
+    }
+}
+
+static void
+levels_init_high_low_input_output_float (LevelsDialog *ld)
+{
+  gint i;
+    gfloat *low_input = (gfloat*)pixelrow_data (&levels_dialog->low_input_pr);
+    gfloat *high_input = (gfloat*)pixelrow_data (&levels_dialog->high_input_pr);
+    gfloat *low_output = (gfloat*)pixelrow_data (&levels_dialog->low_output_pr);
+    gfloat *high_output = (gfloat*)pixelrow_data (&levels_dialog->high_output_pr);
+    for (i = 0; i < 5; i++)
+      {
+	low_input[i] = 0;
+	levels_dialog->gamma[i] = 1.0;
+	high_input[i] = 1.0;
+	low_output[i] = 0;
+	high_output[i] = 1.0;
+      }
+}
+
+static void
+levels_calculate_transfers_float (LevelsDialog *ld)
+{
+}
+
+static void
+levels_input_da_setui_values_float (
+				LevelsDialog *ld,
+				gint x	
+				)
+{
+  char text[12];
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat width, mid, tmp;
+
+  switch (ld->active_slider)
+    {
+    case 0:  /*  low input  */
+      tmp =  ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      low_input[ld->channel] = BOUNDS (tmp, 0, high_input[ld->channel]);
+
+	/* round the input value to 6 places */
+      sprintf (text, "%.6f", low_input[ld->channel]);
+      low_input[ld->channel] = atof (text);
+      break;
+
+    case 1:  /*  gamma  */
+      width = (gfloat) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
+      mid = ld->slider_pos[0] + width;
+
+      x = BOUNDS (x, ld->slider_pos[0], ld->slider_pos[2]);
+      tmp = (gfloat) (x - mid) / width;
+      ld->gamma[ld->channel] = 1.0 / pow (10, tmp);
+
+      /*  round the gamma value to the nearest 1/100th  */
+      sprintf (text, "%2.2f", ld->gamma[ld->channel]);
+      ld->gamma[ld->channel] = atof (text);
+      break;
+
+    case 2:  /*  high input  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      high_input[ld->channel] = BOUNDS (tmp, low_input[ld->channel], 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", high_input[ld->channel]);
+      high_input[ld->channel] = atof (text);
+      break;
+    }
+}
+
+static void
+levels_output_da_setui_values_float(
+				LevelsDialog *ld,
+				gint x	
+				)
+{
+  gfloat tmp;
+  char text[12];
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+
+  switch (ld->active_slider)
+    {
+    case 3:  /*  low output  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      low_output[ld->channel] = BOUNDS (tmp, 0, 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", low_output[ld->channel]);
+      low_output[ld->channel] = atof (text);
+      break;
+
+    case 4:  /*  high output  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      high_output[ld->channel] = BOUNDS (tmp, 0, 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", high_output[ld->channel]);
+      high_output[ld->channel] = atof (text);
+      break;
+    }
+}
+
+static gint 
+levels_high_output_text_check_float (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+
+  value = BOUNDS ( atof (str), 0, 1.0);
+  if (value != high_output[ld->channel])
+  {
+      high_output[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_low_output_text_check_float (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+
+  value = BOUNDS ( atof (str), 0, 1.0);
+  if (value != low_output[ld->channel])
+  {
+      low_output[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_high_input_text_check_float (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  value = BOUNDS ( atof (str), low_input[ld->channel], 1.0);
+  if (value != high_input[ld->channel])
+  {
+      high_input[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_low_input_text_check_float (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  value = BOUNDS ( atof (str), 0, high_input[ld->channel]);
+  if (value != low_input[ld->channel])
+  {
+      low_input[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static void
+levels_alloc_transfers_float (LevelsDialog *ld)
+{
+  gint i;
+  gfloat* data;
+  Tag tag = tag_new (PRECISION_FLOAT, FORMAT_GRAY, ALPHA_NO);
+  
+  /* alloc the high and low input and output arrays*/
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->high_input_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->low_input_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->high_output_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->low_output_pr, tag, (guchar*)data, 5);
+
+  for (i = 0; i < 5; i++)
+  { 
+     pixelrow_init (&output[i], tag_null(), NULL, 0);
+     pixelrow_init (&input[i], tag_null(), NULL, 0);
+  }
+  
+}
+
+static void
+levels_build_input_da_transfer_float (
+				LevelsDialog *ld,
+				guchar *buf 
+				)
+{
+  gint i;
+  gint j = ld->channel;
+  gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  for(i = 0; i < DA_WIDTH; i++)
+    buf[i] = 255.0 * compute_input(i/255.0, low_input[j], high_input[j], ld->gamma[j], TRUE); 
+}
+
+static void
+levels_update_low_input_set_text_float (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+ sprintf (text, "%f", low_input[ld->channel]);
+}
+
+static void
+levels_update_high_input_set_text_float (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+ sprintf (text, "%f", high_input[ld->channel]);
+}
+
+static void
+levels_update_low_output_set_text_float (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+ sprintf (text, "%f", low_output[ld->channel]);
+}
+
+static void
+levels_update_high_output_set_text_float (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+ sprintf (text, "%f", high_output[ld->channel]);
+}
+
+static gfloat 
+levels_get_low_input_float (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+ return (gfloat)low_input[ld->channel];
+}
+
+static gfloat 
+levels_get_high_input_float (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+ return (gfloat)high_input[ld->channel];
+}
+
+static gfloat 
+levels_get_low_output_float (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+ return (gfloat)low_output[ld->channel];
+}
+
+static gfloat 
+levels_get_high_output_float (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+ return (gfloat)high_output[ld->channel];
+}
+
+static void
+levels_float16 (PixelArea *src_area,
+	PixelArea *dest_area,
+	void        *user_data)
+{
+  Tag src_tag = pixelarea_tag (src_area);
+  Tag dest_tag = pixelarea_tag (dest_area);
+  gint src_num_channels = tag_num_channels (src_tag);
+  gint dest_num_channels = tag_num_channels (dest_tag);
+  LevelsDialog *ld = (LevelsDialog *) user_data;
+  guchar *src, *dest;
+  guint16 *s, *d;
+  int has_alpha, alpha;
+  int w, h;
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+  gfloat input, output, red, green, blue;
+  ShortsFloat u;
+
+
+  src = pixelarea_data (src_area);
+  dest = pixelarea_data (dest_area);
+  has_alpha = tag_alpha (src_tag) == ALPHA_YES ? TRUE: FALSE;
+  alpha = has_alpha ? src_num_channels - 1 : src_num_channels;
+
+  h = pixelarea_height (src_area);
+  while (h--)
+    {
+      s = (guint16*)src;
+      d = (guint16*)dest;
+      w = pixelarea_width (src_area);
+      while (w--)
+	{
+	  if (ld->color)
+	    {
+	      /*  The contributions from the individual channel level settings  */
+
+	      input = compute_input (FLT(s[RED_PIX], u), 
+					low_input[HISTOGRAM_RED], 
+					high_input[HISTOGRAM_RED], 
+					ld->gamma[HISTOGRAM_RED], FALSE); 
+
+	      red = compute_output (input, 
+					low_output[HISTOGRAM_RED], 
+					high_output[HISTOGRAM_RED], FALSE); 
+
+	      input = compute_input (FLT(s[GREEN_PIX], u), 
+					low_input[HISTOGRAM_GREEN], 
+					high_input[HISTOGRAM_GREEN], 
+					ld->gamma[HISTOGRAM_GREEN], FALSE); 
+
+	      green = compute_output (input, 
+					low_output[HISTOGRAM_GREEN], 
+					high_output[HISTOGRAM_GREEN], FALSE); 
+
+	      input = compute_input (FLT(s[BLUE_PIX], u), 
+					low_input[HISTOGRAM_BLUE], 
+					high_input[HISTOGRAM_BLUE], 
+					ld->gamma[HISTOGRAM_BLUE], FALSE); 
+
+	      blue = compute_output (input, 
+					low_output[HISTOGRAM_BLUE], 
+					high_output[HISTOGRAM_BLUE], FALSE); 
+		
+		/* now do the value contribution */
+
+	      input = compute_input (red, 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      output = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      d[RED_PIX] = FLT16( output, u);
+
+	      input = compute_input (green, 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      output = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      d[GREEN_PIX] = FLT16( output, u);
+
+	      input = compute_input (blue, 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      output = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      d[BLUE_PIX] = FLT16( output, u);
+	    }
+	  else
+	    {
+	      input = compute_input (FLT(s[GRAY_PIX], u), 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      output = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      d[GRAY_PIX] = FLT16( output, u);
+	    }
+
+	  if (has_alpha)
+	    {
+	      input = compute_input ( FLT(s[alpha], u), 
+					low_input[HISTOGRAM_VALUE], 
+					high_input[HISTOGRAM_VALUE], 
+					ld->gamma[HISTOGRAM_VALUE], FALSE); 
+
+	      output = compute_output (input, 
+					low_output[HISTOGRAM_VALUE], 
+					high_output[HISTOGRAM_VALUE], FALSE); 
+
+	      d[alpha] = FLT16( output, u);
+	    }
+	  s += src_num_channels;
+	  d += dest_num_channels;
+	}
+
+      src += pixelarea_rowstride (src_area);
+      dest += pixelarea_rowstride (dest_area);
+    }
+}
+
+static void
+levels_init_high_low_input_output_float16 (LevelsDialog *ld)
+{
+  gint i;
+    gfloat *low_input = (gfloat*)pixelrow_data (&levels_dialog->low_input_pr);
+    gfloat *high_input = (gfloat*)pixelrow_data (&levels_dialog->high_input_pr);
+    gfloat *low_output = (gfloat*)pixelrow_data (&levels_dialog->low_output_pr);
+    gfloat *high_output = (gfloat*)pixelrow_data (&levels_dialog->high_output_pr);
+    for (i = 0; i < 5; i++)
+      {
+	low_input[i] = 0;
+	levels_dialog->gamma[i] = 1.0;
+	high_input[i] = 1.0;
+	low_output[i] = 0;
+	high_output[i] = 1.0;
+      }
+}
+
+static void
+levels_calculate_transfers_float16 (LevelsDialog *ld)
+{
+}
+
+static void
+levels_input_da_setui_values_float16 (
+				LevelsDialog *ld,
+				gint x	
+				)
+{
+  char text[12];
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat width, mid, tmp;
+
+  switch (ld->active_slider)
+    {
+    case 0:  /*  low input  */
+      tmp =  ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      low_input[ld->channel] = BOUNDS (tmp, 0, high_input[ld->channel]);
+
+	/* round the input value to 6 places */
+      sprintf (text, "%.6f", low_input[ld->channel]);
+      low_input[ld->channel] = atof (text);
+      break;
+
+    case 1:  /*  gamma  */
+      width = (gfloat) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
+      mid = ld->slider_pos[0] + width;
+
+      x = BOUNDS (x, ld->slider_pos[0], ld->slider_pos[2]);
+      tmp = (gfloat) (x - mid) / width;
+      ld->gamma[ld->channel] = 1.0 / pow (10, tmp);
+
+      /*  round the gamma value to the nearest 1/100th  */
+      sprintf (text, "%2.2f", ld->gamma[ld->channel]);
+      ld->gamma[ld->channel] = atof (text);
+      break;
+
+    case 2:  /*  high input  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      high_input[ld->channel] = BOUNDS (tmp, low_input[ld->channel], 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", high_input[ld->channel]);
+      high_input[ld->channel] = atof (text);
+      break;
+    }
+}
+
+static void
+levels_output_da_setui_values_float16(
+				LevelsDialog *ld,
+				gint x	
+				)
+{
+  gfloat tmp;
+  char text[12];
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+
+  switch (ld->active_slider)
+    {
+    case 3:  /*  low output  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      low_output[ld->channel] = BOUNDS (tmp, 0, 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", low_output[ld->channel]);
+      low_output[ld->channel] = atof (text);
+      break;
+
+    case 4:  /*  high output  */
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 1.0;
+      high_output[ld->channel] = BOUNDS (tmp, 0, 1.0);
+
+	/* round the value to 6 places */
+      sprintf (text, "%.6f", high_output[ld->channel]);
+      high_output[ld->channel] = atof (text);
+      break;
+    }
+}
+
+static gint 
+levels_high_output_text_check_float16 (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+
+  value = BOUNDS ( atof (str), 0, 1.0);
+  if (value != high_output[ld->channel])
+  {
+      high_output[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_low_output_text_check_float16 (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+
+  value = BOUNDS ( atof (str), 0, 1.0);
+  if (value != low_output[ld->channel])
+  {
+      low_output[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_high_input_text_check_float16 (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  value = BOUNDS ( atof (str), low_input[ld->channel], 1.0);
+  if (value != high_input[ld->channel])
+  {
+      high_input[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static gint 
+levels_low_input_text_check_float16 (
+				LevelsDialog *ld,
+				char *str 
+				)
+{
+  gfloat value;
+  gfloat* high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  gfloat* low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  value = BOUNDS ( atof (str), 0, high_input[ld->channel]);
+  if (value != low_input[ld->channel])
+  {
+      low_input[ld->channel] = value;
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static void
+levels_alloc_transfers_float16 (LevelsDialog *ld)
+{
+  gint i;
+  gfloat* data;
+  Tag tag = tag_new (PRECISION_FLOAT, FORMAT_GRAY, ALPHA_NO);
+  
+  /* alloc the high and low input and output arrays*/
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->high_input_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->low_input_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->high_output_pr, tag, (guchar*)data, 5);
+  data = (gfloat*) g_malloc (sizeof(gfloat) * 5 );
+  pixelrow_init (&ld->low_output_pr, tag, (guchar*)data, 5);
+
+  for (i = 0; i < 5; i++)
+  { 
+     pixelrow_init (&output[i], tag_null(), NULL, 0);
+     pixelrow_init (&input[i], tag_null(), NULL, 0);
+  }
+  
+}
+
+static void
+levels_build_input_da_transfer_float16 (
+				LevelsDialog *ld,
+				guchar *buf 
+				)
+{
+  gint i;
+  gint j = ld->channel;
+  gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+  gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+  for(i = 0; i < DA_WIDTH; i++)
+    buf[i] = 255.0 * compute_input(i/255.0, low_input[j], high_input[j], ld->gamma[j], TRUE); 
+}
+
+static void
+levels_update_low_input_set_text_float16 (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+ sprintf (text, "%f", low_input[ld->channel]);
+}
+
+static void
+levels_update_high_input_set_text_float16 (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+ sprintf (text, "%f", high_input[ld->channel]);
+}
+
+static void
+levels_update_low_output_set_text_float16 (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+ sprintf (text, "%f", low_output[ld->channel]);
+}
+
+static void
+levels_update_high_output_set_text_float16 (
+			 LevelsDialog *ld,
+			 char * text
+			)
+{
+ gfloat * high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+ sprintf (text, "%f", high_output[ld->channel]);
+}
+
+static gfloat 
+levels_get_low_input_float16 (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * low_input = (gfloat*)pixelrow_data (&ld->low_input_pr);
+ return (gfloat)low_input[ld->channel];
+}
+
+static gfloat 
+levels_get_high_input_float16 (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * high_input = (gfloat*)pixelrow_data (&ld->high_input_pr);
+ return (gfloat)high_input[ld->channel];
+}
+
+static gfloat 
+levels_get_low_output_float16 (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * low_output = (gfloat*)pixelrow_data (&ld->low_output_pr);
+ return (gfloat)low_output[ld->channel];
+}
+
+static gfloat 
+levels_get_high_output_float16 (
+			 LevelsDialog *ld
+			)
+{
+ gfloat * high_output = (gfloat*)pixelrow_data (&ld->high_output_pr);
+ return (gfloat)high_output[ld->channel];
 }
 
 static void
@@ -696,7 +1567,6 @@ levels_u16 (PixelArea *src_area,
 static void
 levels_calculate_transfers_u16 (LevelsDialog *ld)
 {
-  gdouble inten;
   gint i, j;
   guint16* low_input = (guint16*)pixelrow_data (&ld->low_input_pr);
   guint16* high_input = (guint16*)pixelrow_data (&ld->high_input_pr);
@@ -710,27 +1580,8 @@ levels_calculate_transfers_u16 (LevelsDialog *ld)
       guint16 *in = (guint16*)pixelrow_data (&input[j]); 
       for (i = 0; i < 65536; i++)
 	{
-	  /*  determine input intensity  */
-	  if (high_input[j] != low_input[j])
-	    inten = (double) (i - low_input[j]) /
-	      (double) (high_input[j] - low_input[j]);
-	  else
-	    inten = (double) (i - low_input[j]);
-
-	  inten = BOUNDS (inten, 0.0, 1.0);
-	  if (ld->gamma[j] != 0.0)
-	    inten = pow (inten, (1.0 / ld->gamma[j]));
-	  in[i] = (guint16) (inten * 65535.0 + 0.5);
-
-	  /*  determine the output intensity  */
-	  inten = (double) i / 65535.0;
-	  if (high_output[j] >= low_output[j])
-	    inten = (double) (inten * (high_output[j] - low_output[j]) + low_output[j]);
-	  else if (high_output[j] < low_output[j])
-	    inten = (double) (low_output[j] - inten * (low_output[j] - high_output[j]));
-
-	  inten = BOUNDS (inten, 0.0, 65535.0);
-	  out[i] = (guint16) (inten + 0.5);
+	  in[i] = 65535.0 * compute_input (i/65535.0, low_input[j]/65535.0, high_input[j]/65535.0, ld->gamma[j], TRUE) + .5;
+	  out[i] = 65535.0 * compute_output (i/65535.0, low_output[j]/65535.0, high_output[j]/65535.0, TRUE) + .5;
 	}
     }
 }
@@ -762,21 +1613,21 @@ levels_input_da_setui_values_u16 (
   char text[12];
   guint16* low_input = (guint16*)pixelrow_data (&ld->low_input_pr);
   guint16* high_input = (guint16*)pixelrow_data (&ld->high_input_pr);
-  double width, mid, tmp;
+  gfloat width, mid, tmp;
 
   switch (ld->active_slider)
     {
     case 0:  /*  low input  */
-      tmp =  ((double) x / (double) DA_WIDTH) * 65535.0;
+      tmp =  ((gfloat) x / (gfloat) DA_WIDTH) * 65535.0;
       low_input[ld->channel] = BOUNDS (tmp, 0, high_input[ld->channel]);
       break;
 
     case 1:  /*  gamma  */
-      width = (double) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
+      width = (gfloat) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
       mid = ld->slider_pos[0] + width;
 
       x = BOUNDS (x, ld->slider_pos[0], ld->slider_pos[2]);
-      tmp = (double) (x - mid) / width;
+      tmp = (gfloat) (x - mid) / width;
       ld->gamma[ld->channel] = 1.0 / pow (10, tmp);
 
       /*  round the gamma value to the nearest 1/100th  */
@@ -785,7 +1636,7 @@ levels_input_da_setui_values_u16 (
       break;
 
     case 2:  /*  high input  */
-      tmp = ((double) x / (double) DA_WIDTH) * 65535.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 65535.0;
       high_input[ld->channel] = BOUNDS (tmp, low_input[ld->channel], 65535);
       break;
     }
@@ -797,19 +1648,19 @@ levels_output_da_setui_values_u16(
 				gint x	
 				)
 {
-  gdouble tmp;
+  gfloat tmp;
   guint16* low_output = (guint16*)pixelrow_data (&ld->low_output_pr);
   guint16* high_output = (guint16*)pixelrow_data (&ld->high_output_pr);
 
   switch (ld->active_slider)
     {
     case 3:  /*  low output  */
-      tmp = ((double) x / (double) DA_WIDTH) * 65535.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 65535.0;
       low_output[ld->channel] = BOUNDS (tmp, 0, 65535);
       break;
 
     case 4:  /*  high output  */
-      tmp = ((double) x / (double) DA_WIDTH) * 65535.0;
+      tmp = ((gfloat) x / (gfloat) DA_WIDTH) * 65535.0;
       high_output[ld->channel] = BOUNDS (tmp, 0, 65535);
       break;
     }
@@ -971,40 +1822,40 @@ levels_update_high_output_set_text_u16 (
  sprintf (text, "%d", high_output[ld->channel]);
 }
 
-static gdouble 
+static gfloat 
 levels_get_low_input_u16 (
 			 LevelsDialog *ld
 			)
 {
  guint16 * low_input = (guint16*)pixelrow_data (&ld->low_input_pr);
- return (gdouble)low_input[ld->channel]/65535.0;
+ return (gfloat)low_input[ld->channel]/65535.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_high_input_u16 (
 			 LevelsDialog *ld
 			)
 {
  guint16 * high_input = (guint16*)pixelrow_data (&ld->high_input_pr);
- return (gdouble)high_input[ld->channel]/65535.0;
+ return (gfloat)high_input[ld->channel]/65535.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_low_output_u16 (
 			 LevelsDialog *ld
 			)
 {
  guint16 * low_output = (guint16*)pixelrow_data (&ld->low_output_pr);
- return (gdouble)low_output[ld->channel]/65535.0;
+ return (gfloat)low_output[ld->channel]/65535.0;
 }
 
-static gdouble 
+static gfloat 
 levels_get_high_output_u16 (
 			 LevelsDialog *ld
 			)
 {
  guint16 * high_output = (guint16*)pixelrow_data (&ld->high_output_pr);
- return (gdouble)high_output[ld->channel]/65535.0;
+ return (gfloat)high_output[ld->channel]/65535.0;
 }
 
 
@@ -1062,6 +1913,52 @@ levels_funcs (
 	for (i = 0; i < 4; i++)
 	  ui_strings[i] = ui_strings_u16[i];
 	break;
+  case PRECISION_FLOAT:
+	levels = levels_float;
+	levels_calculate_transfers = levels_calculate_transfers_float;
+	levels_input_da_setui_values = levels_input_da_setui_values_float;
+	levels_output_da_setui_values = levels_output_da_setui_values_float;
+	levels_high_output_text_check = levels_high_output_text_check_float;
+	levels_low_output_text_check = levels_low_output_text_check_float;
+	levels_high_input_text_check = levels_high_input_text_check_float;
+	levels_low_input_text_check = levels_low_input_text_check_float;
+	levels_alloc_transfers = levels_alloc_transfers_float;
+	levels_build_input_da_transfer = levels_build_input_da_transfer_float; 
+        levels_update_low_input_set_text = levels_update_low_input_set_text_float;
+	levels_update_high_input_set_text = levels_update_high_input_set_text_float;
+	levels_update_low_output_set_text = levels_update_low_output_set_text_float;
+	levels_update_high_output_set_text = levels_update_high_output_set_text_float;
+	levels_get_low_input = levels_get_low_input_float;
+	levels_get_high_input = levels_get_high_input_float;
+	levels_get_low_output = levels_get_low_output_float;
+	levels_get_high_output = levels_get_high_output_float;
+        levels_init_high_low_input_output = levels_init_high_low_input_output_float;
+	for (i = 0; i < 4; i++)
+	  ui_strings[i] = ui_strings_float[i];
+	break;
+  case PRECISION_FLOAT16:
+	levels = levels_float16;
+	levels_calculate_transfers = levels_calculate_transfers_float16;
+	levels_input_da_setui_values = levels_input_da_setui_values_float16;
+	levels_output_da_setui_values = levels_output_da_setui_values_float16;
+	levels_high_output_text_check = levels_high_output_text_check_float16;
+	levels_low_output_text_check = levels_low_output_text_check_float16;
+	levels_high_input_text_check = levels_high_input_text_check_float16;
+	levels_low_input_text_check = levels_low_input_text_check_float16;
+	levels_alloc_transfers = levels_alloc_transfers_float16;
+	levels_build_input_da_transfer = levels_build_input_da_transfer_float16; 
+        levels_update_low_input_set_text = levels_update_low_input_set_text_float16;
+	levels_update_high_input_set_text = levels_update_high_input_set_text_float16;
+	levels_update_low_output_set_text = levels_update_low_output_set_text_float16;
+	levels_update_high_output_set_text = levels_update_high_output_set_text_float16;
+	levels_get_low_input = levels_get_low_input_float16;
+	levels_get_high_input = levels_get_high_input_float16;
+	levels_get_low_output = levels_get_low_output_float16;
+	levels_get_high_output = levels_get_high_output_float16;
+        levels_init_high_low_input_output = levels_init_high_low_input_output_float16;
+	for (i = 0; i < 4; i++)
+	  ui_strings[i] = ui_strings_float16[i];
+	break;
   default:
 	levels = NULL;
 	levels_calculate_transfers = NULL;
@@ -1088,11 +1985,58 @@ levels_funcs (
   }
 }
 
+static gfloat
+compute_input (gfloat val,
+	     gfloat low,
+	     gfloat high,
+	     gfloat gamma,
+		gint clip)
+{
+    gfloat inten;
+
+    /*  determine input intensity  */
+    if (high != low)
+      inten =  (val - low) / (gfloat) (high - low);
+    else
+      inten = val - low;
+
+    if (clip)
+      inten = BOUNDS (inten, 0.0, 1.0);
+    else
+      if (inten < 0 ) inten = 0.0;
+
+    if (gamma != 0.0) 
+      inten = pow (inten, (1.0 / gamma));
+
+    return inten;
+}
+
+gfloat
+compute_output (gfloat val, 
+	      gfloat low, 
+	      gfloat high,
+		gint clip) 
+{
+    gfloat inten;
+
+    /*  determine the output intensity  */
+    inten = val;
+    if (high >= low)
+      inten = inten * (high - low) + low;
+    else if (high < low)
+      inten =  low - inten * (low - high);
+
+    if (clip)
+      inten = BOUNDS (inten, 0.0, 1.0);
+
+    return inten;
+}
+
 
 static void
 levels_calculate_transfers_ui (LevelsDialog *ld)
 {
-  double inten;
+  gfloat inten;
   int i, j;
   gint saved = ld->channel;
 
@@ -1106,15 +2050,15 @@ levels_calculate_transfers_ui (LevelsDialog *ld)
 	  {
 	    /*  determine input intensity  */
 	    if (high_input != low_input)
-	      inten = (double) (i - low_input) /
-		(double) (high_input - low_input);
+	      inten = (gfloat) (i - low_input) /
+		(gfloat) (high_input - low_input);
 	    else
-	      inten = (double) (i - low_input);
+	      inten = (gfloat) (i - low_input);
 
 	    inten = BOUNDS (inten, 0.0, 1.0);
 	    if (ld->gamma[j] != 0.0)
 	      inten = pow (inten, (1.0 / ld->gamma[j]));
-	    ld->input_ui[j][i] = (unsigned char) (inten * 255.0 + 0.5);
+	    ld->input_ui[j][i] = (guint8) (inten * 255.0 + 0.5);
 	  }
        }
     }
@@ -1125,18 +2069,25 @@ static void
 levels_free_transfers (LevelsDialog *ld)
 {
   gint i;
-  
-  g_free (pixelrow_data (&ld->high_input_pr));
-  g_free (pixelrow_data (&ld->low_input_pr));
-  g_free (pixelrow_data (&ld->high_output_pr));
-  g_free (pixelrow_data (&ld->low_output_pr));
+  guchar * data;
+ 
+  data = pixelrow_data (&ld->high_input_pr);
+  if (data) g_free (data);
+  data = pixelrow_data (&ld->high_input_pr);
+  if (data) g_free (data);
+  data = pixelrow_data (&ld->low_input_pr);
+  if (data) g_free (data);
+  data = pixelrow_data (&ld->high_output_pr);
+  if (data) g_free (data);
+  data = pixelrow_data (&ld->low_output_pr);
+  if (data) g_free (data);
 
   for (i = 0; i < 5; i++)
   {
-    g_free (pixelrow_data (&input[i]));
-    pixelrow_init (&input[i], tag_null(), NULL, 0);
-    g_free (pixelrow_data (&output[i]));
-    pixelrow_init (&output[i], tag_null(), NULL, 0);
+    data = pixelrow_data (&input[i]);
+    if (data) g_free (data);
+    data = pixelrow_data (&output[i]);
+    if (data) g_free (data);
   }
 }
 
@@ -1197,10 +2148,10 @@ levels_histogram_info (PixelArea     *src_area,
 	      alpha = s[ALPHA_PIX];
 	      if (mask_area)
 		{
-		  values[HISTOGRAM_VALUE][value] += (double) *m / 255.0;
-		  values[HISTOGRAM_RED][red]     += (double) *m / 255.0;
-		  values[HISTOGRAM_GREEN][green] += (double) *m / 255.0;
-		  values[HISTOGRAM_BLUE][blue]   += (double) *m / 255.0;
+		  values[HISTOGRAM_VALUE][value] += (gfloat) *m / 255.0;
+		  values[HISTOGRAM_RED][red]     += (gfloat) *m / 255.0;
+		  values[HISTOGRAM_GREEN][green] += (gfloat) *m / 255.0;
+		  values[HISTOGRAM_BLUE][blue]   += (gfloat) *m / 255.0;
 		}
 	      else
 		{
@@ -1214,7 +2165,7 @@ levels_histogram_info (PixelArea     *src_area,
 	    {
 	      value = s[GRAY_PIX];
 	      if (mask_area)
-		values[HISTOGRAM_VALUE][value] += (double) *m / 255.0;
+		values[HISTOGRAM_VALUE][value] += (gfloat) *m / 255.0;
 	      else
 		values[HISTOGRAM_VALUE][value] += 1.0;
 	    }
@@ -1222,7 +2173,7 @@ levels_histogram_info (PixelArea     *src_area,
 	  if (has_alpha)
 	    {
 	      if (mask_area)
-		values[HISTOGRAM_ALPHA][s[alpha]] += (double) *m / 255.0;
+		values[HISTOGRAM_ALPHA][s[alpha]] += (gfloat) *m / 255.0;
 	      else
 		values[HISTOGRAM_ALPHA][s[alpha]] += 1.0;
 	    }
@@ -1381,7 +2332,6 @@ levels_initialize (void *gdisp_ptr)
 {
   GDisplay	   *gdisp;
   int 			i;
-  gint			bins;
   GimpDrawable *drawable;
 
   gdisp = (GDisplay *) gdisp_ptr;
@@ -1393,6 +2343,7 @@ levels_initialize (void *gdisp_ptr)
       return;
     }
 
+#if 0
   switch( tag_precision( gimage_tag( gdisp->gimage ) ) )
   {
   case PRECISION_U8:
@@ -1403,15 +2354,17 @@ levels_initialize (void *gdisp_ptr)
       bins = 65536;
       break;
 
+  case PRECISION_FLOAT16:
   case PRECISION_FLOAT:
-      g_warning( "levels_float not implemented yet." );
+	g_warning ("precision not implemented\n");
       return;
   }
+#endif
 
   levels_funcs ( drawable_tag (drawable));
   /*  The levels dialog  */
   if (!levels_dialog)
-    levels_dialog = levels_new_dialog ( bins );
+    levels_dialog = levels_new_dialog ();
   else
     if (!GTK_WIDGET_VISIBLE (levels_dialog->shell))
       gtk_widget_show (levels_dialog->shell);
@@ -1482,7 +2435,9 @@ levels_free ()
 /*  the action area structure  */
 static ActionAreaItem action_items[] =
 {
+#if 0
   { "Auto Levels", levels_auto_levels_callback, NULL, NULL },
+#endif
   { "OK", levels_ok_callback, NULL, NULL },
   { "Cancel", levels_cancel_callback, NULL, NULL }
 };
@@ -1492,7 +2447,7 @@ static ActionAreaItem action_items[] =
  *  TBD - WRB -make work with float data
 */
 LevelsDialog *
-levels_new_dialog ( gint bins )
+levels_new_dialog (void)
 {
   LevelsDialog *ld;
   GtkWidget *vbox;
@@ -1582,6 +2537,8 @@ levels_new_dialog ( gint bins )
   gtk_widget_show (hbox);
 
   /*  The levels histogram  */
+
+#if 0
   hbox = gtk_hbox_new (TRUE, 2);
   gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, FALSE, 0);
 
@@ -1595,6 +2552,7 @@ levels_new_dialog ( gint bins )
   gtk_widget_show (ld->histogram->histogram_widget);
   gtk_widget_show (frame);
   gtk_widget_show (hbox);
+#endif
 
   /*  The input levels drawing area  */
   hbox = gtk_hbox_new (TRUE, 2);
@@ -1702,8 +2660,8 @@ levels_new_dialog ( gint bins )
   /*  The action area  */
   action_items[0].user_data = ld;
   action_items[1].user_data = ld;
-  action_items[2].user_data = ld;
-  build_action_area (GTK_DIALOG (ld->shell), action_items, 3, 0);
+  /*action_items[2].user_data = ld;*/
+  build_action_area (GTK_DIALOG (ld->shell), action_items, 2, 0);
 
   gtk_widget_show (vbox);
   gtk_widget_show (ld->shell);
@@ -1806,7 +2764,7 @@ levels_update (LevelsDialog *ld,
     }
   if (update & INPUT_SLIDERS)
     {
-      double width, mid, tmp;
+      gfloat width, mid, tmp;
 
       levels_erase_slider (ld->input_levels_da[1]->window, ld->slider_pos[0]);
       levels_erase_slider (ld->input_levels_da[1]->window, ld->slider_pos[1]);
@@ -1815,7 +2773,7 @@ levels_update (LevelsDialog *ld,
       ld->slider_pos[0] = DA_WIDTH * ((*levels_get_low_input) (ld));
       ld->slider_pos[2] = DA_WIDTH * ((*levels_get_high_input) (ld));
       
-      width = (double) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
+      width = (gfloat) (ld->slider_pos[2] - ld->slider_pos[0]) / 2.0;
       mid = ld->slider_pos[0] + width;
       tmp = log10 (1.0 / ld->gamma[ld->channel]);
       ld->slider_pos[1] = (int) (mid + width * tmp + 0.5);
@@ -1874,7 +2832,7 @@ levels_value_callback (GtkWidget *w,
   if (ld->channel != HISTOGRAM_VALUE)
     {
       ld->channel = HISTOGRAM_VALUE;
-      histogram_channel (ld->histogram, ld->channel);
+      /*histogram_channel (ld->histogram, ld->channel);*/
       levels_update (ld, ALL);
     }
 }
@@ -1890,7 +2848,7 @@ levels_red_callback (GtkWidget *w,
   if (ld->channel != HISTOGRAM_RED)
     {
       ld->channel = HISTOGRAM_RED;
-      histogram_channel (ld->histogram, ld->channel);
+      /*histogram_channel (ld->histogram, ld->channel);*/
       levels_update (ld, ALL);
     }
 }
@@ -1906,7 +2864,7 @@ levels_green_callback (GtkWidget *w,
   if (ld->channel != HISTOGRAM_GREEN)
     {
       ld->channel = HISTOGRAM_GREEN;
-      histogram_channel (ld->histogram, ld->channel);
+      /*histogram_channel (ld->histogram, ld->channel);*/
       levels_update (ld, ALL);
     }
 }
@@ -1922,7 +2880,7 @@ levels_blue_callback (GtkWidget *w,
   if (ld->channel != HISTOGRAM_BLUE)
     {
       ld->channel = HISTOGRAM_BLUE;
-      histogram_channel (ld->histogram, ld->channel);
+      /*histogram_channel (ld->histogram, ld->channel);*/
       levels_update (ld, ALL);
     }
 }
@@ -1938,7 +2896,7 @@ levels_alpha_callback (GtkWidget *w,
   if (ld->channel != HISTOGRAM_ALPHA)
     {
       ld->channel = HISTOGRAM_ALPHA;
-      histogram_channel (ld->histogram, ld->channel);
+      /*histogram_channel (ld->histogram, ld->channel);*/
       levels_update (ld, ALL);
     }
 }
@@ -1949,7 +2907,7 @@ levels_adjust_channel (LevelsDialog    *ld,
 		       int              channel)
 {
   int i;
-  double count, new_count, percentage, next_percentage;
+  gfloat count, new_count, percentage, next_percentage;
   guint8 * low_input = (guint8*)pixelrow_data (&ld->low_input_pr);
   guint8 * high_input = (guint8*)pixelrow_data (&ld->high_input_pr);
   guint8 * low_output = (guint8*)pixelrow_data (&ld->low_output_pr);
@@ -2142,11 +3100,10 @@ levels_gamma_text_update (GtkWidget *w,
 {
   LevelsDialog *ld;
   char *str;
-  double value;
-
+  gfloat value;
   str = gtk_entry_get_text (GTK_ENTRY (w));
   ld = (LevelsDialog *) data;
-  value = BOUNDS ((atof (str)), 0.1, 10.0);
+  value = BOUNDS (atof (str), 0.1, 10.0);
 
   if (value != ld->gamma[ld->channel])
     {
@@ -2441,7 +3398,7 @@ levels_invoker (Argument *args)
   int channel;
   int low_input;
   int high_input;
-  double gamma;
+  gfloat gamma;
   int low_output;
   int high_output;
   int int_value;

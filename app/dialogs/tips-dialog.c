@@ -35,17 +35,13 @@ tips_dialog_create ()
   guchar *   temp;
   guchar *   src;
   guchar *   dest;
-  gchar  *   gimp_data_dir;
   guint      x;
   guint      y;
 
   if (tips_count == 0)
     {
       temp = g_malloc (512);
-      if ((gimp_data_dir = getenv ("GIMP_DATADIR")) != NULL)
-        sprintf ((char *)temp, "%s/%s", gimp_data_dir, TIPS_FILE_NAME);
-      else
-        sprintf ((char *)temp, "%s/%s", DATADIR, TIPS_FILE_NAME);
+      sprintf ((char *)temp, "%s/%s", DATADIR, TIPS_FILE_NAME);
       read_tips_file ((char *)temp);
       g_free (temp);
     }

@@ -225,6 +225,24 @@ tag_bytes (
   return y;
 }
 
+guint
+tag_alpha_index (
+		  Tag t
+		)
+{
+  switch (tag_format (t)) 
+    {
+    case FORMAT_RGB:
+      return ALPHA_PIX;
+    case FORMAT_GRAY:
+      return ALPHA_G_PIX;
+    case FORMAT_INDEXED:
+      return ALPHA_I_PIX;
+    case FORMAT_NONE:
+    default:
+      return -1;
+    }
+}
 
 guint
 tag_equal (
@@ -439,6 +457,7 @@ tag_to_image_type (
   switch (p)
     {
     case PRECISION_U8:
+      printf ("8\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -453,6 +472,7 @@ tag_to_image_type (
       break;
     
     case PRECISION_U16:
+      printf ("16\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -467,6 +487,7 @@ tag_to_image_type (
       break;
     
     case PRECISION_FLOAT:
+      printf ("float\n"); 
       switch (f)
 	{
         case FORMAT_RGB:
@@ -479,6 +500,8 @@ tag_to_image_type (
       break;
     
     case PRECISION_FLOAT16:
+
+      printf ("float16\n"); 
       switch (f)
 	{
         case FORMAT_RGB:

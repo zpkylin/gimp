@@ -233,6 +233,8 @@ paint_core_motion (tool, mevent, gdisp_ptr)
   GDisplay * gdisp;
   PaintCore * paint_core;
 
+       
+  printf("ppp\"); 
   gdisp = (GDisplay *) gdisp_ptr;
   paint_core = (PaintCore *) tool->private;
 

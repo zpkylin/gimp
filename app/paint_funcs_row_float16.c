@@ -177,12 +177,12 @@ extract_channel_row_float16 (
 
 void 
 absdiff_row_float16  (
-                    PixelRow * image,
-                    PixelRow * mask,
-                    PixelRow * col,
-                    gfloat threshold,
-                    int antialias
-                    )
+                      PixelRow * image,
+                      PixelRow * mask,
+                      PixelRow * col,
+                      gfloat threshold,
+                      int antialias
+                      )
 {
   guint16 *src           = (guint16*) pixelrow_data (image);
   guint16 *dest          = (guint16*) pixelrow_data (mask);
@@ -202,50 +202,42 @@ absdiff_row_float16  (
 
   while (width--)
     {
-      /*  if there is an alpha channel, never select transparent regions  */
-      if (has_alpha && src[src_channels] == ZERO_FLOAT16)
+      gint b;
+      gdouble diff;
+      gfloat max = 0;
+          
+      for (b = 0; b < src_channels; b++)
         {
-          *dest = ZERO_FLOAT16;
+          sb = FLT (src[b], u);
+          cb = FLT (color[b], u);
+          diff = sb - cb;
+          diff = fabs (diff);
+          if (diff > max)
+            max = diff;
+        }
+      
+      if (antialias && threshold > 0)
+        {
+          float aa;
+
+          aa = 1.5 - ((float) max / threshold);
+          if (aa <= 0)
+            *dest = ZERO_FLOAT16;
+          else if (aa < 0.5)
+            *dest = FLT16 (aa * 2.0, u);
+          else
+            *dest = ONE_FLOAT16;
         }
       else
         {
-          gint b;
-          gdouble diff;
-          gfloat max = 0;
-          
-          for (b = 0; b < src_channels; b++)
-            {
-	      sb = FLT (src[b], u);
-	      cb = FLT (color[b], u);
-              diff = sb - cb;
-              diff = fabs (diff);
-              if (diff > max)
-                max = diff;
-            }
-      
-          if (antialias && threshold > 0)
-            {
-              float aa;
-
-              aa = 1.5 - ((float) max / threshold);
-              if (aa <= 0)
-                *dest = ZERO_FLOAT16;
-              else if (aa < 0.5)
-                *dest = FLT16 (aa * 2.0, u);
-              else
-                *dest = ONE_FLOAT16;
-            }
+          if (max > threshold)
+            *dest = ZERO_FLOAT16;
           else
-            {
-              if (max > threshold)
-                *dest = ZERO_FLOAT16;
-              else
-                *dest = ONE_FLOAT16;
-            }
-          
-          src += src_channels;
-          dest += dest_channels;
+            *dest = ONE_FLOAT16;
         }
+          
+      src += src_channels;
+      dest += dest_channels;
     }
 }
 
@@ -305,10 +297,9 @@ blend_row_float16  (
   gfloat  s1b, s2b, db;
   ShortsFloat u;
 
-  alpha = (has_alpha) ? num_channels - 1 : num_channels;
   while (width --)
     {
-      for (b = 0; b < alpha; b++)
+      for (b = 0; b < num_channels; b++)
 	{
 	  db = FLT (dest[b], u);
 	  s1b = FLT (src1[b], u);
@@ -317,9 +308,6 @@ blend_row_float16  (
 	  dest[b] = FLT16 (db, u);
 	}
 	
-      if (has_alpha)
-	dest[alpha] = src1[alpha];  /*  alpha channel--assume src2 has none  */
-
       src1 += num_channels;
       src2 += num_channels;
       dest += num_channels;
@@ -1903,19 +1891,29 @@ combine_inten_a_and_channel_mask_row_float16  (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   guint16 *channel      = (guint16*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint16 *color        = (guint16*) pixelrow_data (col);
   gfloat sa, sb, cb;
   ShortsFloat u;
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
   while (width --)
     {
       channel_alpha =(1.0 - FLT (*channel, u)) * opacity;
       if (channel_alpha)
 	{
-	  sa = FLT (src[alpha], u); 
-	  new_alpha = sa + (1.0 - sa) * channel_alpha;
+	  if (has_alpha)
+	    {
+	      sa = FLT (src[alpha], u); 
+	      new_alpha = sa + (1.0 - sa) * channel_alpha;
+	    }
+	  else
+	    new_alpha = 1.0;
 
 	  if (new_alpha != 1.0)
 	    channel_alpha = channel_alpha / new_alpha;
@@ -1927,7 +1925,8 @@ combine_inten_a_and_channel_mask_row_float16  (
 	      sb = FLT (src[b], u);
 	      dest[b] = FLT16 (cb * channel_alpha + sb * compl_alpha, u);
 	    }
-	  dest[b] = new_alpha;
+	  if (has_alpha)
+	    dest[b] = FLT16 (new_alpha, u);
 	}
       else
 	for (b = 0; b < num_channels; b++)
@@ -1958,19 +1957,30 @@ combine_inten_a_and_channel_selection_row_float16  (
   guint16 *dest         = (guint16*)pixelrow_data (dest_row);
   guint16 *channel      = (guint16*)pixelrow_data (channel_row);
   gint    width        = pixelrow_width (src_row);
-  gint    num_channels = tag_num_channels (pixelrow_tag (src_row));
+  Tag     src_tag      = pixelrow_tag (src_row);
+  gint    num_channels = tag_num_channels (src_tag);
+  gint    has_alpha     = (tag_alpha (src_tag)==ALPHA_YES)? TRUE: FALSE;
   guint16 *color        = (guint16*) pixelrow_data (col);
   gfloat sa, sb, cb;
   ShortsFloat u;
 
-  alpha = num_channels - 1;
+  if (has_alpha)
+    alpha = num_channels - 1;
+  else
+    alpha = num_channels;
+
   while (width --)
     {
       channel_alpha = FLT (*channel, u) * opacity;
       if (channel_alpha)
 	{
-	  sa = FLT (src[alpha], u); 
-	  new_alpha = sa + (1.0 - sa) * channel_alpha;
+	  if (has_alpha)
+	    {
+	      sa = FLT (src[alpha], u); 
+	      new_alpha = sa + (1.0 - sa) * channel_alpha;
+	    }
+	  else
+	    new_alpha = 1.0;
 
 	  if (new_alpha != 1.0)
 	    channel_alpha = channel_alpha  / new_alpha;
@@ -1982,7 +1992,9 @@ combine_inten_a_and_channel_selection_row_float16  (
 	      sb = FLT (src[b], u);
 	      dest[b] = FLT16 (cb * channel_alpha + sb * compl_alpha, u);
 	    }
-	  dest[b] = new_alpha;
+
+	  if (has_alpha)
+	    dest[b] = FLT16 (new_alpha, u);
 	}
       else
 	for (b = 0; b < num_channels; b++)

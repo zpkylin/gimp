@@ -1388,7 +1388,7 @@ color_select_image_fill (GtkWidget           *preview,
 }
 
 static void
-color_select_draw_z_marker (ColorSelectP csp,
+color_select_draw_z_marker (ColorSelectP  csp,
 			    GdkRectangle *clip)
 {
   int width;
@@ -1406,9 +1406,8 @@ color_select_draw_z_marker (ColorSelectP csp,
       miny = 0;
       if (width <= 0)
 	return;
-
       if (clip)
-        {
+	{
 	  width  = MIN(width,  clip->x + clip->width);
 	  height = MIN(height, clip->y + clip->height);
 	  minx   = MAX(0, clip->x);
@@ -1416,7 +1415,7 @@ color_select_draw_z_marker (ColorSelectP csp,
 	}
 
       if (y >= miny && y < height)
-        {
+	{
 	  gdk_gc_set_function (csp->gc, GDK_INVERT);
 	  gdk_draw_line (csp->z_color->window, csp->gc, minx, y, width - 1, y);
 	  gdk_gc_set_function (csp->gc, GDK_COPY);
@@ -1425,7 +1424,7 @@ color_select_draw_z_marker (ColorSelectP csp,
 }
 
 static void
-color_select_draw_xy_marker (ColorSelectP csp,
+color_select_draw_xy_marker (ColorSelectP  csp,
 			     GdkRectangle *clip)
 {
   int width;

@@ -38,6 +38,7 @@ libgimpui_la_SOURCES =	gimpmenu.c
 gimpinclude_HEADERS =	gimp.h		\
 			gimpenums.h	\
 			gimpfeatures.h	\
+			gimpfloat16.h	\
 			gimpmenu.h	\
 			gimpui.h
 

@@ -180,10 +180,7 @@ drawable_merge_shadow  (
   gimage = drawable_gimage (drawable);
   g_return_if_fail (gimage != NULL);
 
-  /*  If no shadow exists, simply return...this call is useless  */
-  if (gimage->shadow == NULL)
-    return;
-
+  
   /*  A useful optimization here is to limit the update to the
    *  extents of the selection mask, as it cannot extend beyond
    *  them.
@@ -343,7 +340,9 @@ drawable_dirty (GimpDrawable *drawable)
 {
   g_return_val_if_fail ((drawable != NULL), 0);
 
-  return drawable->dirty = (drawable->dirty < 0) ? 2 : drawable->dirty + 1;
+  /*return drawable->dirty = (drawable->dirty < 0) ? 2 : drawable->dirty + 1;*/
+  drawable->dirty++;
+  return drawable->dirty;
 }
 
 
@@ -352,7 +351,9 @@ drawable_clean (GimpDrawable *drawable)
 {
   g_return_val_if_fail ((drawable != NULL), 0);
 
-  return drawable->dirty = (drawable->dirty <= 0) ? 0 : drawable->dirty - 1;
+  /*return drawable->dirty = (drawable->dirty <= 0) ? 0 : drawable->dirty - 1;*/
+  drawable->dirty--;
+  return drawable->dirty;
 }
 
 

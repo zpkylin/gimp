@@ -23,8 +23,8 @@
 #include "trace.h"
 
 
-#define TILE16_WIDTH   64
-#define TILE16_HEIGHT  64
+#define TILE16_WIDTH   128 
+#define TILE16_HEIGHT  128 
 
 typedef struct _Tile16 Tile16;
 

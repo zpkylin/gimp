@@ -413,12 +413,12 @@ indexed_palette_area_events (GtkWidget *widget,
           pixelrow_init (&col, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO),
                          &gimage->cmap[indexedP->col_index * 3 + 0], 1);
           
-	  if (active_color == FOREGROUND) 
+	  if (active_color == FOREGROUND)
 	    palette_set_foreground (&col);
 	  else if (active_color == BACKGROUND)
-	    palette_set_background (&col); 
+	    palette_set_background (&col);
 	}
-
+ 
         if (bevent->button == 3)
 	{
           PixelRow col;

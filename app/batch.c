@@ -89,13 +89,12 @@ batch_run_cmd (char *cmd)
     default:
       break;
     }
-  
+
   procedural_db_destroy_args (vals, eval_proc->num_values);
   g_free(args);
 
   return;
 }
-
 
 static void
 batch_read (gpointer          data,

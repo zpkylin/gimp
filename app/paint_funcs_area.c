@@ -1813,8 +1813,8 @@ gaussian_blur_area  (
   if (radius == 0.0) return;		
   
   /* get a gaussian  */
-  curve = (*gaussian_curve)(radius, &length ); 
-  
+  curve = (*gaussian_curve)( 2 * radius + 1, &length ); 
+
   /* compute a sum for the gaussian */ 
   sum = g_malloc (sizeof (gfloat) * (2 * length + 1));
   sum[0] = 0.0;
@@ -3568,6 +3568,7 @@ thin_area_funcs (Tag tag)
     break;
   case PRECISION_FLOAT16:
     thin_row = thin_row_float16;
+    break;
   default:
     thin_row = NULL;
     break;
@@ -3841,13 +3842,13 @@ thin_row_float16  (
 {
   gint j;
   gint found_one = FALSE;
-  guint16 *cur = (guint16*) pixelrow_data (cur_row);
-  guint16 *next =(guint16*) pixelrow_data (next_row);
-  guint16 *prev =(guint16*) pixelrow_data (prev_row);
-  guint16 *dest =(guint16*) pixelrow_data (dest_row);
+  guint16 *cur = (guint16 *) pixelrow_data (cur_row);
+  guint16 *next =(guint16 *) pixelrow_data (next_row);
+  guint16 *prev =(guint16 *) pixelrow_data (prev_row);
+  guint16 *dest =(guint16 *) pixelrow_data (dest_row);
   gint width = pixelrow_width (cur_row);
-  gfloat c_prev, c_nxt, p, n, d;
   ShortsFloat u;
+  gfloat destj;
 
   for (j = 0; j < width; j++)
     {
@@ -3857,20 +3858,15 @@ thin_row_float16  (
 	    {
 	      found_one = TRUE;
 	      dest[j] = cur[j];
-		
-		c_prev = FLT (cur[j-1], u);
-		c_nxt = FLT (cur[j+1], u);
-		p = FLT (prev[j], u);
-		n = FLT (next[j], u);
-		d = FLT (dest[j], u);
+	      destj = FLT (dest[j], u);
 
-	      if (c_prev < d)
+	      if (FLT (cur[j - 1], u) < destj)
 		dest[j] = cur[j - 1];
-	      if (c_nxt < d)
+	      if (FLT (cur[j + 1], u) < destj)
 		dest[j] = cur[j + 1];
-	      if (p < d)
+	      if (FLT (prev[j], u) < destj)
 		dest[j] = prev[j];
-	      if (n < d)
+	      if (FLT (next[j], u) < destj)
 		dest[j] = next[j];
 	    }
 	  else
@@ -3882,20 +3878,15 @@ thin_row_float16  (
 	    {
 	      found_one = TRUE;
 	      dest[j] = cur[j];
-		
-		c_prev = FLT (cur[j-1], u);
-		c_nxt = FLT (cur[j+1], u);
-		p = FLT (prev[j], u);
-		n = FLT (next[j], u);
-		d = FLT (dest[j], u);
+	      destj = FLT (dest[j], u);
 
-	      if (c_prev > d)
+	      if (FLT (cur[j - 1], u) > destj)
 		dest[j] = cur[j - 1];
-	      if (c_nxt > d)
+	      if (FLT (cur[j + 1], u) > destj)
 		dest[j] = cur[j + 1];
-	      if (p > d)
+	      if (FLT (prev[j], u) > destj)
 		dest[j] = prev[j];
-	      if (n > d)
+	      if (FLT (next[j], u) > destj)
 		dest[j] = next[j];
 	    }
 	  else
@@ -4551,7 +4542,7 @@ combine_areas  (
   buf_size = src2_width * src2_bytes;
   buf_row_data = (guchar *) g_malloc (buf_size);
   pixelrow_init (&buf_row, buf_tag , buf_row_data, src2_width); 
-
+  
   for (pag = pixelarea_register (4, src1_area, src2_area, dest_area, mask_area);
        pag != NULL;
        pag = pixelarea_process (pag))

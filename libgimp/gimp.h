@@ -23,6 +23,7 @@
 #include <glib.h>
 #include <libgimp/gimpfeatures.h>
 #include <libgimp/gimpenums.h>
+#include <libgimp/gimpfloat16.h>
 
 
 #ifdef __cplusplus
@@ -94,6 +95,7 @@ struct _GDrawable
   guint width;          /* width of drawble */
   guint height;         /* height of drawble */
   guint bpp;            /* bytes per pixel of drawable */
+  guint num_channels;   /* number of channels of drawable */ 
   guint ntile_rows;     /* # of tile rows */
   guint ntile_cols;     /* # of tile columns */
   GTile *tiles;         /* the normal tiles */
@@ -366,6 +368,8 @@ void       gimp_image_disable_undo          (gint32     image_ID);
 void       gimp_image_enable_undo           (gint32     image_ID);
 void       gimp_image_clean_all             (gint32     image_ID);
 gint32     gimp_image_flatten               (gint32     image_ID);
+gint       gimp_image_is_layered   	    (gint32     image_ID);
+gint       gimp_image_dirty_flag   	    (gint32     image_ID);
 void       gimp_image_lower_channel         (gint32     image_ID,
 					     gint32     channel_ID);
 void       gimp_image_lower_layer           (gint32     image_ID,
@@ -428,6 +432,7 @@ void       gimp_image_set_filename          (gint32     image_ID,
 
 gint32 gimp_display_new    (gint32 image_ID);
 void   gimp_display_delete (gint32 display_ID);
+void   gimp_displays_delete_image (gint32 image_ID);
 void   gimp_displays_flush (void);
 
 
@@ -553,7 +558,9 @@ char*         gimp_drawable_name         (gint32     drawable_ID);
 guint         gimp_drawable_width        (gint32     drawable_ID);
 guint         gimp_drawable_height       (gint32     drawable_ID);
 guint         gimp_drawable_bpp          (gint32     drawable_ID);
+guint         gimp_drawable_num_channels (gint32     drawable_ID);
 GDrawableType gimp_drawable_type         (gint32     drawable_ID);
+GPrecisionType gimp_drawable_precision    (gint32     drawable_ID);
 gint          gimp_drawable_visible      (gint32     drawable_ID);
 gint          gimp_drawable_channel      (gint32     drawable_ID);
 gint          gimp_drawable_color        (gint32     drawable_ID);

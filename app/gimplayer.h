@@ -110,6 +110,7 @@ void            layer_delete (Layer *);
 void            layer_apply_mask (Layer *, int);
 void            layer_translate (Layer *, int, int);
 void            layer_add_alpha (Layer *);
+void            layer_remove_alpha (Layer *);
 void            layer_scale (Layer *, int, int, int);
 void            layer_resize (Layer *, int, int, int, int);
 BoundSeg *      layer_boundary (Layer *, int *);

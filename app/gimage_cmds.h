@@ -28,6 +28,8 @@ extern ProcRecord gimage_resize_proc;
 extern ProcRecord gimage_scale_proc;
 extern ProcRecord gimage_delete_proc;
 extern ProcRecord gimage_free_shadow_proc;
+extern ProcRecord gimage_is_layered_proc;
+extern ProcRecord gimage_dirty_flag_proc;
 extern ProcRecord gimage_get_layers_proc;
 extern ProcRecord gimage_get_channels_proc;
 extern ProcRecord gimage_get_active_layer_proc;

@@ -19,7 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
@@ -49,6 +50,7 @@ int    gimage_mask_stroking = FALSE;
 
 /*  local functions  */
 static void * gimage_mask_stroke_paint_func (PaintCore *, GimpDrawable *, int);
+static void   gimage_mask_painthit_setup (PaintCore *, Canvas *);
 
 /*  functions  */
 int
@@ -565,6 +567,8 @@ gimage_mask_stroke (gimage, drawable)
 
   /*  set the paint core's paint func  */
   non_gui_paint_core.paint_func = gimage_mask_stroke_paint_func;
+  non_gui_paint_core.painthit_setup = gimage_mask_painthit_setup;
+
   gimage_mask_stroking = TRUE;
 
   non_gui_paint_core.startx = non_gui_paint_core.lastx = (stroke_segs[0].x1 - offx);
@@ -596,7 +600,7 @@ gimage_mask_stroke (gimage, drawable)
 
   /*  cleanup  */
   gimage_mask_stroking = FALSE;
-  paint_core_cleanup ();
+  paint_core_cleanup (&non_gui_paint_core);
   g_free (stroke_segs);
 
   return TRUE;
@@ -612,25 +616,31 @@ gimage_mask_stroke_paint_func (paint_core, drawable, state)
   PixelArea a;
       
   /* Get the working canvas */
-  painthit = paint_core_16_area (paint_core, drawable);
-  pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+  paint_core_16_area_setup (paint_core, drawable);
 
-  /* construct the paint hit */
-  {
-    COLOR16_NEW (paint, canvas_tag (painthit));
-    
-    COLOR16_INIT (paint);
-    palette_get_foreground (&paint);
-    color_area (&a, &paint);
-  }
-      
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
                             1.0,
-                            (gfloat) get_brush_opacity (),
+                            (gfloat) gimp_brush_get_opacity (),
                             SOFT,
                             CONSTANT,
-                            get_brush_paint_mode ());
+                            gimp_brush_get_paint_mode ());
 
   return NULL;
 }
+
+static void
+gimage_mask_painthit_setup (PaintCore *paint_core, Canvas * painthit)
+{
+    PixelArea a;
+    pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+
+    /* construct the paint hit */
+    {
+      COLOR16_NEW (paint, canvas_tag (painthit));
+      COLOR16_INIT (paint);
+      palette_get_foreground (&paint);
+      color_area (&a, &paint);
+    }
+}
+

@@ -77,11 +77,14 @@ char *    plug_in_path = NULL;
 char *    temp_path = NULL;
 char *    swap_path = NULL;
 char *    brush_path = NULL;
+char *    brush_vbr_path = NULL;
 char *    default_brush = NULL;
 char *    pattern_path = NULL;
 char *    default_pattern = NULL;
 char *    palette_path = NULL;
 char *    default_palette = NULL;
+char *    frame_manager_path = NULL;
+char *    default_frame_manager = NULL;
 char *    gradient_path = NULL;
 char *    default_gradient = NULL;
 char *    pluginrc_path = NULL;
@@ -112,13 +115,17 @@ int       confirm_on_close = TRUE;
 int       default_width = 256;
 int       default_height = 256;
 Format    default_format = FORMAT_RGB;
-Precision default_precision = PRECISION_U8;
+Precision default_precision = PRECISION_FLOAT16;
 int       show_tips = TRUE;
 int       last_tip = -1;
 int       show_tool_tips = TRUE;
 float     monitor_xres = 72.0;
 float     monitor_yres = 72.0;
 int       using_xserver_resolution = FALSE;
+int	  enable_rgbm_painting = FALSE;
+int	  enable_paste_c_disp = FALSE;
+int	  enable_tmp_saving = TRUE;
+int	  enable_channel_revert = FALSE;
 
 static int get_next_token (void);
 static int peek_next_token (void);
@@ -177,6 +184,7 @@ static ParseFunc funcs[] =
   { "temp-path",             TT_PATH,       &temp_path, NULL },
   { "swap-path",             TT_PATH,       &swap_path, NULL },
   { "brush-path",            TT_PATH,       &brush_path, NULL },
+  { "brush-vbr-path",        TT_PATH,       &brush_vbr_path, NULL },
   { "pattern-path",          TT_PATH,       &pattern_path, NULL },
   { "plug-in-path",          TT_PATH,       &plug_in_path, NULL },
   { "palette-path",          TT_PATH,       &palette_path, NULL },
@@ -216,6 +224,14 @@ static ParseFunc funcs[] =
   { "dont-confirm-on-close", TT_BOOLEAN,    NULL, &confirm_on_close },
   { "show-tips",             TT_BOOLEAN,    &show_tips, NULL },
   { "dont-show-tips",        TT_BOOLEAN,    NULL, &show_tips },
+  { "enable-rgbm-painting",             TT_BOOLEAN,    &enable_rgbm_painting, NULL },
+  { "dont-enable-rgbm-painting",        TT_BOOLEAN,    NULL, &enable_rgbm_painting },
+  { "enable-paste-c-disp",             TT_BOOLEAN,    &enable_paste_c_disp, NULL },
+  { "dont-enable-paste-c-disp",        TT_BOOLEAN,    NULL, &enable_paste_c_disp },
+  { "enable-tmp-saving",             TT_BOOLEAN,    &enable_tmp_saving, NULL },
+  { "dont-enable-tmp-saving",        TT_BOOLEAN,    NULL, &enable_tmp_saving },
+  { "enable-channel-revert",             TT_BOOLEAN,    &enable_channel_revert, NULL },
+  { "dont-enable-channel-revert",        TT_BOOLEAN,    NULL, &enable_channel_revert },
   { "last-tip-shown",        TT_INT,        &last_tip, NULL },
   { "default-image-size",    TT_POSITION,   &default_width, &default_height },
   { "default-image-type",    TT_IMAGETYPE,  &default_format, NULL },
@@ -289,7 +305,6 @@ parse_gimprc ()
 {
   char libfilename[512];
   char filename[512];
-  char *gimp_data_dir;
   char *gimp_dir;
 
   parse_info.buffer = g_new (char, 4096);
@@ -300,11 +315,7 @@ parse_gimprc ()
   gimp_dir = gimp_directory ();
   add_gimp_directory_token (gimp_dir);
 
-  if ((gimp_data_dir = getenv ("GIMP_DATADIR")) != NULL)
-    sprintf (libfilename, "%s/gimprc", gimp_data_dir);
-  else
-    sprintf (libfilename, "%s/gimprc", DATADIR);
-
+  sprintf (libfilename, "%s/gimprc", DATADIR);
   app_init_update_status("Resource configuration", libfilename, -1);
   parse_gimprc_file (libfilename);
 

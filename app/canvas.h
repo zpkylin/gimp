@@ -120,5 +120,7 @@ int canvas_fixme_getx (Canvas *);
 int canvas_fixme_gety (Canvas *);
 int canvas_fixme_setx (Canvas *, int);
 int canvas_fixme_sety (Canvas *, int);
+int canvas_fixme_width (Canvas *, int);
+int canvas_fixme_height (Canvas *, int);
 
 #endif /* __CANVAS_H__ */

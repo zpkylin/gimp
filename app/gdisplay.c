@@ -34,6 +34,7 @@
 #include "image_render.h"
 #include "info_window.h"
 #include "interface.h"
+#include "layer.h"
 #include "layers_dialog.h"
 #include "menus.h"
 #include "plug_in.h"
@@ -58,12 +59,12 @@ static GdkCursorType   default_gdisplay_cursor = GDK_TOP_LEFT_ARROW;
 
 
 /*  Local functions  */
-static void       gdisplay_format_title     (GImage *, char *);
+static void       gdisplay_format_title     (GImage *, char *, GDisplay*);
 static void       gdisplay_delete           (GDisplay *);
 static GSList *   gdisplay_free_area_list   (GSList *);
 static GSList *   gdisplay_process_area_list(GSList *, GArea *);
-static void       gdisplay_add_update_area  (GDisplay *, int, int, int, int);
-static void       gdisplay_add_display_area (GDisplay *, int, int, int, int);
+/*static void       gdisplay_add_update_area  (GDisplay *, int, int, int, int);
+*/static void       gdisplay_add_display_area (GDisplay *, int, int, int, int);
 static void       gdisplay_paint_area       (GDisplay *, int, int, int, int);
 static void       gdisplay_display_area     (GDisplay *, int, int, int, int);
 static guint      gdisplay_hash             (GDisplay *);
@@ -83,8 +84,6 @@ gdisplay_new (GImage       *gimage,
   if (no_interface)
     return NULL;
 
-  /* format the title */
-  gdisplay_format_title (gimage, title);
 
   instance = gimage->instance_count;
   gimage->instance_count++;
@@ -111,6 +110,9 @@ gdisplay_new (GImage       *gimage,
   gdisp->draw_guides = TRUE;
   gdisp->snap_to_guides = TRUE;
 
+  /* format the title */
+  gdisplay_format_title (gimage, title, gdisp);
+
   /*  add the new display to the list so that it isn't lost  */
   display_list = g_slist_append (display_list, (void *) gdisp);
 
@@ -127,6 +129,8 @@ gdisplay_new (GImage       *gimage,
 
   /*  set the current tool cursor  */
   gdisplay_install_tool_cursor (gdisp, default_gdisplay_cursor);
+ 
+ gdisplays_update_title (gimage->ID); 
 
   return gdisp;
 }
@@ -134,18 +138,21 @@ gdisplay_new (GImage       *gimage,
 
 static void
 gdisplay_format_title (GImage *gimage,
-		       char   *title)
+		       char   *title,
+		       GDisplay *gdisp)
 {
   int empty = gimage_is_empty (gimage);
+  Layer *layer = gimage_get_active_layer(gimage);
   Tag t = gimage_tag (gimage);
 
-  sprintf (title, "%s-%d.%d (%s - %s - %s)%s",
+  sprintf (title, "%s-%d.%d (%s - %s - %s)%s %d%%",
 	   prune_filename (gimage_filename (gimage)),
 	   gimage->ID, gimage->instance_count,
 	   tag_string_precision (tag_precision (t)),
 	   tag_string_format (tag_format (t)),
-	   tag_string_alpha (tag_alpha (t)),
-           empty ? " (empty)" : "");
+	   "",
+           empty ? " (empty)" : "",
+	   100 * SCALEDEST (gdisp) / SCALESRC (gdisp));
 }
 
 
@@ -603,7 +610,7 @@ gdisplay_remove_and_delete (GDisplay *gdisp)
 }
 
 
-static void
+void
 gdisplay_add_update_area (GDisplay *gdisp,
 			  int       x,
 			  int       y,
@@ -660,7 +667,7 @@ gdisplay_paint_area (GDisplay *gdisp,
   y = y1;
   w = (x2 - x1);
   h = (y2 - y1);
-
+  /* printf("x,y,w,h %d %d %d %d\n", x, y, w, h);*/
   /* composite the area */
   gimage_construct (gdisp->gimage, x, y, w, h);
   
@@ -683,6 +690,9 @@ gdisplay_display_area (GDisplay *gdisp,
   int x2, y2;
   int dx, dy;
   int i, j;
+
+  if (!(gdisp->gimage))
+    return;
 
   sx = SCALE (gdisp, gdisp->gimage->width);
   sy = SCALE (gdisp, gdisp->gimage->height);
@@ -981,9 +991,14 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   menus_set_sensitive ("<Image>/Layers/Anchor Layer", fs && !aux && lp);
   menus_set_sensitive ("<Image>/Layers/Merge Visible Layers", !fs && !aux && lp);
   menus_set_sensitive ("<Image>/Layers/Flatten Image", !fs && !aux && lp);
+#if 0
   menus_set_sensitive ("<Image>/Layers/Alpha To Selection", !aux && lp && alpha);
+#endif
   menus_set_sensitive ("<Image>/Layers/Mask To Selection", !aux && lm && lp);
+#if 0
   menus_set_sensitive ("<Image>/Layers/Add Alpha Channel", !fs && !aux && lp && !lm && !alpha);
+#endif
+
 
   menus_set_sensitive ("<Image>/Image/RGB", (format != FORMAT_RGB));
   menus_set_sensitive ("<Image>/Image/Grayscale", (format != FORMAT_GRAY));
@@ -1001,8 +1016,9 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   menus_set_sensitive ("<Image>/Image/Colors/Levels", (format != FORMAT_INDEXED));
 
   menus_set_sensitive ("<Image>/Image/Colors/Desaturate", (format == FORMAT_RGB));
-
+#if 0
   menus_set_sensitive ("<Image>/Image/Alpha/Add Alpha Channel", !fs && !aux && lp && !lm && !alpha);
+#endif
 
   menus_set_sensitive ("<Image>/Select", lp);
   menus_set_sensitive ("<Image>/Edit/Cut", lp);
@@ -1108,6 +1124,24 @@ gdisplay_active ()
   return NULL;
 }
 
+void
+gdisplays_delete_image (GImage *image)
+{
+  GDisplay *gdisp;
+  GSList *list = display_list;
+
+  while (list)
+    {
+      gdisp = (GDisplay *) list->data;
+      list = g_slist_next (list);
+
+      if (gdisp->gimage == image)
+	{
+          gtk_widget_destroy (gdisp->shell);
+          display_list = g_slist_remove (display_list, (void *) gdisp);
+	}
+    }
+}
 
 GDisplay *
 gdisplay_get_ID (int ID)
@@ -1144,7 +1178,7 @@ gdisplays_update_title (int ID)
       if (gdisp->gimage->ID == ID)
 	{
 	  /* format the title */
-	  gdisplay_format_title (gdisp->gimage, title);
+	  gdisplay_format_title (gdisp->gimage, title, gdisp);
 	  gdk_window_set_title (gdisp->shell->window, title);
 	}
 
@@ -1328,7 +1362,7 @@ gdisplays_dirty ()
   /*  traverse the linked list of displays  */
   while (list)
     {
-      if (((GDisplay *) list->data)->gimage->dirty > 0)
+      if (((GDisplay *) list->data)->gimage->dirty != 0)
 	dirty = 1;
       list = g_slist_next (list);
     }

@@ -17,7 +17,8 @@
  */
 #include <stdlib.h>
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "drawable.h"
 #include "errors.h"
@@ -33,6 +34,7 @@
 /*  forward function declarations  */
 static void         pencil_motion       (PaintCore *, GimpDrawable *);
 static Argument *   pencil_invoker  (Argument *);
+static void         pencil_painthit_setup (PaintCore *,Canvas *);
 
 static void *  pencil_options = NULL;
 
@@ -75,6 +77,7 @@ tools_new_pencil ()
 
   private = (PaintCore *) tool->private;
   private->paint_func = pencil_paint_func;
+  private->painthit_setup = pencil_painthit_setup;
 
   return tool;
 }
@@ -93,31 +96,51 @@ pencil_motion (paint_core, drawable)
      PaintCore *paint_core;
      GimpDrawable *drawable;
 {
-  Canvas * painthit;
-  PixelArea a;
+  double op;
   
   /* Get the working canvas */
-  painthit = paint_core_16_area (paint_core, drawable);
-  pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
-  
-  /* construct the paint hit */
-  {
-    COLOR16_NEW (paint, canvas_tag (painthit));
+  paint_core_16_area_setup (paint_core, drawable);
 
-    COLOR16_INIT (paint);
-    palette_get_foreground (&paint);
-    color_area (&a, &paint);
-  }
-  
   /* apply it to the image */
   paint_core_16_area_paste (paint_core, drawable,
                             (gfloat) 1.0,
-                            (gfloat) get_brush_opacity (),
+                            (gfloat) gimp_brush_get_opacity(),
                             HARD,
                             CONSTANT,
-                            get_brush_paint_mode ());
+                            gimp_brush_get_paint_mode ());
 }
 
+static void
+pencil_painthit_setup (PaintCore * paint_core,Canvas * painthit)
+{
+    PixelArea a;
+    pixelarea_init (&a, painthit, 0, 0, 0, 0, TRUE);
+
+    /* Construct the paint hit */
+
+    if (paint_core->setup_mode == NORMAL_SETUP)
+    {
+      COLOR16_NEW (paint, canvas_tag (painthit));
+      COLOR16_INIT (paint);
+      palette_get_foreground (&paint);
+      color_area (&a, &paint);
+    }
+    else if (paint_core->setup_mode == LINKED_SETUP)
+    {
+	Channel * channel = GIMP_CHANNEL(paint_core->linked_drawable);
+        gfloat g = channel_get_link_paint_opacity (channel); 
+	{
+	  PixelRow paint;
+	  Tag t = tag_new (PRECISION_FLOAT, FORMAT_RGB, ALPHA_NO);
+	  gfloat data[3];
+	  data[0] = g;
+	  data[1] = g;
+	  data[2] = g;
+	  pixelrow_init (&paint, t, (guchar*)data, 1);
+          color_area (&a, &paint);
+	}
+    }
+}
 
 static void *
 pencil_non_gui_paint_func (PaintCore *paint_core, GimpDrawable *drawable, int state)
@@ -247,7 +270,7 @@ pencil_invoker (args)
       paint_core_finish (&non_gui_paint_core, drawable, -1);
 
       /*  cleanup  */
-      paint_core_cleanup ();
+      paint_core_cleanup (&non_gui_paint_core);
     }
 
   return procedural_db_return_args (&pencil_proc, success);

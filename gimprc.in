@@ -11,7 +11,6 @@
 # relative to your home directory.
 
 (prefix "@prefix@")
-(exec_prefix "@exec_prefix@")
 (gimp_data_dir "@gimpdatadir@")
 (gimp_plugin_dir "@gimpplugindir@")
 
@@ -21,7 +20,7 @@
 # such as working palette files, so it is best if this directory
 # not be one that is shared by other users or is cleared on machine
 # reboot such as /tmp.
-(temp-path "${gimp_dir}/tmp")
+(temp-path "/usr/tmp")
 
 # Set the swap file location. The gimp uses a tile based memory
 # allocation scheme. The swap file is used to quickly and easily
@@ -30,31 +29,24 @@
 # Also, things can get horribly slow if the swap file is created on 
 # a directory that is mounted over NFS.  For these reasons, it may 
 # be desirable to put your swap file in "/tmp".
-(swap-path "${gimp_dir}")
+(swap-path "/usr/tmp")
 
-# Set the brush search path...this path will be searched for valid
-#  brushes at startup.
+# Set the gbr brush (pixmap brushes) search path...this path will 
+# be searched for valid gbr brushes.
 (brush-path "${gimp_dir}/brushes:${gimp_data_dir}/brushes")
 
-# Specify a default brush. If none is specified it defaults to the
-#  "1circle.gbr" brush which is just a single pixel sized brush.
-#  The brush is searched for in the brush path.
-(default-brush "19fcircle.gbr")
+# Set the vbr brush (editable brushes) search path...this path will 
+# be searched for valid vbr brushes at startup.
+(brush-vbr-path "${gimp_dir}/brushes")
 
-# Set the pattern search path...this path will be searched for valid
-#  patterns at startup.
-(pattern-path "${gimp_dir}/patterns:${gimp_data_dir}/patterns")
-
-# Specify a default pattern.
-#  The pattern is searched for in the specified pattern paths.
-(default-pattern "wood2.pat")
+# Specify a default brush (from /muse/data/gimp/gimp/brushes).
+(default-brush "19circlef16.gbr")
 
 # Set the palette search path...this path will be searched for valid
 #  palettes at startup.
 (palette-path "${gimp_dir}/palettes")
 
 # Specify a default palette.
-#  The pattern is searched for in the specified pattern paths.
 (default-palette "Default")
 
 # Set the gradient search path...this path will be searched for valid
@@ -67,12 +59,10 @@
 
 # Set the plug-in search path...this path will be searched for
 #  plug-ins when the plug-in is run.
-(plug-in-path "${gimp_dir}/plug-ins:${gimp_dir}/plug-ins/script-fu:${gimp_plugin_dir}/plug-ins")
+(plug-in-path "${gimp_dir}/plug-ins:${gimp_plugin_dir}/plug-ins")
 
-# Set the path for the script-fu plug-in.  This value is ignored by
-#  the GIMP if the script-fu plug-in is never run.
-(script-fu-path "${gimp_dir}/scripts:${gimp_data_dir}/scripts")
-
+# Set the path for the parsley scripts.
+(parsley-scripts-path "${gimp_dir}/scripts:${gimp_data_dir}/scripts")
 
 # The tile cache is used to make sure the gimp doesn't thrash
 # tiles between memory and disk. Setting this value higher will
@@ -118,7 +108,7 @@
 #  pixel and progresses in all directions until the difference of pixel
 #  intensity from the original is greater than a specified threshold
 #  ==> This value represents the default threshold
-(default-threshold 15)
+(default-threshold 0.05)
 
 # There is always a tradeoff between memory usage and speed.  In most
 #  cases, the GIMP opts for speed over memory.  However, if memory is

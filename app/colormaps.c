@@ -19,7 +19,7 @@
 #include <math.h>
 #include "appenv.h"
 #include "app_procs.h"
-#include "brushes.h"
+#include "gimpbrush.h"
 #include "colormaps.h"
 #include "displaylut.h"
 #include "errors.h"
@@ -51,6 +51,21 @@ gulong old_color_pixel;
 gulong new_color_pixel;
 
 gulong marching_ants_pixels[8];
+
+GtkDitherInfo *red_ordered_dither;
+GtkDitherInfo *green_ordered_dither;
+GtkDitherInfo *blue_ordered_dither;
+GtkDitherInfo *gray_ordered_dither;
+
+guchar ***ordered_dither_matrix;
+
+/*  These arrays are calculated for quick 24 bit to 16 color conversions  */
+gulong *g_lookup_red;
+gulong *g_lookup_green;
+gulong *g_lookup_blue;
+
+gulong *color_pixel_vals;
+gulong *gray_pixel_vals;
 
 static void make_color (gulong *pixel_ptr,
 			int     red,
@@ -85,7 +100,8 @@ set_app_colors (void)
     store_color (&new_color_pixel, &col);
   }
 }
-/* poof - can't use this anymore
+
+/* poof can't use this anymore
 static unsigned int
 gamma_correct (int intensity, double gamma)
 {
@@ -116,7 +132,7 @@ get_color (PixelRow * col)
 
   pixelrow_init (&r, tag_new (PRECISION_U8, FORMAT_RGB, ALPHA_NO), d, 1);
   copy_row (col, &r);
-
+  
   return gdk_rgb_xpixel_from_rgb ((d[0] << 16) | (d[1] << 8) | d[2]);
 }
 
@@ -128,7 +144,6 @@ make_color (gulong *pixel_ptr,
             int     blue,
 	    int     readwrite)
 {
-  
   *pixel_ptr = gdk_rgb_xpixel_from_rgb ((red << 16) | (green << 8) | blue);
 }
 
@@ -143,7 +158,6 @@ void
 store_display_color (gulong *pixel_ptr,
 	     PixelRow * col)
 {
-  PixelRow r;
   guint8 d[3];
   switch (tag_precision ( pixelrow_tag (col)))
   {

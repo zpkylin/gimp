@@ -28,7 +28,6 @@
 
 #include "appenv.h"
 #include "actionarea.h"
-#include "gdisplay.h"
 #include "general.h"
 #include "gimage.h"
 #include "fileops.h"
@@ -37,8 +36,19 @@
 #include "plug_in.h"
 #include "procedural_db.h"
 #include "gimprc.h"
+#include "channel_pvt.h"
+#include "layer_pvt.h"
 
 typedef struct _OverwriteBox OverwriteBox;
+static GtkWidget *warning_dialog = NULL;
+static GDisplay *cur_gdisplay;
+static char save_layer = 0; 
+static char save_copy = 0; 
+static int save_layer_id = 0; 
+static GImage *load_image=NULL;
+
+static int tmp_save;
+static int channel_revert;
 
 struct _OverwriteBox
 {
@@ -46,6 +56,9 @@ struct _OverwriteBox
   char *      full_filename;
   char *      raw_filename;
 };
+
+static void file_reload_warning_callback (GtkWidget *, gpointer);
+static void file_reload_cancel_warning_callback (GtkWidget *, gpointer);
 
 static Argument* register_load_handler_invoker (Argument *args);
 static Argument* register_magic_load_handler_invoker (Argument *args);
@@ -96,16 +109,21 @@ static int  file_check_magic_list (GSList *magics_list,
                                    unsigned char *head,
                                    FILE *ifp);
 
+static GString* append_ext (char * string, char *ext);
+
 static PlugInProcDef* file_proc_find         (GSList *procs,
 					 char   *filename);
 static void      file_update_menus      (GSList *procs,
-					 int     image_type);
+					 int     image_type,
+					 int     is_layered);
 
 
 static GtkWidget *fileload = NULL;
 static GtkWidget *filesave = NULL;
 static GtkWidget *open_options = NULL;
+static GtkWidget *option_menu = NULL;
 static GtkWidget *save_options = NULL;
+static GtkWidget *save_menu = NULL;
 
 /* Load by extension.
  */
@@ -467,12 +485,55 @@ done:
 }
 
 void
+file_reload_callback (GDisplay *gdisplay)
+{
+
+  /*** pop-up dialog ***/
+  static ActionAreaItem action_items[2] =
+  {
+    { "Revert", file_reload_warning_callback, NULL, NULL },
+    { "Cancel", file_reload_cancel_warning_callback, NULL, NULL }
+  };
+  GtkWidget *vbox;
+  GtkWidget *label;
+  
+  cur_gdisplay = gdisplay; 
+  if (warning_dialog != NULL)
+    {
+      gdk_window_raise (warning_dialog->window);
+      return;
+    }
+
+  warning_dialog = gtk_dialog_new ();
+  gtk_window_set_wmclass (GTK_WINDOW (warning_dialog), "really_reload", "Gimp");
+  gtk_window_set_policy (GTK_WINDOW (warning_dialog), FALSE, FALSE, FALSE);
+  gtk_window_set_title (GTK_WINDOW (warning_dialog), "Warning");
+  gtk_window_position (GTK_WINDOW (warning_dialog), GTK_WIN_POS_MOUSE);
+  gtk_object_set_user_data (GTK_OBJECT (warning_dialog), cur_gdisplay);
+
+
+  vbox = gtk_vbox_new (FALSE, 1);
+  gtk_container_border_width (GTK_CONTAINER (vbox), 1);
+  gtk_box_pack_start (GTK_BOX (GTK_DIALOG (warning_dialog)->vbox), vbox, TRUE, TRUE, 0);
+  gtk_widget_show (vbox);
+
+  label = gtk_label_new ("Do you really want to revert to saved?");
+  gtk_box_pack_start (GTK_BOX (vbox), label, TRUE, FALSE, 0);
+  gtk_widget_show (label);
+
+  action_items[0].user_data = warning_dialog;
+  action_items[1].user_data = warning_dialog;
+  build_action_area (GTK_DIALOG (warning_dialog), action_items, 2, 0);
+
+  gtk_widget_show (warning_dialog);
+}
+
+void
 file_open_callback (GtkWidget *w,
 		    gpointer   client_data)
 {
   GtkWidget *hbox;
   GtkWidget *label;
-  GtkWidget *option_menu;
   GtkWidget *load_menu;
   GDisplay *gdisplay;
 
@@ -550,8 +611,21 @@ file_save_callback (GtkWidget *w,
 	  file_save_as_callback (w, client_data);
 	}
       else
-	file_save (gdisplay->gimage->ID, gimage_filename (gdisplay->gimage),
-		   prune_filename (gimage_filename(gdisplay->gimage)));
+	{
+#if 0
+	  if (gimage_is_layered (gdisplay->gimage))
+	  {
+	    if (save_file_proc)
+	      {
+		  if (strcmp(save_file_proc->extensions, "xcf"))
+		    g_message ("Can't save layered image except as XCF Choose Flatten first");
+	      }
+	  }
+#endif
+
+	  file_save (gdisplay->gimage->ID, gimage_filename (gdisplay->gimage),
+		     prune_filename (gimage_filename(gdisplay->gimage)));
+	}
     }
 }
 
@@ -561,9 +635,8 @@ file_save_as_callback (GtkWidget *w,
 {
   GtkWidget *hbox;
   GtkWidget *label;
-  GtkWidget *option_menu;
-  GtkWidget *save_menu;
   GDisplay *gdisplay;
+  gint type;
 
   if (!filesave)
     {
@@ -578,7 +651,8 @@ file_save_as_callback (GtkWidget *w,
 			  "delete_event",
 			  GTK_SIGNAL_FUNC (file_dialog_hide),
 			  NULL);
-      gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filesave)->ok_button), "clicked", (GtkSignalFunc) file_save_ok_callback, filesave);
+      gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filesave)->ok_button), 
+	  "clicked", (GtkSignalFunc) file_save_ok_callback, filesave);
       gtk_quit_add_destroy (1, GTK_OBJECT (filesave));
     }
   else
@@ -618,20 +692,105 @@ file_save_as_callback (GtkWidget *w,
 			save_options, FALSE, FALSE, 5);
     }
 
-  switch (gimage_format (gdisplay->gimage))
+    type = tag_to_plugin_image_type (gimage_tag (gdisplay->gimage));
+
+    switch (gimage_format (gdisplay->gimage))
+      {
+      case FORMAT_RGB:
+      case FORMAT_GRAY:
+      case FORMAT_INDEXED:
+	file_update_menus (save_procs, type, gimage_is_layered (gdisplay->gimage));
+	gtk_option_menu_set_history(GTK_OPTION_MENU(option_menu), 0); 
+	save_file_proc = NULL;
+	break;
+      case FORMAT_NONE:
+	g_print("file_save_ok_callback: Cant save FORMAT_NONE");
+	break;
+      }
+
+  gtk_widget_show (save_options);
+
+  file_dialog_show (filesave);
+}
+
+void
+file_save_copy_as_callback (GtkWidget *w,
+		            gpointer   client_data)
+{
+  GtkWidget *hbox;
+  GtkWidget *label;
+  GDisplay *gdisplay;
+  gint type;
+
+  if (!filesave)
     {
-    case FORMAT_RGB:
-      file_update_menus (save_procs, RGB_IMAGE);
-      break;
-    case FORMAT_GRAY:
-      file_update_menus (save_procs, GRAY_IMAGE);
-      break;
-    case FORMAT_INDEXED:
-      file_update_menus (save_procs, INDEXED_IMAGE);
-      break;
-    case FORMAT_NONE:
-      break;
+      filesave = gtk_file_selection_new ("Save Image");
+      gtk_window_set_wmclass (GTK_WINDOW (filesave), "save_image", "Gimp");
+      gtk_window_position (GTK_WINDOW (filesave), GTK_WIN_POS_MOUSE);
+      gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION (filesave)->cancel_button),
+			  "clicked",
+			  GTK_SIGNAL_FUNC (file_dialog_hide),
+			  GTK_OBJECT (filesave));
+      gtk_signal_connect (GTK_OBJECT (filesave),
+			  "delete_event",
+			  GTK_SIGNAL_FUNC (file_dialog_hide),
+			  NULL);
+      gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filesave)->ok_button), 
+	  "clicked", (GtkSignalFunc) file_save_ok_callback, filesave);
+      gtk_quit_add_destroy (1, GTK_OBJECT (filesave));
     }
+  else
+    {
+      gtk_widget_set_sensitive (GTK_WIDGET (filesave), TRUE);
+      if (GTK_WIDGET_VISIBLE (filesave))
+	return;
+
+      gtk_file_selection_set_filename (GTK_FILE_SELECTION(filesave), "./");
+      gtk_window_set_title (GTK_WINDOW (filesave), "Save Image");
+    }
+
+  gdisplay = gdisplay_active ();
+  image_ID = gdisplay->gimage->ID;
+
+  if (!save_options)
+    {
+      save_options = gtk_frame_new ("Save Options");
+      gtk_frame_set_shadow_type (GTK_FRAME (save_options), GTK_SHADOW_ETCHED_IN);
+
+      hbox = gtk_hbox_new (FALSE, 1);
+      gtk_container_border_width (GTK_CONTAINER (hbox), 5);
+      gtk_container_add (GTK_CONTAINER (save_options), hbox);
+      gtk_widget_show (hbox);
+
+      label = gtk_label_new ("Determine file type:");
+      gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, TRUE, 0);
+      gtk_widget_show (label);
+
+      option_menu = gtk_option_menu_new ();
+      gtk_box_pack_start (GTK_BOX (hbox), option_menu, TRUE, TRUE, 0);
+      gtk_widget_show (option_menu);
+
+      menus_get_save_menu (&save_menu, NULL);
+      gtk_option_menu_set_menu (GTK_OPTION_MENU (option_menu), save_menu);
+      gtk_box_pack_end (GTK_BOX (GTK_FILE_SELECTION (filesave)->main_vbox),
+			save_options, FALSE, FALSE, 5);
+    }
+
+    type = tag_to_plugin_image_type (gimage_tag (gdisplay->gimage));
+
+    switch (gimage_format (gdisplay->gimage))
+      {
+      case FORMAT_RGB:
+      case FORMAT_GRAY:
+      case FORMAT_INDEXED:
+	file_update_menus (save_procs, type, gimage_is_layered (gdisplay->gimage));
+	gtk_option_menu_set_history(GTK_OPTION_MENU(option_menu), 0); 
+	save_file_proc = NULL;
+	break;
+      case FORMAT_NONE:
+	g_print("file_save_ok_callback: Cant save FORMAT_NONE");
+	break;
+      }
 
   gtk_widget_show (save_options);
 
@@ -658,24 +817,35 @@ file_update_name (PlugInProcDef *proc, GtkWidget *filesel)
   if (proc->extensions_list)
     {
       char* text = gtk_entry_get_text (GTK_ENTRY(GTK_FILE_SELECTION(filesel)->selection_entry));
-      char* last_dot = strrchr (text, '.');
-      GString *s;
+      if( text )
+	{
+	  char* last_dot = strrchr (text, '.');
+	  GString *s;
 
-      if (last_dot == text || !text[0])
-	return;
+	  if (last_dot == text || !text[0])
+	    return;
 
-      s = g_string_new (text);
+	  s = g_string_new (text);
 
-      if (last_dot)
-	g_string_truncate (s, last_dot-text);
+	  if (last_dot)
+	    g_string_truncate (s, last_dot-text);
 
-      g_string_append (s, ".");
-      g_string_append (s, (char*) proc->extensions_list->data);
+	  g_string_append (s, ".");
+	  g_string_append (s, (char*) proc->extensions_list->data);
+	  gtk_entry_set_text (GTK_ENTRY(GTK_FILE_SELECTION(filesel)->selection_entry), s->str);
 
-      gtk_entry_set_text (GTK_ENTRY(GTK_FILE_SELECTION(filesel)->selection_entry), s->str);
-
-      g_string_free (s, TRUE);
+	  g_string_free (s, TRUE);
+	}
     }
+}
+
+static GString* 
+append_ext (char * string, char *ext)
+{
+  GString *s = g_string_new (string);
+  g_string_append (s, ".");
+  g_string_append (s, (char*) ext);
+  return s;
 }
 
 static void
@@ -698,6 +868,68 @@ file_save_type_callback (GtkWidget *w,
   file_update_name (proc, filesave);
 
   save_file_proc = proc;
+}
+
+int
+file_load (char *filename, char* raw_filename, GDisplay *gdisplay)
+{
+  PlugInProcDef *file_proc;
+  ProcRecord *proc;
+  Argument *args;
+  Argument *return_vals;
+  GImage *gimage;
+  int gimage_ID;
+  int return_val;
+  int i;
+
+  file_proc = load_file_proc;
+  if (!file_proc)
+    file_proc = file_proc_find (load_procs, filename);
+
+  if (!file_proc)
+    {
+      /* WARNING */
+      return FALSE;
+    }
+
+  proc = &file_proc->db_info;
+
+  args = g_new (Argument, proc->num_args);
+  memset (args, 0, (sizeof (Argument) * proc->num_args));
+
+  for (i = 0; i < proc->num_args; i++)
+    args[i].arg_type = proc->args[i].arg_type;
+
+  args[0].value.pdb_int = 0;
+  args[1].value.pdb_pointer = filename;
+  args[2].value.pdb_pointer = raw_filename;
+
+  return_vals = procedural_db_execute (proc->name, args);
+  return_val = (return_vals[0].value.pdb_int == PDB_SUCCESS);
+  gimage_ID = return_vals[1].value.pdb_int;
+
+  procedural_db_destroy_args (return_vals, proc->num_values);
+  g_free (args);
+
+  
+  if ((gimage = gimage_get_ID (gimage_ID)) != NULL)
+    {
+      /*  enable & clear all undo steps  */
+      gimage_enable_undo (gimage);
+
+      /*  set the image to clean  */
+      gimage_clean_all (gimage);
+
+      /*  display the image */
+      gdisplay->gimage = gimage;
+      gimage_set_filename (gimage, filename);
+      
+      gdisplays_update_full (gdisplay->gimage->ID); 
+      gdisplays_update_title (gimage->ID); 
+      
+   }
+
+  return return_val;
 }
 
 int
@@ -741,7 +973,7 @@ file_open (char *filename, char* raw_filename)
   procedural_db_destroy_args (return_vals, proc->num_values);
   g_free (args);
 
-  if ((gimage = gimage_get_ID (gimage_ID)) != NULL)
+  if ((gimage = gimage_get_ID (gimage_ID)) != NULL && !load_image)
     {
       /*  enable & clear all undo steps  */
       gimage_enable_undo (gimage);
@@ -751,10 +983,25 @@ file_open (char *filename, char* raw_filename)
 
       /*  display the image */
       gdisplay_new (gimage, 0x0101);
+  
+      gdisplays_update_title (gimage->ID); 
     }
+
+  else if ((gimage = gimage_get_ID (gimage_ID)) != NULL && load_image)
+    {
+      gimage_add_layer (load_image, gimage->active_layer, -1);
+      gdisplays_update_title (load_image->ID);
+      gdisplays_flush ();
+
+      gimage_delete (gimage); 
+      
+      load_image = NULL; 
+    }
+  
 
   return return_val;
 }
+
 
 int
 file_save (int   image_ID,
@@ -768,18 +1015,42 @@ file_save (int   image_ID,
   int return_val;
   GImage *gimage;
   int i;
+  GString *filename_with_ext;
+  GString *raw_filename_with_ext;
+  char *last_dot;
+  char *extension;
+  Layer *merged_layer; 
+  char temp_filename[250]; 
+  char temp_raw_filename[250]; 
 
+  
+  if(save_layer)
+    image_ID = save_layer_id; 
+  
   if ((gimage = gimage_get_ID (image_ID)) == NULL)
     return FALSE;
-  if (gimage_active_drawable (gimage) == NULL)
+
+  if (save_copy)
+    {
+     merged_layer = gimage_merge_visible_layers (gimage, 0, 1);  
+    
+     layer_remove_alpha (merged_layer); 
+    }
+ 
+  if (gimage_get_active_layer (gimage) == NULL)
     return FALSE;
 
-  file_proc = save_file_proc;
-  if (!file_proc)
-    file_proc = file_proc_find (save_procs, raw_filename);
+  file_proc = file_proc_find (save_procs, raw_filename);
 
   if (!file_proc)
     return FALSE;
+
+ if (gimage_is_layered (gimage) && !save_layer && !save_copy)
+  if (strcmp(file_proc->extensions, "xcf"))
+    {
+      g_message ("Can't save layered image except as xcf Choose Flatten first");
+      return TRUE; 
+    }
 
   proc = &file_proc->db_info;
 
@@ -791,15 +1062,39 @@ file_save (int   image_ID,
 
   args[0].value.pdb_int = 0;
   args[1].value.pdb_int = image_ID;
-  args[2].value.pdb_int = drawable_ID (gimage_active_drawable (gimage));
-  args[3].value.pdb_pointer = filename;
-  args[4].value.pdb_pointer = raw_filename;
+  if (save_copy)
+    args[2].value.pdb_int = drawable_ID (GIMP_DRAWABLE (merged_layer));
+  else
+    args[2].value.pdb_int = drawable_ID (GIMP_DRAWABLE (gimage_get_active_layer(gimage)));
+  if (enable_tmp_saving)
+    {
+      int i; 
+      sprintf (temp_raw_filename, "tmp.%s\0", raw_filename); 
+      sprintf (temp_filename, "%s\0", filename);
+      i = strlen (filename) - strlen (raw_filename); 
+      sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
+      args[3].value.pdb_pointer = temp_filename;
+      args[4].value.pdb_pointer = temp_raw_filename;
+
+    }
+  else
+    {
+      args[3].value.pdb_pointer = filename;
+      args[4].value.pdb_pointer = raw_filename;
+    }
 
   return_vals = procedural_db_execute (proc->name, args);
   return_val = (return_vals[0].value.pdb_int == PDB_SUCCESS);
 
-  if (return_val)
+  if (return_val && !save_layer && !save_copy)
     {
+      /* copy tmp back to real file */
+      if (enable_tmp_saving)
+	{
+	  printf ("%s %s\n", temp_filename, filename); 
+	  rename (temp_filename, filename); 
+	}
+      
       /*  set this image to clean  */
       gimage_clean_all (gimage);
 
@@ -809,10 +1104,29 @@ file_save (int   image_ID,
 
   g_free (return_vals);
   g_free (args);
-
+  save_layer = 0; 
+  save_copy = 0; 
   return return_val;
 }
 
+void
+layer_save (int id)
+{
+ save_layer = 1; 
+ save_layer_id = id; 
+}
+
+void
+save_a_copy ()
+{
+ save_copy = 1; 
+}
+
+void
+layer_load (GImage *gimage)
+{
+  load_image = gimage;
+}
 
 static void
 file_open_ok_callback (GtkWidget *w,
@@ -868,22 +1182,88 @@ file_open_ok_callback (GtkWidget *w,
   g_string_free (s, TRUE);
 }
 
+static int
+file_has_extension (char *filename)
+{
+  char * last_dot = NULL; 
+  last_dot = strrchr (filename, '.');
+  if (last_dot)
+    return TRUE;
+  else
+    return FALSE;
+}
+
+static int 
+file_check_extension (char * filename,
+			char * extension)
+{
+  char * last_dot; 
+  char * ext; 
+  last_dot = strrchr (filename, '.');
+  if (last_dot)
+  {
+    ext = last_dot + 1;
+    return strcmp(ext, extension);
+  }
+  else
+    return FALSE;
+}	
+
+char *
+file_get_filename_with_extension (char *orig_filename)
+{
+  char * filename = NULL;
+
+
+  if (save_file_proc)
+  {
+    if (file_has_extension (orig_filename))
+    { 
+      if (!file_check_extension (orig_filename, save_file_proc->extensions))
+	filename = g_strdup (orig_filename);
+    }
+    else
+      filename = g_strconcat (orig_filename, ".", save_file_proc->extensions, NULL);
+  }
+  else
+  {
+    if (file_has_extension (orig_filename))
+      filename = g_strdup (orig_filename);
+  }
+  return filename;
+}
+
 static void
 file_save_ok_callback (GtkWidget *w,
 		       gpointer   client_data)
 {
   GtkFileSelection *fs;
+  char* orig_filename, *orig_raw_filename;
   char* filename, *raw_filename;
   GString* s;
   struct stat buf;
   int err;
 
   fs = GTK_FILE_SELECTION (client_data);
-  filename = gtk_file_selection_get_filename (fs);
-  raw_filename = gtk_entry_get_text (GTK_ENTRY(fs->selection_entry));
-  err = stat (filename, &buf);
 
-  g_assert (filename && raw_filename);
+  orig_filename = gtk_file_selection_get_filename (fs);
+  orig_raw_filename = gtk_entry_get_text (GTK_ENTRY(fs->selection_entry));
+  
+  filename = file_get_filename_with_extension (orig_filename);
+  raw_filename = file_get_filename_with_extension (orig_raw_filename);
+
+  err = stat (filename, &buf);
+  
+  if (!filename && !raw_filename)
+  {
+    s = g_string_new ("Save failed: ");
+    g_string_append (s, orig_raw_filename);
+    message_box (s->str, file_message_box_close_callback, (void *) fs);
+    if (filename) g_free( filename);
+    if (raw_filename) g_free(raw_filename);
+    g_string_free (s, TRUE);
+    return;
+  }
 
   if (err == 0)
     {
@@ -893,12 +1273,16 @@ file_save_ok_callback (GtkWidget *w,
 	  g_string_append_c (s, '/');
 	  gtk_file_selection_set_filename (fs, s->str);
 	  g_string_free (s, TRUE);
+	  if (filename) g_free( filename);
+	  if (raw_filename) g_free(raw_filename);
 	  return;
 	}
       else if (buf.st_mode & S_IFREG)
 	{
 	  gtk_widget_set_sensitive (GTK_WIDGET (fs), FALSE);
 	  file_overwrite (g_strdup (filename), g_strdup (raw_filename));
+	  if (filename) g_free( filename);
+	  if (raw_filename) g_free(raw_filename);
 	  return;
 	}
       else
@@ -906,12 +1290,17 @@ file_save_ok_callback (GtkWidget *w,
 	  s = g_string_new (NULL);
 	  g_string_sprintf (s, "%s is an irregular file (%s)", raw_filename, g_strerror(errno));
 	}
-    } else {
+    } 
+    else 
+    {
       gtk_widget_set_sensitive (GTK_WIDGET (fs), FALSE);
+	
       if (file_save (image_ID, filename, raw_filename))
 	{
 	  file_dialog_hide (client_data);
 	  gtk_widget_set_sensitive (GTK_WIDGET (fs), TRUE);
+	  if (filename) g_free( filename);
+	  if (raw_filename) g_free(raw_filename);
 	  return;
 	}
       else
@@ -920,19 +1309,23 @@ file_save_ok_callback (GtkWidget *w,
 	  g_string_append (s, raw_filename);
 	}
     }
+
   message_box (s->str, file_message_box_close_callback, (void *) fs);
-
-
   g_string_free (s, TRUE);
+
+  if (filename)
+    g_free( filename);
+  if (raw_filename)
+    g_free(raw_filename);
 }
 
 static void
 file_dialog_show (GtkWidget *filesel)
 {
-  menus_set_sensitive ("<Toolbox>/File/Open", FALSE);
-  menus_set_sensitive ("<Image>/File/Open", FALSE);
-  menus_set_sensitive ("<Image>/File/Save", FALSE);
-  menus_set_sensitive ("<Image>/File/Save as", FALSE);
+  menus_set_sensitive ("<Toolbox>/File/OpenFile", FALSE);
+  menus_set_sensitive ("<Image>/File/OpenFile", FALSE);
+  menus_set_sensitive ("<Image>/File/SaveFile", FALSE);
+  menus_set_sensitive ("<Image>/File/SaveFile as", FALSE);
 
   gtk_widget_show (filesel);
 }
@@ -942,10 +1335,10 @@ file_dialog_hide (GtkWidget *filesel)
 {
   gtk_widget_hide (filesel);
 
-  menus_set_sensitive ("<Toolbox>/File/Open", TRUE);
-  menus_set_sensitive ("<Image>/File/Open", TRUE);
-  menus_set_sensitive ("<Image>/File/Save", TRUE);
-  menus_set_sensitive ("<Image>/File/Save as", TRUE);
+  menus_set_sensitive ("<Toolbox>/File/OpenFile", TRUE);
+  menus_set_sensitive ("<Image>/File/OpenFile", TRUE);
+  menus_set_sensitive ("<Image>/File/SaveFile", TRUE);
+  menus_set_sensitive ("<Image>/File/SaveFile as", TRUE);
 
   return TRUE;
 }
@@ -1072,7 +1465,6 @@ file_proc_find (GSList *procs,
   int head_size = -2, size_match_count = 0;
   int match_val;
   unsigned char head[256];
-
   size_matched_proc = NULL;
 
   extension = strrchr (filename, '.');
@@ -1377,7 +1769,8 @@ static int file_check_magic_list (GSList *magics_list,
 
 static void
 file_update_menus (GSList *procs,
-		   int     image_type)
+		   int     image_type, 
+		   int     is_layered)
 {
   PlugInProcDef *file_proc;
 
@@ -1387,7 +1780,13 @@ file_update_menus (GSList *procs,
       procs = procs->next;
 
       if (file_proc->db_info.proc_type != PDB_EXTENSION)
-	menus_set_sensitive (file_proc->menu_path, (file_proc->image_types_val & image_type));
+	{
+	  if(is_layered && strcmp(file_proc->db_info.name, "gimp_xcf_save"))
+	    menus_set_sensitive (file_proc->menu_path, FALSE);
+	  else 
+	    menus_set_sensitive (file_proc->menu_path, (file_proc->image_types_val & image_type));
+	}
+     
     }
 }
 
@@ -1414,6 +1813,7 @@ file_save_invoker (Argument *args)
   PlugInProcDef *file_proc;
   ProcRecord *proc;
   int i;
+  char temp_filename[255], temp_raw_filename[255], filename[255];  
 
   file_proc = file_proc_find (save_procs, args[4].value.pdb_pointer);
   if (!file_proc)
@@ -1429,7 +1829,29 @@ file_save_invoker (Argument *args)
 
   memcpy(new_args, args, (sizeof (Argument) * 5));
 
+  if (enable_tmp_saving)
+    {
+      strcpy (filename, new_args[4].value.pdb_pointer); 
+      i = strlen (filename) - 1; 
+      while (filename[i] != '/')
+	  i --;
+	 
+     i ++;  
+      sprintf (temp_raw_filename, "tmp.%s\0", &(filename[i])); 
+      sprintf (temp_filename, "%s\0", new_args[3].value.pdb_pointer);
+      i = strlen (new_args[3].value.pdb_pointer) - strlen (&(filename[i])); 
+      sprintf (&(temp_filename[i]), "%s\0", temp_raw_filename);
+      new_args[3].value.pdb_pointer = temp_filename;
+      new_args[4].value.pdb_pointer = temp_raw_filename;
+
+    }
+
   return_vals = procedural_db_execute (proc->name, new_args);
+  
+  if (enable_tmp_saving)
+        {
+	  rename (temp_filename, args[3].value.pdb_pointer);
+	}
   g_free (new_args);
 
   return return_vals;
@@ -1444,10 +1866,13 @@ file_temp_name_invoker (Argument *args)
 
   GString *s = g_string_new (NULL);
 
+
   if (id == 0)
     pid = getpid();
 
-  g_string_sprintf (s, "%s/gimp_temp.%d%d.%s", temp_path, pid, id++, (char*)args[0].value.pdb_pointer);
+  g_string_sprintf (s, "%s/gimp_temp.%d%d.%s", temp_path, pid, 
+      id++, (char*)args[0].value.pdb_pointer);
+
 
   return_args = procedural_db_return_args (&file_temp_name_proc, TRUE);
 
@@ -1456,4 +1881,120 @@ file_temp_name_invoker (Argument *args)
   g_string_free (s, FALSE);
 
   return return_args;
+}
+
+static void
+file_reload_warning_callback (GtkWidget *w,
+                                 gpointer   client_data)
+{
+
+  GImage *gimage;
+  GtkWidget *mbox;
+  GSList *list;
+  GSList *list2;
+  Channel *channel;
+  Channel *channel2;
+
+ int i; 
+  Layer *layer, *layer2; 
+  
+  menus_set_sensitive ("<Image>/File/Reload", TRUE);
+  mbox = (GtkWidget *) client_data;
+  /*gdisplay = (GDisplay *) gtk_object_get_user_data (GTK_OBJECT (mbox));
+  */
+  gimage = cur_gdisplay->gimage;
+
+  file_load (cur_gdisplay->gimage->filename,
+	prune_filename (gimage_filename(cur_gdisplay->gimage)), cur_gdisplay);
+
+  if (enable_channel_revert)
+    {
+      list = cur_gdisplay->gimage->channels;
+      list2 = gimage->channels;
+      while (list && list2)
+	{
+	  channel = (Channel *) list->data;
+	  channel2 = (Channel *) list2->data;
+	  if (!strcmp(gimage->active_channel->drawable.name, channel->drawable.name))
+	    cur_gdisplay->gimage->active_channel = channel; 
+
+
+	  if (!strcmp(channel2->drawable.name, channel->drawable.name))
+	    {
+	      if (channel2->drawable.visible)
+		channel->drawable.visible = 1;  
+	    }
+
+
+	  list = g_slist_next (list); 
+	  list2 = g_slist_next (list2); 
+	}
+
+      list = cur_gdisplay->gimage->layers;
+      list2 = gimage->layers;
+      while (list && list2)
+	{
+	  layer = (Layer*) list->data;
+	  layer2 = (Layer*) list2->data;
+
+	  if (layer && layer2)
+	    {
+	      if (!strcmp(layer2->drawable.name, layer->drawable.name))
+		{
+		  if (layer2->drawable.visible)
+		    layer->drawable.visible = 1;
+		  else
+		    layer->drawable.visible = 0; 
+		}
+
+	      list = g_slist_next (list);
+	      list2 = g_slist_next (list2);
+	    }
+	}
+
+      for (i=0; i<MAX_CHANNELS; i++)
+	cur_gdisplay->gimage->visible[i] = gimage->visible[i];
+
+      if (gimage->active_layer->mask && cur_gdisplay->gimage->active_layer->mask)  
+	if (!strcmp(gimage->active_layer->mask->drawable.drawable.name, 
+	      cur_gdisplay->gimage->active_layer->mask->drawable.drawable.name))
+	  {
+	    if (gimage->active_layer->mask->drawable.drawable.visible)
+	      cur_gdisplay->gimage->active_layer->mask->drawable.drawable.visible = 1;
+	    else
+	      cur_gdisplay->gimage->active_layer->mask->drawable.drawable.visible = 0;
+	  }
+    }
+
+  /* image channels */
+  gimage_delete (gimage);
+
+  cur_gdisplay->ID = cur_gdisplay->gimage->ID;
+
+  gtk_widget_destroy (mbox);
+  warning_dialog = NULL; 
+
+}
+
+static void
+file_reload_cancel_warning_callback (GtkWidget *w,
+                                  gpointer   client_data)
+{
+  GtkWidget *mbox;
+  menus_set_sensitive ("<Image>/File/Reload", TRUE);
+  mbox = (GtkWidget *) client_data;
+  gtk_widget_destroy (mbox);
+  warning_dialog = NULL; 
+}
+
+void
+file_tmp_save (int flag)
+{
+  tmp_save = flag;   
+}
+
+void
+file_channel_revert (int flag)
+{
+  channel_revert = flag;   
 }

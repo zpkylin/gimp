@@ -8,8 +8,10 @@ dnl $Format: "GIMP_MINOR_VERSION=$ReleaseMinorVersion$" $
 GIMP_MINOR_VERSION=0
 dnl $Format: "GIMP_MICRO_VERSION=$ReleaseMicroVersion$" $
 GIMP_MICRO_VERSION=4
+dnl $Format: "GIMP_RNH_VERSION=$ReleaseRNHVersion$" $
+GIMP_RNH_VERSION=9
 
-GIMP_VERSION=$GIMP_MAJOR_VERSION.$GIMP_MINOR_VERSION.$GIMP_MICRO_VERSION
+GIMP_VERSION=$GIMP_MAJOR_VERSION.$GIMP_MINOR_VERSION.$GIMP_MICRO_VERSION.$GIMP_RNH_VERSION
 
 dnl $Format: "AM_INIT_AUTOMAKE(gimp, $ReleaseVersion$)" $
 AM_INIT_AUTOMAKE(gimp, $GIMP_VERSION, no-define)
@@ -58,7 +60,7 @@ fi)
 
 AC_DEFUN(AC_GIMP_CHECK,
 [
-	AM_PATH_GTK(1.2.0,,
+	AM_PATH_GTK(1.2.8,,
  	  AC_MSG_ERROR(Test for GTK failed. See the file 'INSTALL' for help.))
         X_LIBS=$GTK_LIBS
         X_CFLAGS=$GTK_CFLAGS
@@ -338,8 +340,8 @@ CPPFLAGS="$gimp_save_CPPFLAGS"
 LDFLAGS="$gimp_save_LDFLAGS"
 LIBS="$gimp_save_LIBS"
 
-gimpdatadir=$datadir/gimp
-gimpplugindir=$libdir/$PACKAGE/$GIMP_MAJOR_VERSION.$GIMP_MINOR_VERSION
+gimpdatadir=$datadir
+gimpplugindir=$datadir
 
 brushdata=`ls -1 $srcdir/data/brushes | grep -v Makefile`
 gradientdata=`ls -1 $srcdir/data/gradients | grep -v Makefile`
@@ -420,6 +422,7 @@ AM_CONDITIONAL(STATICLIBS, test x$enable_static = xyes)
 AC_SUBST(GIMP_MAJOR_VERSION)
 AC_SUBST(GIMP_MINOR_VERSION)
 AC_SUBST(GIMP_MICRO_VERSION)
+AC_SUBST(GIMP_RNH_VERSION)
 AC_SUBST(GIMP_VERSION)
 
 AC_SUBST(precision)
@@ -463,14 +466,14 @@ gimptool
 libgimp/gimpfeatures.h
 libgimp/Makefile
 plug-ins/Makefile
-plug-ins/build
+plug-ins/compose/Makefile
+plug-ins/dbbrowser/Makefile
+plug-ins/decompose/Makefile
 plug-ins/gbr/Makefile
-plug-ins/tiff/Makefile
 plug-ins/sgi/Makefile
-plug-ins/pat/Makefile
 plug-ins/script-fu/Makefile
 plug-ins/script-fu/scripts/Makefile
-plug-ins/dbbrowser/Makefile
+plug-ins/tiff/Makefile
 app/Makefile
 docs/Makefile,
 chmod +x gimptool

@@ -2588,6 +2588,7 @@ CR_convert (Iscissors *iscissors,
   PixelArea maskPR;
   unsigned char *buf, *b;
   GimpDrawable *drawable;
+  PixelRow row;
   
   drawable = gimage_active_drawable(gdisp->gimage);
   vals = NULL;
@@ -2688,7 +2689,9 @@ CR_convert (Iscissors *iscissors,
 
 	      *b++ = (unsigned char) (val / SUPERSAMPLE2);
 	    }
-	  /* pixelarea_write_row (&maskPR, offx, (i / SUPERSAMPLE)+offy, drawable_width (GIMP_DRAWABLE (iscissors->mask))-offx, buf); */
+
+          /*FIXME: need to initialize the row with buf data */
+	  pixelarea_write_row (&maskPR, &row, offx, (i / SUPERSAMPLE)+offy, drawable_width (GIMP_DRAWABLE (iscissors->mask))-offx);
 	}
 
       g_slist_free (CR_scanlines[i]);

@@ -20,13 +20,16 @@
 #include <string.h>
 #include "appenv.h"
 #include "actionarea.h"
+#include "canvas.h"
 #include "colormaps.h"
 #include "info_dialog.h"
 #include "info_window.h"
+#include "float16.h"
 #include "gdisplay.h"
 #include "general.h"
 #include "gximage.h"
 #include "interface.h"
+#include "tag.h"
 
 #define MAX_BUF 256
 
@@ -39,6 +42,8 @@ struct _InfoWinData
   char visual_class_str[MAX_BUF];
   char visual_depth_str[MAX_BUF];
   char shades_str[MAX_BUF];
+  char xy_values_str[MAX_BUF];
+  char xy_color_values_str[MAX_BUF];
 };
 
 /*  The different classes of visuals  */
@@ -154,10 +159,13 @@ info_window_create (void *gdisp_ptr)
   iwd->visual_class_str[0] = '\0';
   iwd->visual_depth_str[0] = '\0';
   iwd->shades_str[0] = '\0';
+  iwd->xy_values_str[0] = '\0';
+  iwd->xy_color_values_str[0] = '\0';
 
   /*  add the information fields  */
   info_dialog_add_field (info_win, "Dimensions (w x h): ", iwd->dimensions_str);
   info_dialog_add_field (info_win, "Scale Ratio: ", iwd->scale_str);
+#if 0
   info_dialog_add_field (info_win, "Display Type: ", iwd->color_type_str);
   info_dialog_add_field (info_win, "Visual Class: ", iwd->visual_class_str);
   info_dialog_add_field (info_win, "Visual Depth: ", iwd->visual_depth_str);
@@ -167,6 +175,9 @@ info_window_create (void *gdisp_ptr)
     info_dialog_add_field (info_win, "Shades: ", iwd->shades_str);
   else if (format == FORMAT_GRAY)
     info_dialog_add_field (info_win, "Shades of Gray: ", iwd->shades_str);
+#endif
+  info_dialog_add_field (info_win, "(x,y): ", iwd->xy_values_str);
+  info_dialog_add_field (info_win, "Value at xy: ", iwd->xy_color_values_str);
 
   /*  update the fields  */
   info_window_update (info_win, gdisp_ptr);
@@ -183,6 +194,200 @@ info_window_free (InfoDialog *info_win)
 {
   g_free (info_win->user_data);
   info_dialog_free (info_win);
+}
+
+void
+info_window_update_xy (InfoDialog *info_win,
+		    void       *gdisp_ptr,
+		    int x,
+		    int y)
+{
+  GDisplay *gdisp = (GDisplay *) gdisp_ptr;
+  InfoWinData *iwd = (InfoWinData *) info_win->user_data;
+  Format format;
+  Canvas *c;
+  Canvas *channel_canvas = NULL;
+  guchar *d;
+  guchar *channel_data; 
+  gint has_matte = FALSE;
+  Alpha alpha;
+  Tag tag;
+  ShortsFloat u, v, s, t;
+  gint offset_x, offset_y;
+  Channel *channel = NULL;
+  Channel *active_channel = gimage_get_active_channel(gdisp->gimage);
+  Layer *active_layer = gimage_get_active_layer (gdisp->gimage);  
+  GimpDrawable *drawable = NULL;
+  GimpDrawable *channel_drawable = NULL;
+
+  /* (x,y) */
+  sprintf (iwd->xy_values_str, "%d, %d",
+	   (int)x, (int)y);
+  
+  sprintf (iwd->xy_color_values_str, "");
+
+  if (active_channel)
+  {
+    drawable = GIMP_DRAWABLE (active_channel);
+  }
+  else if (active_layer) 
+  {
+    GSList * channels_list = gimage_channels (gdisp->gimage); 
+    drawable = GIMP_DRAWABLE (active_layer);
+    if (channels_list)
+      {
+	channel = (Channel *)(channels_list->data);
+	if (channel)
+	   channel_drawable = GIMP_DRAWABLE(channel); 
+      }
+  }
+  else
+    return;
+ 
+  if (drawable) 
+   {
+    c = drawable_data(drawable);
+     if (channel_drawable)
+       channel_canvas = drawable_data(channel_drawable);
+   }
+  else
+    {
+      sprintf (iwd->xy_color_values_str, "");
+      return;
+    }
+  
+  
+  tag = drawable_tag (drawable);
+  format = tag_format (tag);
+  alpha = tag_alpha (tag);
+
+  drawable_offsets (drawable, &offset_x, &offset_y);
+  
+  /* color_values */
+  if ( x >= 0 && x < gdisp->gimage->width && 
+       y >= 0 && y < gdisp->gimage->height )
+  {
+	
+  d = canvas_portion_data (c, x-offset_x, y-offset_y);
+  if (channel_drawable)
+       channel_data = canvas_portion_data(channel_canvas, x, y);
+
+  if (!d)
+    {
+      sprintf (iwd->xy_color_values_str, "");
+      return;
+    }
+
+  switch (tag_precision (tag))
+    {
+    case PRECISION_U8:
+      {
+	guint8* data = (guint8*)d;
+	if (format == FORMAT_RGB)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%3d, %3d, %3d, %3d",
+		 (int)data[0], (int)data[1], (int)data[2], (int)data[3]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%3d, %3d, %3d",
+		 (int)data[0], (int)data[1], (int)data[2]);
+	else if (format == FORMAT_GRAY)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%3d, %3d",
+		 (int)data[0], (int)data[1]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%3d",
+		 (int)data[0]);
+	else if (format == FORMAT_INDEXED)
+	  sprintf (iwd->xy_color_values_str, "");
+      }
+      break;
+      
+    case PRECISION_U16:
+      {
+	guint16* data = (guint16*)d;
+	if (format == FORMAT_RGB)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%d, %d, %d, %d",
+		 (int)data[0], (int)data[1], (int)data[2], (int)data[3]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%d, %d, %d",
+		 (int)data[0], (int)data[1], (int)data[2]);
+	else if (format == FORMAT_GRAY)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%d, %d",
+		 (int)data[0], (int)data[1]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%d",
+		 (int)data[0]);
+	else if (format == FORMAT_INDEXED)
+	  sprintf (iwd->xy_color_values_str, "");
+      }
+      break;
+
+    case PRECISION_FLOAT:
+      {
+	gfloat* data = (gfloat*)d;
+	if (format == FORMAT_RGB)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%f, %f, %f, %f",
+		 data[0], data[1], data[2], data[3]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%f, %f, %f",
+		 data[0], data[1], data[2]);
+	else if (format == FORMAT_GRAY)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%f, %f",
+		 data[0], data[1]);
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%f",
+		 data[0]);
+      }
+      break;
+
+    case PRECISION_FLOAT16:
+      {
+	guint16* data = (guint16*)d;
+	if (format == FORMAT_RGB)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%f, %f, %f, %f",
+		 FLT (data[0],u), FLT (data[1],v), FLT (data[2],s), FLT (data[3],t) );
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%f, %f, %f",
+		 FLT (data[0], u), FLT (data[1], v), FLT (data[2], s));
+	else if (format == FORMAT_GRAY)
+#if 0
+	  if (alpha == ALPHA_YES)
+	    sprintf (iwd->xy_color_values_str, "%f, %f",
+		 FLT (data[0], u), FLT (data[1], s));
+	  else
+#endif
+	    sprintf (iwd->xy_color_values_str, "%f",
+		 FLT (data[0], u));
+      }
+      break;
+    case PRECISION_NONE:
+      g_warning ("info_window_update_xy: bad precision");
+      break;
+    }
+  }
+  else 
+    sprintf (iwd->xy_color_values_str, "");
+
+  info_dialog_update (info_win);
 }
 
 void
@@ -226,6 +431,10 @@ info_window_update (InfoDialog *info_win,
 
   /*  pure color shades  */
   get_shades (gdisp, iwd->shades_str);
-
+#if 0  
+  /*  xy_color_values  */
+  sprintf (iwd->xy_color_values_str, "%d, %d, %d, %d",
+	   (int)0, (int)0, (int)0, (int)0 );
+#endif
   info_dialog_update (info_win);
 }

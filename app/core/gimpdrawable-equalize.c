@@ -21,6 +21,7 @@
 #include "appenv.h"
 #include "drawable.h"
 #include "equalize.h"
+#include "float16.h"
 #include "interface.h"
 #include "gimage.h"
 #include "paint_funcs_area.h"
@@ -38,6 +39,7 @@ image_equalize (gimage_ptr)
   GImage *gimage;
   GimpDrawable *drawable;
   int mask_only = TRUE;
+  
 
   gimage = (GImage *) gimage_ptr;
   drawable = gimage_active_drawable (gimage);
@@ -50,7 +52,6 @@ image_equalize (gimage_ptr)
   equalize (gimage, drawable, mask_only);
 }
 
-
 static void
 equalize(gimage, drawable, mask_only)
      GImage *gimage;
@@ -61,25 +62,27 @@ equalize(gimage, drawable, mask_only)
   PixelArea srcPR, destPR, maskPR, *sel_maskPR;
   double hist[3][256];
   unsigned char lut[3][256];
-  unsigned char *src, *s;
-  unsigned char *dest, *d;
-  unsigned char *mask, *m;
+  guchar *src, *dest, *mask;
   int no_mask;
-  int h, j, b;
+  int w, h, j, b;
   int has_alpha;
-  int alpha, bytes;
+  int alpha;
   int off_x, off_y;
   int x1, y1, x2, y2;
   double count;
   void *pr;
-
+  Tag tag = drawable_tag (drawable);
+  gint src_num_channels = tag_num_channels (tag);
+  gint dest_num_channels = tag_num_channels (tag);
+  gint src_rowstride = 0;
+  gint mask_rowstride = 0;
+  gint dest_rowstride = 0;
   mask = NULL;
 
   sel_mask = gimage_get_mask (gimage);
   drawable_offsets (drawable, &off_x, &off_y);
-  bytes = drawable_bytes (drawable);
   has_alpha = drawable_has_alpha (drawable);
-  alpha = has_alpha ? (bytes - 1) : bytes;
+  alpha = has_alpha ? (src_num_channels - 1) : src_num_channels;
   count = 0.0;
 
   /*  Determine the histogram from the drawable data and the attendant mask  */
@@ -107,45 +110,147 @@ equalize(gimage, drawable, mask_only)
        pr != NULL;
        pr = pixelarea_process (pr))
     {
-#define FIXME
-#if 0
-      src = srcPR.data;
+      src = pixelarea_data (&srcPR);
+      src_rowstride = pixelarea_rowstride (&srcPR);
       if (sel_maskPR)
-	mask = sel_maskPR->data;
-      h = srcPR.h;
+	{
+	  mask = pixelarea_data (sel_maskPR);
+	  mask_rowstride = pixelarea_rowstride (&maskPR);
+	}
+      h = pixelarea_height (&srcPR);
 
       while (h--)
 	{
-	  s = src;
-	  m = mask;
+	  w = pixelarea_width (&srcPR);
 
-	  for (j = 0; j < srcPR.w; j++)
-	    {
-	      if (sel_maskPR)
-		{
-		  for (b = 0; b < alpha; b++)
-		    hist[b][s[b]] += (double) *m / 255.0;
-		  count += (double) *m / 255.0;
-		}
-	      else
-		{
-		  for (b = 0; b < alpha; b++)
-		    hist[b][s[b]] += 1.0;
-		  count += 1.0;
-		}
-
-	      s += bytes;
-
-	      if (sel_maskPR)
-		m ++;
-	    }
-
-	  src += srcPR.rowstride;
+	  switch (tag_precision (tag))
+	    { 
+	    case PRECISION_U8:
+	      {
+		guint8 *s = (guint8*)src;
+		guint8* m = (guint8*)mask;
+		for (j = 0; j < w; j++)
+		  {
+		    if (sel_maskPR)
+		      {
+			for (b = 0; b < alpha; b++)
+			  hist[b][s[b]] += (double) *m / 255.0;
+			count += (double) *m / 255.0;
+		      }
+		    else
+		      {
+			for (b = 0; b < alpha; b++)
+			  hist[b][s[b]] += 1.0;
+			count += 1.0;
+		      }
+		    s += src_num_channels; 
+		    if (sel_maskPR)
+		      m ++;
+		  }
+	      }
+	      break;
+	    case PRECISION_U16:
+	      {
+		gint value_bin;
+		guint16 *s = (guint16*)src;
+		guint16* m = (guint16*)mask;
+		for (j = 0; j < w; j++)
+		  {
+		    if (sel_maskPR)
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+		            value_bin = s[b]/256;
+			    hist[b][value_bin] += (double) *m / 65535.0;
+			  }
+			count += (double) *m / 65535.0;
+		      }
+		    else
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+			    value_bin = s[b]/256; 
+			    hist[b][value_bin] += 1.0;
+			  }
+			count += 1.0;
+		      }
+		    s += src_num_channels; 
+		    if (sel_maskPR)
+		      m ++;
+		  }
+	      }
+	      break;
+	    case PRECISION_FLOAT:
+	      {
+		gint value_bin;
+		gfloat *s = (gfloat*)src;
+		gfloat *m = (gfloat*)mask;
+		for (j = 0; j < w; j++)
+		  {
+		    if (sel_maskPR)
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+		            value_bin = (int) (s[b] * 255); 
+			    hist[b][value_bin] += (double) *m;
+			  }
+			count += (double) *m;
+		      }
+		    else
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+		            value_bin = (int) (s[b] * 255); 
+			    hist[b][value_bin] += 1.0;
+			  }
+			count += 1.0;
+		      }
+		    s += src_num_channels; 
+		    if (sel_maskPR)
+		      m ++;
+		  }
+	      }
+	      break;
+	    case PRECISION_FLOAT16:
+	      {
+		gint value_bin;
+		ShortsFloat u;
+		guint16 *s = (guint16*)src;
+		guint16 *m = (guint16*)mask;
+		for (j = 0; j < w; j++)
+		  {
+		    if (sel_maskPR)
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+		            value_bin = (int) (FLT(s[b], u) * 255); 
+			    hist[b][value_bin] += (double) *m;
+			  }
+			count += (double) *m;
+		      }
+		    else
+		      {
+			for (b = 0; b < alpha; b++)
+			  {
+		            value_bin = (int) (FLT (s[b], u) * 255); 
+			    hist[b][value_bin] += 1.0;
+			  }
+			count += 1.0;
+		      }
+		    s += src_num_channels; 
+		    if (sel_maskPR)
+		      m ++;
+		  }
+	      }
+	      break;
+	     default:
+	      return;
+	    }	
+	  src += src_rowstride;
 
 	  if (sel_maskPR)
-	    mask += sel_maskPR->rowstride;
+	    mask += mask_rowstride;
 	}
-#endif
     }
 
   /* Build equalization LUT */
@@ -166,39 +271,111 @@ equalize(gimage, drawable, mask_only)
        pr != NULL;
        pr = pixelarea_process (pr))
     {
-#define FIXME
-#if 0
-      src = srcPR.data;
-      dest = destPR.data;
-      h = srcPR.h;
+      src = pixelarea_data (&srcPR);
+      dest = pixelarea_data (&destPR);
+      src_rowstride = pixelarea_rowstride (&srcPR);
+      dest_rowstride = pixelarea_rowstride (&destPR);
+      h = pixelarea_height (&srcPR);
 
       while (h--)
 	{
-	  s = src;
-	  d = dest;
 
-	  for (j = 0; j < srcPR.w; j++)
-	    {
-	      for (b = 0; b < alpha; b++)
-		d[b] = lut[b][s[b]];
+	  w = pixelarea_width (&srcPR);
+	  switch (tag_precision (tag))
+	    { 
+	    case PRECISION_U8:
+	      {
+		guint8 *s = (guint8*)src;
+		guint8* d = (guint8*)dest;
+		for (j = 0; j < w; j++)
+		  {
+		    for (b = 0; b < alpha; b++)
+		      d[b] = lut[b][s[b]];
 
-	      if (has_alpha)
-		d[alpha] = s[alpha];
+		    if (has_alpha)
+		      d[alpha] = s[alpha];
 
-	      s += bytes;
-	      d += bytes;
-	    }
+		    s += src_num_channels;
+		    d += dest_num_channels;
+		  }
+	      }
+	      break;
+	    case PRECISION_U16:
+	      {
+		gint value_bin;
+		guint16 *s = (guint16*)src;
+		guint16* d = (guint16*)dest;
+		for (j = 0; j < w; j++)
+		  {
+		    for (b = 0; b < alpha; b++)
+		      {
+			value_bin = s[b]/256;
+		        d[b] = 257 * lut[b][value_bin];
+		      }
 
-	  src += srcPR.rowstride;
-	  dest += destPR.rowstride;
+		    if (has_alpha)
+		      d[alpha] = s[alpha];
+
+		    s += src_num_channels;
+		    d += dest_num_channels;
+		  }
+	      }
+	      break;
+	    case PRECISION_FLOAT:
+	      {
+		gint value_bin;
+		gfloat *s = (gfloat*)src;
+		gfloat *d = (gfloat*)dest;
+		for (j = 0; j < w; j++)
+		  {
+		    for (b = 0; b < alpha; b++)
+		      {
+			value_bin = (gint)(s[b] * 255);
+		        d[b] = lut[b][value_bin] / 255.0;
+		      }
+
+		    if (has_alpha)
+		      d[alpha] = s[alpha];
+
+		    s += src_num_channels;
+		    d += dest_num_channels;
+		  }
+	      }
+	      break;
+	    case PRECISION_FLOAT16:
+	      {
+		ShortsFloat u;
+		gint value_bin;
+		guint16 *s = (guint16*)src;
+		guint16 *d = (guint16*)dest;
+		for (j = 0; j < w; j++)
+		  {
+		    for (b = 0; b < alpha; b++)
+		      {
+			value_bin = (gint)(FLT(s[b], u) * 255);
+		        d[b] = FLT16 (lut[b][value_bin] / 255.0, u);
+		      }
+
+		    if (has_alpha)
+		      d[alpha] = s[alpha];
+
+		    s += src_num_channels;
+		    d += dest_num_channels;
+		  }
+	      }
+	      break;
+	     default:
+	      return;
+	    }	
+
+	  src += src_rowstride;
+	  dest += dest_rowstride;
 	}
-#endif
     }
 
   drawable_merge_shadow (drawable, TRUE);
   drawable_update (drawable, x1, y1, (x2 - x1), (y2 - y1));
 }
-
 
 /*****/
 

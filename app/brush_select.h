@@ -18,9 +18,11 @@
 #ifndef  __BRUSH_SELECT_H__
 #define  __BRUSH_SELECT_H__
 
+#include "procedural_db.h"
 #include "buildmenu.h"
+#include "gimpbrush.h"
 
-typedef struct _BrushSelect _BrushSelect, *BrushSelectP;
+typedef struct _BrushSelect BrushSelect, *BrushSelectP;
 
 struct _BrushSelect {
   GtkWidget *shell;
@@ -29,9 +31,15 @@ struct _BrushSelect {
   GtkWidget *brush_name;
   GtkWidget *brush_size;
   GtkWidget *options_box;
+  GtkWidget *noise_options_box;
   GtkAdjustment *opacity_data;
   GtkAdjustment *spacing_data;
+  GtkAdjustment *noise_freq_data;
+  GtkAdjustment *noise_step_start_data;
+  GtkAdjustment *noise_step_width_data;
   GtkAdjustment *sbar_data;
+  GtkWidget *edit_button;
+  GtkWidget *option_menu;
   int width, height;
   int cell_width, cell_height;
   int scroll_offset;
@@ -39,13 +47,47 @@ struct _BrushSelect {
   /*  Brush preview  */
   GtkWidget *brush_popup;
   GtkWidget *brush_preview;
+  /* Call back function name */
+  gchar * callback_name;
+  /* current brush */
+  GimpBrushP brush; 
+  /* Stuff for current selection */
+  int old_row;
+  int old_col;
+  gdouble opacity_value;
+  gint spacing_value;
+  gdouble noise_freq_value;
+  gdouble noise_freq_variation;
+  gdouble noise_step_start_value;
+  gdouble noise_step_width_value;
+  gint paint_mode;
+  /* To calc column pos. */
+  gint NUM_BRUSH_COLUMNS;
+  gint NUM_BRUSH_ROWS;
 };
 
-BrushSelectP  brush_select_new     (void);
+BrushSelectP  brush_select_new     (gchar *, gchar *, gdouble, 
+					gint, gdouble, gdouble, gdouble, gint);
 void          brush_select_select  (BrushSelectP, int);
 void          brush_select_free    (BrushSelectP);
+void          brush_change_callbacks (BrushSelectP,gint);
+void          brushes_check_dialogs(void);
 
 /*  An interface to other dialogs which need to create a paint mode menu  */
-GtkWidget *   create_paint_mode_menu (MenuItemCallback);
+GtkWidget *   create_paint_mode_menu (MenuItemCallback, gpointer);
+
+/* Convert row of brush to 8bit display */
+typedef void  (*DisplayBrushGetRowFunc) (guchar *, Canvas *, gint, gint, gint);
+DisplayBrushGetRowFunc display_brush_get_row_funcs (Tag t);
+void display_brush_get_row_u8     (guchar *, Canvas *, gint, gint, gint);
+void display_brush_get_row_u16    (guchar *, Canvas *, gint, gint, gint);
+void display_brush_get_row_float  (guchar *, Canvas *, gint, gint, gint);
+void display_brush_get_row_float16  (guchar *, Canvas *, gint, gint, gint);
+
+/* PDB entry */
+extern ProcRecord brushes_popup_proc;
+extern ProcRecord brushes_close_popup_proc;
+extern ProcRecord brushes_set_popup_proc;
+extern ProcRecord brushes_get_brush_data_proc;
 
 #endif  /*  __BRUSH_SELECT_H__  */

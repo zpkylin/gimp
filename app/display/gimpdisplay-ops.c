@@ -93,7 +93,7 @@ gdisplay_close_window (GDisplay *gdisp,
    *  to an image canvas.  (a gimage with ref_count = 1)
    */
   if (!kill_it && (gdisp->gimage->ref_count == 1) &&
-      (gdisp->gimage->dirty > 0) && confirm_on_close )
+      (gdisp->gimage->dirty != 0) && confirm_on_close )
     gdisplay_close_warning_dialog (prune_filename (gimage_filename (gdisp->gimage)), gdisp);
   else
     {

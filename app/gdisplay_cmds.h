@@ -22,6 +22,7 @@
 
 extern ProcRecord gdisplay_new_proc;
 extern ProcRecord gdisplay_delete_proc;
+extern ProcRecord gdisplays_delete_image_proc;
 extern ProcRecord gdisplay_update_proc;
 extern ProcRecord gdisplays_flush_proc;
 

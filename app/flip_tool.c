@@ -243,11 +243,10 @@ flip_tool_flip_horz (GImage      *gimage,
   Canvas *new;
   PixelArea srcPR, destPR;
   int i;
-
   if (!orig)
     return NULL;
 
-  new = canvas_new (canvas_tag (orig),
+  new = canvas_new (drawable_tag (drawable),
                     canvas_width (orig), canvas_height (orig),
                     STORAGE_TILED);
 
@@ -302,7 +301,7 @@ flip_tool_flip_vert (GImage      *gimage,
   if (!orig)
     return NULL;
 
-  new = canvas_new (canvas_tag (orig),
+  new = canvas_new (drawable_tag (drawable),
                     canvas_width (orig), canvas_height (orig),
                     STORAGE_TILED);
 

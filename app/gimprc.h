@@ -27,11 +27,14 @@ extern char *    plug_in_path;
 extern char *    temp_path;
 extern char *    swap_path;
 extern char *    brush_path;
+extern char *    brush_vbr_path;
 extern char *    default_brush;
 extern char *    pattern_path;
 extern char *    default_pattern;
 extern char *    palette_path;
+extern char *    frame_manager_path;
 extern char *    default_palette;
+extern char *    default_frame_manager;
 extern char *    gradient_path;
 extern char *    default_gradient;
 extern char *    pluginrc_path;
@@ -68,6 +71,10 @@ extern int       show_tool_tips;
 extern float     monitor_xres;
 extern float     monitor_yres;
 extern int       using_xserver_resolution;
+extern int       enable_rgbm_painting;
+extern int       enable_paste_c_disp;
+extern int       enable_tmp_saving;
+extern int       enable_channel_revert;
 
 /*  function prototypes  */
 char *  gimp_directory (void);

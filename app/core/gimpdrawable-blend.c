@@ -41,6 +41,13 @@
 #include "canvas.h"
 #include "paint_funcs_area.h"
 
+#include "float16.h"
+
+
+#define IM_FILM_LOOKUP_START 14862
+#define IM_FILM_LOOKUP_END 16726
+
+extern unsigned char IM_Film8bitLookup[]; 
 
 /*  target size  */
 #define  TARGET_HEIGHT     15
@@ -64,7 +71,9 @@ typedef enum
   ConicalAsymmetric,
   ShapeburstAngular,
   ShapeburstSpherical,
-  ShapeburstDimpled
+  ShapeburstDimpled,
+  Log,
+  FilmLog
 } GradientType;
 
 typedef enum
@@ -123,15 +132,12 @@ typedef struct {
   RepeatFunc   repeat_func;
 } RenderBlendData;
 
-#define FIXME
-#if 0
 typedef struct {
   PixelArea     *PR;
   unsigned char *row_data;
   int            bytes;
   int            width;
 } PutPixelData;
-#endif
 
 /*  local function prototypes  */
 static void   blend_scale_update        (GtkAdjustment *, double *);
@@ -167,6 +173,10 @@ static double gradient_calc_square_factor                (double dist, double of
 static double gradient_calc_radial_factor   	         (double dist, double offset,
 							  double x, double y);
 static double gradient_calc_linear_factor   	         (double dist, double *vec,
+							  double x, double y);
+static double gradient_calc_log_factor   	         (double dist, double *vec,
+							  double x, double y);
+static double gradient_calc_film_log_factor   	         (double dist, double *vec,
 							  double x, double y);
 static double gradient_calc_bilinear_factor 	         (double dist, double *vec, double offset,
 							  double x, double y);
@@ -221,9 +231,13 @@ static MenuItem gradient_option_items[] =
   { "Square", 0, 0, gradient_type_callback, (gpointer) Square, NULL, NULL },
   { "Conical (symmetric)", 0, 0, gradient_type_callback, (gpointer) ConicalSymmetric, NULL, NULL },
   { "Conical (asymmetric)", 0, 0, gradient_type_callback, (gpointer) ConicalAsymmetric, NULL, NULL },
+  { "Log", 0, 0, gradient_type_callback, (gpointer) Log, NULL, NULL },
+  { "Film Log", 0, 0, gradient_type_callback, (gpointer) FilmLog, NULL, NULL },
+#if 0
   { "Shapeburst (angular)", 0, 0, gradient_type_callback, (gpointer) ShapeburstAngular, NULL, NULL },
   { "Shapeburst (spherical)", 0, 0, gradient_type_callback, (gpointer) ShapeburstSpherical, NULL, NULL },
   { "Shapeburst (dimpled)", 0, 0, gradient_type_callback, (gpointer) ShapeburstDimpled, NULL, NULL },
+#endif
   { NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
@@ -402,7 +416,7 @@ create_blend_options ()
   gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
   gtk_table_attach (GTK_TABLE (table), label, 0, 1, 2, 3,
 		    GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 2);
-  pm_menu = create_paint_mode_menu (paint_mode_callback);
+  pm_menu = create_paint_mode_menu (paint_mode_callback, NULL);
   pm_option_menu = gtk_option_menu_new ();
   gtk_table_attach (GTK_TABLE (table), pm_option_menu, 1, 2, 2, 3,
 		    GTK_EXPAND | GTK_SHRINK | GTK_FILL, GTK_SHRINK, 4, 2);
@@ -455,6 +469,7 @@ create_blend_options ()
 
   gtk_widget_show (table);
 
+#if 0
   /* supersampling toggle */
 
   button = gtk_check_button_new_with_label("Adaptive supersampling");
@@ -518,12 +533,12 @@ create_blend_options ()
   /* show table */
 
   gtk_widget_show(table);
-
   /* show frame */
 
   gtk_widget_show(frame);
   gtk_widget_set_sensitive(frame, FALSE);
   options->frame = frame;
+#endif
 
   /*  Register this selection options widget with the main tools options dialog  */
   tools_register_options (BLEND, vbox);
@@ -938,6 +953,46 @@ gradient_calc_linear_factor (double  dist,
   return rat;
 } /* gradient_calc_linear_factor */
 
+static double
+gradient_calc_log_factor (double  dist,
+			     double *vec,
+			     double  x,
+			     double  y)
+{
+  double r;
+  double rat;
+
+  if (dist == 0.0)
+    rat = 0.0;
+  else
+    {
+      r   = vec[0] * x + vec[1] * y;
+      rat = (r / dist);
+    } /* else */
+
+  return rat;
+} /* gradient_calc_linear_factor */
+
+static double
+gradient_calc_film_log_factor (double  dist,
+			     double *vec,
+			     double  x,
+			     double  y)
+{
+  double r;
+  double rat;
+
+  if (dist == 0.0)
+    rat = 0.0;
+  else
+    {
+      r   = vec[0] * x + vec[1] * y;
+      rat = (r / dist);
+    } /* else */
+
+  return rat;
+} /* gradient_calc_linear_factor */
+
 
 /*****/
 
@@ -1206,6 +1261,15 @@ gradient_render_pixel(double x, double y, gfloat *color, void *render_data)
 					   x - rbd->sx, y - rbd->sy);
       break;
 
+    case Log:
+      factor = gradient_calc_log_factor(rbd->dist, rbd->vec,
+					   x - rbd->sx, y - rbd->sy);
+      break;
+    case FilmLog:
+      factor = gradient_calc_film_log_factor(rbd->dist, rbd->vec,
+					   x - rbd->sx, y - rbd->sy);
+      break;
+
     case BiLinear:
       factor = gradient_calc_bilinear_factor(rbd->dist, rbd->vec, rbd->offset,
 					     x - rbd->sx, y - rbd->sy);
@@ -1233,6 +1297,10 @@ gradient_render_pixel(double x, double y, gfloat *color, void *render_data)
 
   factor = (*rbd->repeat_func)(factor);
 
+
+
+
+
   /* Blend the colors */
   {
     color_t c;
@@ -1245,7 +1313,8 @@ gradient_render_pixel(double x, double y, gfloat *color, void *render_data)
         c.g = rbd->fg.g + (rbd->bg.g - rbd->fg.g) * factor;
         c.b = rbd->fg.b + (rbd->bg.b - rbd->fg.b) * factor;
         c.a = rbd->fg.a + (rbd->bg.a - rbd->fg.a) * factor;
-        
+       
+
         if (rbd->blend_mode == FG_BG_HSV_MODE)
           calc_hsv_to_rgb(&c.r, &c.g, &c.b);
       }
@@ -1387,6 +1456,8 @@ gradient_fill_region (GImage       *gimage,
     case ConicalSymmetric:
     case ConicalAsymmetric:
     case Linear:
+    case Log:
+    case FilmLog:
     case BiLinear:
       rbd.dist = sqrt(SQR(ex - sx) + SQR(ey - sy));
 
@@ -1445,8 +1516,8 @@ gradient_fill_region (GImage       *gimage,
 
   if (supersample)
     {
-#define FIXME
 #if 0
+#define FIXME
       /* Initialize put pixel data */
 #define FIXME
       /* the PR arg here was a PixelArea that was used only for the x,
@@ -1927,6 +1998,8 @@ blend_invoker (Argument *args)
 	case 6: gradient_type = ShapeburstAngular; break;
 	case 7: gradient_type = ShapeburstSpherical; break;
 	case 8: gradient_type = ShapeburstDimpled; break;
+	case 9: gradient_type = Log; break;
+	case 10: gradient_type = FilmLog; break;
 	default: success = FALSE;
 	}
     }

@@ -34,6 +34,8 @@ struct _GimpChannel
   gfloat opacity;               /*  Channel opacity              */
   int show_masked;              /*  Show masked areas--as        */
                                 /*  opposed to selected areas    */
+  gint link_paint;    
+  gfloat link_paint_opacity;    
 
   /*  Selection mask variables  */
   int boundary_known;           /*  is the current boundary valid*/

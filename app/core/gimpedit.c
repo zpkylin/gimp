@@ -34,6 +34,7 @@
 #include "pixelrow.h"
 #include "tools.h"
 #include "undo.h"
+#include "gimprc.h"
 
 #include "drawable_pvt.h"
 
@@ -298,9 +299,25 @@ edit_paste (GImage      *gimage,
       /*  Set the offsets to the center of the image  */
       drawable_offsets ( (drawable), &cx, &cy);
       drawable_mask_bounds ( (drawable), &x1, &y1, &x2, &y2);
+      
+      if (!enable_paste_c_disp)
+	{
       cx += (x1 + x2) >> 1;
       cy += (y1 + y2) >> 1;
+#if 0
+      GIMP_DRAWABLE(float_layer)->offset_x = cx - (drawable_width (GIMP_DRAWABLE(float_layer)) >> 1);
+      GIMP_DRAWABLE(float_layer)->offset_y = cy - (drawable_height (GIMP_DRAWABLE(float_layer)) >> 1);
+#endif
+	}
+      else
+	{
+	  
+	  GDisplay *disp = gdisplay_active ();
 
+	  
+      cx = (float) (disp->offset_x + disp->disp_width /2) / ((float)SCALEDEST (disp) / (float)SCALESRC (disp));
+      cy = (float) (disp->offset_y + disp->disp_height /2 )/ ((float)SCALEDEST (disp) / (float)SCALESRC (disp));
+	}
       GIMP_DRAWABLE(float_layer)->offset_x = cx - (drawable_width (GIMP_DRAWABLE(float_layer)) >> 1);
       GIMP_DRAWABLE(float_layer)->offset_y = cy - (drawable_height (GIMP_DRAWABLE(float_layer)) >> 1);
 

@@ -452,7 +452,6 @@ ProcRecord drawable_type_proc =
   { { drawable_type_invoker } },
 };
 
-
 /************************/
 /*  DRAWABLE_HAS_ALPHA  */
 
@@ -775,6 +774,134 @@ ProcRecord drawable_indexed_proc =
   /*  Exec method  */
   { { drawable_indexed_invoker } },
 };
+
+/********************/
+/*  DRAWABLE_NUM_CHANNELS  */
+
+static Argument *
+drawable_num_channels_invoker (Argument *args)
+{
+  int drawable_id;
+  int num_channels;
+  Argument *return_args;
+
+  success = TRUE;
+  if (success)
+    drawable_id = args[0].value.pdb_int;
+  if (success)
+    num_channels = tag_num_channels (drawable_tag (drawable_get_ID (drawable_id)));
+
+  return_args = procedural_db_return_args (&drawable_num_channels_proc, success);
+
+  if (success)
+    return_args[1].value.pdb_int = num_channels;
+
+  return return_args;
+}
+
+/*  The procedure definition  */
+ProcArg drawable_num_channels_args[] =
+{
+  { PDB_DRAWABLE,
+    "drawable",
+    "the drawable"
+  }
+};
+
+ProcArg drawable_num_channels_out_args[] =
+{
+  { PDB_INT32,
+    "num_channels",
+    "num_channels per pixel"
+  }
+};
+
+ProcRecord drawable_num_channels_proc =
+{
+  "gimp_drawable_num_channels",
+  "Returns the num_channels per pixel",
+  "This procedure returns the number of num_channels per pixel (or the number of channels) for the specified drawable.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  drawable_num_channels_args,
+
+  /*  Output arguments  */
+  1,
+  drawable_num_channels_out_args,
+
+  /*  Exec method  */
+  { { drawable_num_channels_invoker } },
+};
+
+
+/********************/
+/*  DRAWABLE_PRECSION  */
+
+static Argument *
+drawable_precision_invoker (Argument *args)
+{
+  int drawable_id;
+  Precision precision;
+  Argument *return_args;
+
+  success = TRUE;
+  if (success)
+    drawable_id = args[0].value.pdb_int;
+  if (success)
+    precision = tag_precision (drawable_tag (drawable_get_ID (drawable_id)));
+
+  return_args = procedural_db_return_args (&drawable_precision_proc, success);
+
+  if (success)
+    return_args[1].value.pdb_int = (int)precision;
+
+  return return_args;
+}
+
+/*  The procedure definition  */
+ProcArg drawable_precision_args[] =
+{
+  { PDB_DRAWABLE,
+    "drawable",
+    "the drawable"
+  }
+};
+
+ProcArg drawable_precision_out_args[] =
+{
+  { PDB_INT32,
+    "precision",
+    "precision of data"
+  }
+};
+
+ProcRecord drawable_precision_proc =
+{
+  "gimp_drawable_precision",
+  "Returns the precision per pixel",
+  "This procedure returns the precision (U8, U16, FLOAT, FLOAT16) for the specified drawable.",
+  "Spencer Kimball & Peter Mattis",
+  "Spencer Kimball & Peter Mattis",
+  "1995-1996",
+  PDB_INTERNAL,
+
+  /*  Input arguments  */
+  1,
+  drawable_precision_args,
+
+  /*  Output arguments  */
+  1,
+  drawable_precision_out_args,
+
+  /*  Exec method  */
+  { { drawable_precision_invoker } },
+};
+
 
 /********************/
 /*  DRAWABLE_BYTES  */

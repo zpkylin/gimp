@@ -42,6 +42,7 @@
 #include "pixelarea.h"
 #include "resize.h"
 #include "undo.h"
+#include "fileops.h"
 
 #include "tools/eye.xbm"
 #include "tools/linked.xbm"
@@ -166,6 +167,8 @@ static void layers_dialog_flatten_image_callback (GtkWidget *, gpointer);
 static void layers_dialog_alpha_select_callback (GtkWidget *, gpointer);
 static void layers_dialog_mask_select_callback (GtkWidget *, gpointer);
 static void layers_dialog_add_alpha_channel_callback (GtkWidget *, gpointer);
+static void layers_dialog_save_layer_callback (GtkWidget *, gpointer);
+static void layers_dialog_load_layer_callback (GtkWidget *, gpointer);
 static gint lc_dialog_close_callback (GtkWidget *, gpointer);
 
 /*  layer widget function prototypes  */
@@ -241,13 +244,20 @@ static MenuItem layers_ops[] =
     layers_dialog_merge_layers_callback, NULL, NULL, NULL },
   { "Flatten Image", 0, 0,
     layers_dialog_flatten_image_callback, NULL, NULL, NULL },
+#if 0
   { "Alpha To Selection", 0, 0,
     layers_dialog_alpha_select_callback, NULL, NULL, NULL },
+#endif
   { "Mask To Selection", 0, 0,
     layers_dialog_mask_select_callback, NULL, NULL, NULL },
-  { "Add Alpha Channel", 0, 0,
+  { "Make Layer", 0, 0,
     layers_dialog_add_alpha_channel_callback, NULL, NULL, NULL },
+  { "Save Layer", 0, 0,
+    layers_dialog_save_layer_callback, NULL, NULL, NULL },
+  { "Load Layer", 0, 0,
+    layers_dialog_load_layer_callback, NULL, NULL, NULL },
   { NULL, 0, 0, NULL, NULL, NULL, NULL },
+
 };
 
 /*  the option menu items -- the paint modes  */
@@ -263,10 +273,12 @@ static MenuItem option_items[] =
   { "Subtract", 0, 0, paint_mode_menu_callback, (gpointer) SUBTRACT_MODE, NULL, NULL },
   { "Darken Only", 0, 0, paint_mode_menu_callback, (gpointer) DARKEN_ONLY_MODE, NULL, NULL },
   { "Lighten Only", 0, 0, paint_mode_menu_callback, (gpointer) LIGHTEN_ONLY_MODE, NULL, NULL },
+#if 0
   { "Hue", 0, 0, paint_mode_menu_callback, (gpointer) HUE_MODE, NULL, NULL },
   { "Saturation", 0, 0, paint_mode_menu_callback, (gpointer) SATURATION_MODE, NULL, NULL },
   { "Color", 0, 0, paint_mode_menu_callback, (gpointer) COLOR_MODE, NULL, NULL },
   { "Value", 0, 0, paint_mode_menu_callback, (gpointer) VALUE_MODE, NULL, NULL },
+#endif
   { NULL, 0, 0, NULL, NULL, NULL, NULL }
 };
 
@@ -1024,6 +1036,7 @@ render_preview (Canvas    *preview_buf,
     }
     else
      display_buf = composite;
+
   }
   else  /* gray display expected */
   {
@@ -1219,11 +1232,13 @@ layers_dialog_set_menu_sensitivity ()
   /* flatten image */
   gtk_widget_set_sensitive (layers_ops[11].widget, fs && ac && gimage && lp);
   /* alpha select */
+#if 0
   gtk_widget_set_sensitive (layers_ops[12].widget, fs && ac && gimage && lp && alpha);
+#endif
   /* mask select */
-  gtk_widget_set_sensitive (layers_ops[13].widget, fs && ac && gimage && lm && lp);
+  gtk_widget_set_sensitive (layers_ops[12].widget, fs && ac && gimage && lm && lp);
   /* add alpha */
-  gtk_widget_set_sensitive (layers_ops[14].widget, !alpha);
+  gtk_widget_set_sensitive (layers_ops[13].widget, !alpha);
 
   /* set mode, preserve transparency and opacity to insensitive if there are no layers  */
   gtk_widget_set_sensitive (layersD->preserve_trans, lp);
@@ -1650,10 +1665,10 @@ layers_dialog_duplicate_layer_callback (GtkWidget *w,
   active_layer = gimage_get_active_layer (gimage);
   new_layer = layer_copy (active_layer, TRUE);
   gimage_add_layer (gimage, new_layer, -1);
-
+  
   /*  end the group undo  */
   undo_push_group_end (gimage);
-
+  gdisplays_update_title (gimage->ID);	  
   gdisplays_flush ();
 }
 
@@ -1681,6 +1696,7 @@ layers_dialog_delete_layer_callback (GtkWidget *w,
   else
     gimage_remove_layer (gimage, gimage->active_layer);
 
+  gdisplays_update_title (gimage->ID);	  
   gdisplays_flush ();
 }
 
@@ -1808,6 +1824,8 @@ layers_dialog_flatten_image_callback (GtkWidget *w,
     return;
 
   gimage_flatten (gimage);
+
+  gdisplays_update_title (gimage->ID);	  
   gdisplays_flush ();
 }
 
@@ -1867,9 +1885,52 @@ layers_dialog_add_alpha_channel_callback (GtkWidget *w,
 
    /*  Add an alpha channel  */
   layer_add_alpha (layer);
+  gdisplays_update_title (gimage->ID);	  
   gdisplays_flush ();
 }
 
+static void
+layers_dialog_save_layer_callback (GtkWidget *w,
+    				   gpointer   client_data)
+{
+  GImage *gimage;
+  Layer *active_layer;
+  Layer *new_layer;
+
+  /*  if there is a currently selected gimage, request a new layer
+   */
+  if (!layersD)
+    return;
+  if (! (gimage = gimage_get_ID (layersD->gimage_id)))
+    return;
+
+  layer_save (layersD->gimage_id);
+
+  layer_remove_alpha (gimage->active_layer);
+ 
+  file_save_as_callback (w, client_data); 
+}
+
+static void
+layers_dialog_load_layer_callback (GtkWidget *w,
+    				   gpointer   client_data)
+{
+  GImage *gimage;
+  Layer *active_layer;
+  Layer *new_layer;
+
+  /*  if there is a currently selected gimage, request a new layer
+   */
+  if (!layersD)
+    return;
+  if (! (gimage = gimage_get_ID (layersD->gimage_id)))
+    return;
+
+  layer_load (gimage);
+ 
+  file_open_callback (w, client_data); 
+
+}
 
 static gint
 lc_dialog_close_callback (GtkWidget *w,
@@ -2100,12 +2161,23 @@ layer_widget_button_events (GtkWidget *widget,
   static int old_state;
   static int exclusive;
   LayerWidget *layer_widget;
+  GSList *list;
+  gint list_length;
   GtkWidget *event_widget;
   GdkEventButton *bevent;
   gint return_val;
+  GImage * gimage; 
 
   layer_widget = (LayerWidget *) gtk_object_get_user_data (GTK_OBJECT (widget));
   return_val = FALSE;
+  
+  if (layersD)
+    {
+      list = layersD->layer_widgets;
+      list_length = g_slist_length (list); 
+    }
+  else
+    return return_val;
 
   switch (event->type)
     {
@@ -2134,20 +2206,25 @@ layer_widget_button_events (GtkWidget *widget,
 
       if (widget == layer_widget->eye_widget)
 	{
-	  old_state = GIMP_DRAWABLE(layer_widget->layer)->visible;
+#if 0
+	  if (list_length > 1 || !GIMP_DRAWABLE(layer_widget->layer)->visible)
+#endif
+          {
+	    old_state = GIMP_DRAWABLE(layer_widget->layer)->visible;
 
-	  /*  If this was a shift-click, make all/none visible  */
-	  if (event->button.state & GDK_SHIFT_MASK)
-	    {
-	      exclusive = TRUE;
-	      layer_widget_exclusive_visible (layer_widget);
-	    }
-	  else
-	    {
-	      exclusive = FALSE;
-	      GIMP_DRAWABLE(layer_widget->layer)->visible = !GIMP_DRAWABLE(layer_widget->layer)->visible;
-	      layer_widget_eye_redraw (layer_widget);
-	    }
+	    /*  If this was a shift-click, make all/none visible  */
+	    if (event->button.state & GDK_SHIFT_MASK)
+	      {
+		exclusive = TRUE;
+		layer_widget_exclusive_visible (layer_widget);
+	      }
+	    else
+	      {
+		exclusive = FALSE;
+		GIMP_DRAWABLE(layer_widget->layer)->visible = !GIMP_DRAWABLE(layer_widget->layer)->visible;
+		layer_widget_eye_redraw (layer_widget);
+	      }
+	  }
 	}
       else if (widget == layer_widget->linked_widget)
 	{
@@ -2961,14 +3038,16 @@ new_layer_query_ok_callback (GtkWidget *w,
 
   if ((gimage = gimage_get_ID (options->gimage_id)))
     {
+
       /*  Start a group undo  */
       undo_push_group_start (gimage, EDIT_PASTE_UNDO);
 
       layer = layer_new (gimage->ID, options->xsize, options->ysize,
-			 tag_set_alpha (gimage_tag (gimage), ALPHA_YES),
+			 tag_set_alpha (gimage_tag (gimage),
+                                        ALPHA_YES),
                          STORAGE_TILED,
 			 layer_name, 1.0, NORMAL_MODE);
-      if (layer) 
+      if (layer)
 	{
 	  drawable_fill (GIMP_DRAWABLE(layer), fill_type);
 	  gimage_add_layer (gimage, layer, -1);
@@ -2976,6 +3055,7 @@ new_layer_query_ok_callback (GtkWidget *w,
 	  /*  Endx the group undo  */
 	  undo_push_group_end (gimage);
 
+	  gdisplays_update_title (gimage->ID);	  
 	  gdisplays_flush ();
 	}
       else
@@ -3220,7 +3300,6 @@ edit_layer_query_ok_callback (GtkWidget *w,
 	    {
 	      floating_sel_to_layer (layer);
 	    }
-
 	  g_free (GIMP_DRAWABLE(layer)->name);
 	}
       GIMP_DRAWABLE(layer)->name = g_strdup (gtk_entry_get_text (GTK_ENTRY (options->name_entry)));
@@ -3457,7 +3536,7 @@ layers_dialog_add_mask_query (Layer *layer)
   gtk_container_add (GTK_CONTAINER (radio_frame), radio_box);
 
   /*  the radio buttons  */
-  for (i = 0; i < 3; i++)
+  for (i = 0; i < 4; i++)
     {
       radio_button = gtk_radio_button_new_with_label (group, button_names[i]);
       group = gtk_radio_button_group (GTK_RADIO_BUTTON (radio_button));
@@ -3855,8 +3934,9 @@ layer_merge_query_ok_callback (GtkWidget *w,
     return;
 
   if (options->merge_visible)
-    gimage_merge_visible_layers (gimage, options->merge_type);
+    gimage_merge_visible_layers (gimage, options->merge_type, 0);
 
+  gdisplays_update_title (gimage->ID);	  
   gdisplays_flush ();
   gtk_widget_destroy (options->query_box);
   g_free (options);

@@ -24,7 +24,8 @@
 #include "blend.h"
 #include "bucket_fill.h"
 #include "brightness_contrast.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "by_color_select.h"
 #include "channel_cmds.h"
 #include "channel_ops.h"
@@ -116,6 +117,7 @@ internal_procs_init ()
   /*  GDisplay procedures  */
   procedural_db_register (&gdisplay_new_proc); pcount++;
   procedural_db_register (&gdisplay_delete_proc); pcount++;
+  procedural_db_register (&gdisplays_delete_image_proc); pcount++;
   procedural_db_register (&gdisplays_flush_proc); pcount++;
 
   app_init_update_status(NULL, "Edit procedures",
@@ -139,6 +141,8 @@ internal_procs_init ()
   procedural_db_register (&gimage_scale_proc); pcount++;
   procedural_db_register (&gimage_delete_proc); pcount++;
   procedural_db_register (&gimage_free_shadow_proc); pcount++;
+  procedural_db_register (&gimage_is_layered_proc); pcount++;
+  procedural_db_register (&gimage_dirty_flag_proc); pcount++;
   procedural_db_register (&gimage_get_layers_proc); pcount++;
   procedural_db_register (&gimage_get_channels_proc); pcount++;
   procedural_db_register (&gimage_get_active_layer_proc); pcount++;
@@ -265,6 +269,8 @@ internal_procs_init ()
   procedural_db_register (&drawable_gray_proc); pcount++;
   procedural_db_register (&drawable_indexed_proc); pcount++;
   procedural_db_register (&drawable_bytes_proc); pcount++;
+  procedural_db_register (&drawable_precision_proc); pcount++;
+  procedural_db_register (&drawable_num_channels_proc); pcount++;
   procedural_db_register (&drawable_width_proc); pcount++;
   procedural_db_register (&drawable_height_proc); pcount++;
   procedural_db_register (&drawable_offsets_proc); pcount++;

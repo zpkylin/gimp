@@ -23,13 +23,14 @@
 #include "drawable.h"
 #include "general.h"
 #include "gdisplay.h"
+#include "float16.h"
 #include "histogram.h"
 #include "image_map.h"
 #include "interface.h"
 #include "threshold.h"
 #include "pixelarea.h"
 
-#define TEXT_WIDTH 45
+#define TEXT_WIDTH 75 
 #define HISTOGRAM_WIDTH 256
 #define HISTOGRAM_HEIGHT 150
 
@@ -52,10 +53,9 @@ struct _ThresholdDialog
   GimpDrawable *drawable;
   ImageMap     image_map;
   int          color;
-  int          low_threshold;
-  int          high_threshold;
-  int		   bins;
-
+  gfloat       low_threshold;
+  gfloat       high_threshold;
+  int	       bins;
   gint         preview;
 };
 
@@ -67,43 +67,112 @@ static void   threshold_motion         (Tool *, GdkEventMotion *, gpointer);
 static void   threshold_cursor_update  (Tool *, GdkEventMotion *, gpointer);
 static void   threshold_control        (Tool *, int, gpointer);
 
-
-static ThresholdDialog *  threshold_new_dialog                 (gint);
+static ThresholdDialog *  threshold_new_dialog                 (Tag);
 static void               threshold_preview                    (ThresholdDialog *);
 static void               threshold_ok_callback                (GtkWidget *, gpointer);
 static void               threshold_cancel_callback            (GtkWidget *, gpointer);
 static gint               threshold_delete_callback            (GtkWidget *, GdkEvent *, gpointer);
 static void               threshold_preview_update             (GtkWidget *, gpointer);
-static void               threshold_low_threshold_text_update  (GtkWidget *, gpointer);
-static void               threshold_high_threshold_text_update (GtkWidget *, gpointer);
+
+typedef void (*ThresholdLowThresholdTextUpdateFunc)(GtkWidget *, gpointer);
+static ThresholdLowThresholdTextUpdateFunc threshold_low_threshold_text_update;
+static void               threshold_low_threshold_text_update_u8  (GtkWidget *, gpointer);
+static void               threshold_low_threshold_text_update_u16  (GtkWidget *, gpointer);
+static void               threshold_low_threshold_text_update_float  (GtkWidget *, gpointer);
+static void               threshold_low_threshold_text_update_float16  (GtkWidget *, gpointer);
+
+typedef void (*ThresholdHighThresholdTextUpdateFunc)(GtkWidget *, gpointer);
+static ThresholdHighThresholdTextUpdateFunc threshold_high_threshold_text_update;
+static void               threshold_high_threshold_text_update_u8 (GtkWidget *, gpointer);
+static void               threshold_high_threshold_text_update_u16 (GtkWidget *, gpointer);
+static void               threshold_high_threshold_text_update_float (GtkWidget *, gpointer);
+static void               threshold_high_threshold_text_update_float16 (GtkWidget *, gpointer);
 
 static void *threshold_options = NULL;
 static ThresholdDialog *threshold_dialog = NULL;
+static void threshold_funcs (Tag tag);
 
-static void       threshold (PixelArea *, PixelArea *, void *);
-static void       threshold_histogram_info (PixelArea *, PixelArea *, HistogramValues, void *);
-static void       threshold_histogram_range (int, int, int, HistogramValues, void *);
+typedef void (*ThresholdFunc)(PixelArea *, PixelArea *, void *);
+static ThresholdFunc threshold;
+static void       threshold_u8 (PixelArea *, PixelArea *, void *);
+static void       threshold_u16 (PixelArea *, PixelArea *, void *);
+static void       threshold_float (PixelArea *, PixelArea *, void *);
+static void       threshold_float16 (PixelArea *, PixelArea *, void *);
+
+typedef void (*ThresholdHistogramInfoFunc)(PixelArea *, PixelArea *, HistogramValues, void *);
+static ThresholdHistogramInfoFunc threshold_histogram_info;
+static void       threshold_histogram_info_u8 (PixelArea *, PixelArea *, HistogramValues, void *);
+static void       threshold_histogram_info_u16 (PixelArea *, PixelArea *, HistogramValues, void *);
+static void       threshold_histogram_info_float (PixelArea *, PixelArea *, HistogramValues, void *);
+static void       threshold_histogram_info_float16 (PixelArea *, PixelArea *, HistogramValues, void *);
+
+typedef void (*ThresholdHistogramRangeFunc)(int, int, int, HistogramValues, void *);
+static ThresholdHistogramRangeFunc threshold_histogram_range;
+static void       threshold_histogram_range_u8 (int, int, int, HistogramValues, void *);
+static void       threshold_histogram_range_u16 (int, int, int, HistogramValues, void *);
+static void       threshold_histogram_range_float (int, int, int, HistogramValues, void *);
+static void       threshold_histogram_range_float16 (int, int, int, HistogramValues, void *);
 static Argument * threshold_invoker (Argument *);
 
 /*  threshold machinery  */
 
-/*
- *  TBD -WRB need to make work with float data
-*/
 static void
-threshold (PixelArea *src_area,
-	   PixelArea *dest_area,
-	   void      *user_data)
+threshold_funcs (Tag tag)
+{
+  switch (tag_precision (tag))
+  {
+  case PRECISION_U8:
+     threshold = threshold_u8;
+     threshold_histogram_info = threshold_histogram_info_u8;
+     threshold_histogram_range = threshold_histogram_range_u8;
+     threshold_high_threshold_text_update = threshold_high_threshold_text_update_u8;
+     threshold_low_threshold_text_update = threshold_low_threshold_text_update_u8;
+     break;
+  case PRECISION_U16:
+     threshold = threshold_u16;
+     threshold_histogram_info = threshold_histogram_info_u16;
+     threshold_histogram_range = threshold_histogram_range_u16;
+     threshold_high_threshold_text_update = threshold_high_threshold_text_update_u16;
+     threshold_low_threshold_text_update = threshold_low_threshold_text_update_u16;
+     break;
+  case PRECISION_FLOAT:
+     threshold = threshold_float;
+     threshold_histogram_info = threshold_histogram_info_float;
+     threshold_histogram_range = threshold_histogram_range_float;
+     threshold_high_threshold_text_update = threshold_high_threshold_text_update_float;
+     threshold_low_threshold_text_update = threshold_low_threshold_text_update_float;
+     break;
+  case PRECISION_FLOAT16:
+     threshold = threshold_float16;
+     threshold_histogram_info = threshold_histogram_info_float16;
+     threshold_histogram_range = threshold_histogram_range_float16;
+     threshold_high_threshold_text_update = threshold_high_threshold_text_update_float16;
+     threshold_low_threshold_text_update = threshold_low_threshold_text_update_float16;
+     break;
+  default:
+     threshold = NULL;
+     threshold_histogram_info = NULL;
+     threshold_histogram_range = NULL;
+     threshold_high_threshold_text_update = NULL;
+     threshold_low_threshold_text_update = NULL;
+    break;
+  } 
+}
+
+static void
+threshold_u8 ( PixelArea *src_area,
+	       PixelArea *dest_area,
+	       void      *user_data)
 {
   ThresholdDialog *td;
   gint             has_alpha;
   gint             w, h, b;
-  guint8 		  *src, *dest;
-
+  guchar	   *src, *dest;
+  guint8           *s, *d;
+  gint             value;
   Tag              src_tag = pixelarea_tag (src_area);
   gint             s_num_channels = tag_num_channels (src_tag);
   gint             alpha = tag_alpha (src_tag);
-
   Tag              dest_tag = pixelarea_tag (dest_area);
   gint             d_num_channels = tag_num_channels (dest_tag);
 
@@ -114,104 +183,221 @@ threshold (PixelArea *src_area,
   has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
   alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
 
-  if( tag_precision( src_tag ) != tag_precision( dest_tag ) )
-  {
-    g_warning( "threshold: src & dest not same bit depth." );
-    return;
-  }
+  src = (guchar*)pixelarea_data (src_area);
+  dest = (guchar*)pixelarea_data (dest_area);
 
-  src = (guint8*)pixelarea_data (src_area);
-  dest = (guint8*)pixelarea_data (dest_area);
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (guint8 *)src;
+       d = (guint8 *)dest;
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       value = MAX (s[RED_PIX], s[GREEN_PIX]);
+	       value = MAX (value, s[BLUE_PIX]);
+	       value = (value >= td->low_threshold && value <= td->high_threshold ) ? 255 : 0;
+	     }
+	   else
+	     value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 255 : 0;
 
-  switch( tag_precision( dest_tag ) )
-  {
-  case PRECISION_U8:
-  {
-     guint8 *s, *d;
-     gint    value;
+	   for (b = 0; b < alpha; b++)
+	     d[b] = value;
 
-     while (h--)
-       {
-         w = pixelarea_width (src_area);
-         s = src;
-         d = dest;
-         while (w--)
-	   {
-	     if (td->color)
-	       {
-	         value = MAX (s[RED_PIX], s[GREEN_PIX]);
-	         value = MAX (value, s[BLUE_PIX]);
+	   if (has_alpha)
+	     d[alpha] = s[alpha];
 
-	         value = (value >= td->low_threshold && value <= td->high_threshold ) ? 255 : 0;
-	       }
-	     else
-	       value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 255 : 0;
+	   s += s_num_channels;
+	   d += d_num_channels;
+	 }
 
-	     for (b = 0; b < alpha; b++)
-	       d[b] = value;
-
-	     if (has_alpha)
-	       d[alpha] = s[alpha];
-
-	     s += s_num_channels;
-	     d += d_num_channels;
-	   }
-
-           src += pixelarea_rowstride (src_area);
-           dest += pixelarea_rowstride (dest_area);
-       }
-       break;
-  }
-  case PRECISION_U16:
-  {
-     guint16 *s, *d;
-     gint     value;
-
-     while (h--)
-       {
-         w = pixelarea_width (src_area);
-         s = (guint16*)src;
-         d = (guint16*)dest;
-         while (w--)
-	   {
-	     if (td->color)
-	       {
-	         value = MAX (s[RED_PIX], s[GREEN_PIX]);
-	         value = MAX (value, s[BLUE_PIX]);
-
-	         value = (value >= td->low_threshold && value <= td->high_threshold ) ? 65535 : 0;
-	       }
-	     else
-	       value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 65535 : 0;
-
-	     for (b = 0; b < alpha; b++)
-	       d[b] = value;
-
-	     if (has_alpha)
-	       d[alpha] = s[alpha];
-
-	     s += s_num_channels;
-	     d += d_num_channels;
-	   }
-
-         src += pixelarea_rowstride (src_area);
-         dest += pixelarea_rowstride (dest_area);
-       }
-       break;
-  }
-  case PRECISION_FLOAT:
-  {
-       g_warning( "threshold_float not implemented yet." );
-       break;
-  }
-  }
+	 src += pixelarea_rowstride (src_area);
+	 dest += pixelarea_rowstride (dest_area);
+    }
 }
 
-/*
- *  TBD -WRB need to make work with float data
-*/
 static void
-threshold_histogram_info (PixelArea       *src_area,
+threshold_u16 ( PixelArea *src_area,
+	       PixelArea *dest_area,
+	       void      *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  gint             w, h, b;
+  guchar	   *src, *dest;
+  guint16          *s, *d;
+  gint             value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              dest_tag = pixelarea_tag (dest_area);
+  gint             d_num_channels = tag_num_channels (dest_tag);
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+  dest = (guchar*)pixelarea_data (dest_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (guint16 *)src;
+       d = (guint16 *)dest;
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       value = MAX (s[RED_PIX], s[GREEN_PIX]);
+	       value = MAX (value, s[BLUE_PIX]);
+	       value = (value >= td->low_threshold && value <= td->high_threshold ) ? 65535: 0;
+	     }
+	   else
+	     value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 65535 : 0;
+
+	   for (b = 0; b < alpha; b++)
+	     d[b] = value;
+
+	   if (has_alpha)
+	     d[alpha] = s[alpha];
+
+	   s += s_num_channels;
+	   d += d_num_channels;
+	 }
+
+	 src += pixelarea_rowstride (src_area);
+	 dest += pixelarea_rowstride (dest_area);
+    }
+}
+
+static void
+threshold_float ( PixelArea *src_area,
+	       PixelArea *dest_area,
+	       void      *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  gint             w, h, b;
+  guchar	   *src, *dest;
+  gfloat           *s, *d;
+  gfloat           value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              dest_tag = pixelarea_tag (dest_area);
+  gint             d_num_channels = tag_num_channels (dest_tag);
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+  dest = (guchar*)pixelarea_data (dest_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (gfloat *)src;
+       d = (gfloat *)dest;
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       value = MAX (s[RED_PIX], s[GREEN_PIX]);
+	       value = MAX (value, s[BLUE_PIX]);
+	       value = (value >= td->low_threshold && value <= td->high_threshold ) ? 1.0: 0.0;
+	     }
+	   else
+	     value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 1.0 : 0.0;
+
+	   for (b = 0; b < alpha; b++)
+	     d[b] = value;
+
+	   if (has_alpha)
+	     d[alpha] = s[alpha];
+
+	   s += s_num_channels;
+	   d += d_num_channels;
+	 }
+
+	 src += pixelarea_rowstride (src_area);
+	 dest += pixelarea_rowstride (dest_area);
+    }
+}
+
+static void
+threshold_float16 ( PixelArea *src_area,
+	       PixelArea *dest_area,
+	       void      *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  gint             w, h, b;
+  guchar	   *src, *dest;
+  guint16           *s, *d;
+  gfloat           red, green, blue, value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              dest_tag = pixelarea_tag (dest_area);
+  gint             d_num_channels = tag_num_channels (dest_tag);
+  ShortsFloat      u;
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+  dest = (guchar*)pixelarea_data (dest_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (guint16 *)src;
+       d = (guint16 *)dest;
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       red = FLT (s[RED_PIX], u);
+	       green = FLT (s[GREEN_PIX], u);
+	       blue = FLT (s[BLUE_PIX], u);
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+	       value = (value >= td->low_threshold && value <= td->high_threshold ) ? 1.0: 0.0;
+	     }
+	   else
+	     value = (s[GRAY_PIX] >= td->low_threshold && s[GRAY_PIX] <= td->high_threshold) ? 1.0 : 0.0;
+
+	   for (b = 0; b < alpha; b++)
+	     d[b] = FLT16 (value, u);
+
+	   if (has_alpha)
+	     d[alpha] = s[alpha];
+
+	   s += s_num_channels;
+	   d += d_num_channels;
+	 }
+
+	 src += pixelarea_rowstride (src_area);
+	 dest += pixelarea_rowstride (dest_area);
+    }
+}
+
+
+static void
+threshold_histogram_info_u8 (PixelArea       *src_area,
 			  PixelArea       *mask_area,
 			  HistogramValues  values,
 			  void            *user_data)
@@ -219,21 +405,14 @@ threshold_histogram_info (PixelArea       *src_area,
   ThresholdDialog *td;
   gint             has_alpha;
   int              w, h;
-  int              value;
+  gint              value;
   guint8	  *src, *mask = NULL;
-
+  guint8 *s, *m = NULL;
   Tag              src_tag = pixelarea_tag (src_area);
   gint             s_num_channels = tag_num_channels (src_tag);
   gint             alpha = tag_alpha (src_tag);
-
   Tag              mask_tag = pixelarea_tag (mask_area);
   gint             m_num_channels = tag_num_channels (mask_tag);
-
-  if( mask_area && (tag_precision( src_tag ) != tag_precision( mask_tag )) )
-  {
-    g_warning( "threshold: src & mask not same bit depth." );
-    return;
-  }
 
   td = (ThresholdDialog *) user_data;
 
@@ -247,116 +426,380 @@ threshold_histogram_info (PixelArea       *src_area,
   if (mask_area)
     mask = (guint8*)pixelarea_data (mask_area);
 
-  switch( tag_precision( src_tag ) )
-  {
-  case PRECISION_U8:
-  {
-     guint8 *s, *m = NULL;
-     gint    value;
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = src;
 
-     while (h--)
-       {
-         w = pixelarea_width (src_area);
-         s = src;
+       if (mask_area)
+	 m = mask;
 
-         if (mask_area)
-	   m = mask;
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       value = MAX (s[RED_PIX], s[GREEN_PIX]);
+	       value = MAX (value, s[BLUE_PIX]);
+	     }
+	   else
+	     value = s[GRAY_PIX];
 
-         while (w--)
-	   {
-	     if (td->color)
-	       {
-	         value = MAX (s[RED_PIX], s[GREEN_PIX]);
-	         value = MAX (value, s[BLUE_PIX]);
-	       }
-	     else
-	       value = s[GRAY_PIX];
-
-	     if (mask_area)
-	       values[HISTOGRAM_VALUE][value] += (double) *m / 255.0;
-	     else
-	       values[HISTOGRAM_VALUE][value] += 1.0;
-
-	     s += s_num_channels;
-
-	     if (mask_area)
-	       m += m_num_channels;
-	   }
-
-         src += pixelarea_rowstride (src_area);
-   
-         if (mask_area)
-	   mask += pixelarea_rowstride (mask_area);
-       }
-     break;
-   }
-  case PRECISION_U16:
-  {
-     guint16 *s, *m = NULL;
-     gint    value;
-
-     while (h--)
-       {
-         w = pixelarea_width (src_area);
-         s = (guint16*)src;
-
-         if (mask_area)
-	   m = (guint16*)mask;
-
-         while (w--)
-	   {
-	     if (td->color)
-	       {
-	         value = MAX (s[RED_PIX], s[GREEN_PIX]);
-	         value = MAX (value, s[BLUE_PIX]);
-	       }
-	     else
-	       value = s[GRAY_PIX];
-
-	     if (mask_area)
-	       values[HISTOGRAM_VALUE][value] += (double) *m / 65535.0;
-	     else
-	       values[HISTOGRAM_VALUE][value] += 1.0;
-
-	     s += s_num_channels;
-
-	     if (mask_area)
-	       m += m_num_channels;
-	   }
-
-           src += pixelarea_rowstride (src_area);
-   
 	   if (mask_area)
-	     mask += pixelarea_rowstride (mask_area);
-       }
-      break; 
-  }
-  case PRECISION_FLOAT:
-  {
-       g_warning( "threshold_float not implemented yet." );
-       break;
-  }
-  }
+	     values[HISTOGRAM_VALUE][value] += (double) *m /255.0;
+	   else
+	     values[HISTOGRAM_VALUE][value] += 1.0;
+
+	   s += s_num_channels;
+
+	   if (mask_area)
+	     m += m_num_channels;
+	 }
+
+       src += pixelarea_rowstride (src_area);
+ 
+       if (mask_area)
+	 mask += pixelarea_rowstride (mask_area);
+    }
 }
 
 static void
-threshold_histogram_range (int              start,
+threshold_histogram_info_u16 (PixelArea   *src_area,
+			  PixelArea       *mask_area,
+			  HistogramValues  values,
+			  void            *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  int              w, h;
+  guchar	  *src, *mask = NULL;
+  guint16         *s, *m = NULL;
+  guint16          red, green, blue;
+  gint             value_bin;
+  gint             value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              mask_tag = pixelarea_tag (mask_area);
+  gint             m_num_channels = tag_num_channels (mask_tag);
+  gint 		   bins = 256; 
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+
+  if (mask_area)
+    mask = (guchar*)pixelarea_data (mask_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (guint16*)src;
+
+       if (mask_area)
+	 m = (guint16*)mask;
+
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       red   = s[RED_PIX];
+	       green = s[GREEN_PIX];
+	       blue  = s[BLUE_PIX];
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+	       value_bin = value/bins;
+	     }
+	   else
+	     value_bin = s[GRAY_PIX]/bins;
+
+	   if (mask_area)
+	     values[HISTOGRAM_VALUE][value_bin] += (double) *m / 65535.0;
+	   else
+	     values[HISTOGRAM_VALUE][value_bin] += 1.0;
+
+	   s += s_num_channels;
+
+	   if (mask_area)
+	     m += m_num_channels;
+	 }
+
+       src += pixelarea_rowstride (src_area);
+ 
+       if (mask_area)
+	 mask += pixelarea_rowstride (mask_area);
+    }
+}
+
+static void
+threshold_histogram_info_float (PixelArea   *src_area,
+			  PixelArea       *mask_area,
+			  HistogramValues  values,
+			  void            *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  int              w, h;
+  guchar	  *src, *mask = NULL;
+  gfloat          *s, *m = NULL;
+  gfloat           red, green, blue, gray;
+  gint             value_bin;
+  gfloat           value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              mask_tag = pixelarea_tag (mask_area);
+  gint             m_num_channels = tag_num_channels (mask_tag);
+  gint 		   bins = 256; 
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+
+  if (mask_area)
+    mask = (guchar*)pixelarea_data (mask_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (gfloat*)src;
+
+       if (mask_area)
+	 m = (gfloat*)mask;
+
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       red   = s[RED_PIX];
+	       green = s[GREEN_PIX];
+	       blue  = s[BLUE_PIX];
+		
+	       red = CLAMP (red, 0.0, 1.0);
+	       green = CLAMP (green, 0.0, 1.0);
+	       blue = CLAMP (blue, 0.0, 1.0);
+
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+	       value_bin = (int)(value * (bins-1));
+	     }
+	   else
+	     {
+	       gray = s[GRAY_PIX];
+	       gray = CLAMP (gray, 0.0, 1.0);
+	       value_bin = (int)(gray * (bins-1));
+	     }
+
+	   if (mask_area)
+	     values[HISTOGRAM_VALUE][value_bin] += (double) *m;
+	   else
+	     values[HISTOGRAM_VALUE][value_bin] += 1.0;
+
+	   s += s_num_channels;
+
+	   if (mask_area)
+	     m += m_num_channels;
+	 }
+
+       src += pixelarea_rowstride (src_area);
+ 
+       if (mask_area)
+	 mask += pixelarea_rowstride (mask_area);
+    }
+}
+
+static void
+threshold_histogram_info_float16 (PixelArea   *src_area,
+			  PixelArea       *mask_area,
+			  HistogramValues  values,
+			  void            *user_data)
+{
+  ThresholdDialog *td;
+  gint             has_alpha;
+  int              w, h;
+  guchar	  *src, *mask = NULL;
+  guint16          *s, *m = NULL;
+  gfloat           red, green, blue, gray;
+  gint             value_bin;
+  gfloat           value;
+  Tag              src_tag = pixelarea_tag (src_area);
+  gint             s_num_channels = tag_num_channels (src_tag);
+  gint             alpha = tag_alpha (src_tag);
+  Tag              mask_tag = pixelarea_tag (mask_area);
+  gint             m_num_channels = tag_num_channels (mask_tag);
+  gint 		   bins = 256; 
+  ShortsFloat      u;
+
+  td = (ThresholdDialog *) user_data;
+
+  h = pixelarea_height (src_area);
+
+  has_alpha = (alpha == ALPHA_YES) ? TRUE: FALSE;
+  alpha = has_alpha ? s_num_channels - 1 : s_num_channels;
+
+  src = (guchar*)pixelarea_data (src_area);
+
+  if (mask_area)
+    mask = (guchar*)pixelarea_data (mask_area);
+
+  while (h--)
+    {
+       w = pixelarea_width (src_area);
+       s = (guint16*)src;
+
+       if (mask_area)
+	 m = (guint16*)mask;
+
+       while (w--)
+	 {
+	   if (td->color)
+	     {
+	       red   = FLT (s[RED_PIX], u);
+	       green = FLT (s[GREEN_PIX], u);
+	       blue  = FLT (s[BLUE_PIX], u);
+		
+	       red = CLAMP (red, 0.0, 1.0);
+	       green = CLAMP (green, 0.0, 1.0);
+	       blue = CLAMP (blue, 0.0, 1.0);
+
+	       value = MAX (red, green);
+	       value = MAX (value, blue);
+	       value_bin = (int)(value * (bins-1));
+	     }
+	   else
+	     {
+	       gray = FLT (s[GRAY_PIX], u);
+	       gray = CLAMP (gray, 0.0, 1.0);
+	       value_bin = (int)(gray * (bins-1));
+	     }
+
+	   if (mask_area)
+	     values[HISTOGRAM_VALUE][value_bin] += (double) *m;
+	   else
+	     values[HISTOGRAM_VALUE][value_bin] += 1.0;
+
+	   s += s_num_channels;
+
+	   if (mask_area)
+	     m += m_num_channels;
+	 }
+
+       src += pixelarea_rowstride (src_area);
+ 
+       if (mask_area)
+	 mask += pixelarea_rowstride (mask_area);
+    }
+}
+
+
+static void
+threshold_histogram_range_u8 (int              start,
 			   int              end,
 			   int              bins,
 			   HistogramValues  values,
 			   void            *user_data)
 {
   ThresholdDialog *td;
-  char text[12];
+  char text[32];
 
   td = (ThresholdDialog *) user_data;
 
   td->low_threshold = start;
   td->high_threshold = end;
   td->bins = bins;
-  sprintf (text, "%d", start);
+  sprintf (text, "%d", (int)td->low_threshold);
   gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), text);
-  sprintf (text, "%d", end);
+  sprintf (text, "%d", (int)td->high_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), text);
+
+  if (td->preview)
+    threshold_preview (td);
+}
+
+static void
+threshold_histogram_range_u16 (int              start,
+			   int              end,
+			   int              bins,
+			   HistogramValues  values,
+			   void            *user_data)
+{
+  ThresholdDialog *td;
+  char text[32];
+  gint low, high;
+
+  td = (ThresholdDialog *) user_data;
+
+  low = start * 256;
+  high = end * 256 + 255;
+  td->low_threshold = low;
+  td->high_threshold = high;
+  td->bins = bins;
+  sprintf (text, "%d", (int)td->low_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), text);
+  sprintf (text, "%d", (int)td->high_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), text);
+
+  if (td->preview)
+    threshold_preview (td);
+}
+
+static void
+threshold_histogram_range_float (int              start,
+			   int              end,
+			   int              bins,
+			   HistogramValues  values,
+			   void            *user_data)
+{
+  ThresholdDialog *td;
+  char text[32];
+  gfloat low, high;
+
+  td = (ThresholdDialog *) user_data;
+
+  low = start/256.0;
+  high = (end+1)/256.0;
+  td->low_threshold = low;
+  td->high_threshold = high;
+  td->bins = bins;
+  sprintf (text, "%f", td->low_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), text);
+  sprintf (text, "%f", td->high_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), text);
+
+  if (td->preview)
+    threshold_preview (td);
+}
+
+static void
+threshold_histogram_range_float16 (int              start,
+			   int              end,
+			   int              bins,
+			   HistogramValues  values,
+			   void            *user_data)
+{
+  ThresholdDialog *td;
+  char text[32];
+  gfloat low, high;
+
+  td = (ThresholdDialog *) user_data;
+
+  low = start/256.0;
+  high = (end+1)/256.0;
+  td->low_threshold = low;
+  td->high_threshold = high;
+  td->bins = bins;
+  sprintf (text, "%f", td->low_threshold);
+  gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), text);
+  sprintf (text, "%f", td->high_threshold);
   gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), text);
 
   if (td->preview)
@@ -439,15 +882,6 @@ tools_new_threshold ()
   if (!threshold_options)
     threshold_options = tools_register_no_options (THRESHOLD, "Threshold Options");
 
-#if 0
-  /*  The threshold dialog  */
-  if (!threshold_dialog)
-    threshold_dialog = threshold_new_dialog ();
-  else
-    if (!GTK_WIDGET_VISIBLE (threshold_dialog->shell))
-      gtk_widget_show (threshold_dialog->shell);
-#endif
-
   tool = (Tool *) g_malloc (sizeof (Tool));
   private = (Threshold *) g_malloc (sizeof (Threshold));
 
@@ -486,6 +920,8 @@ threshold_initialize (void *gdisp_ptr)
 {
   GDisplay *gdisp;
   gint	    bins;
+  Tag 	    tag;
+  gint      start, end;
 
   gdisp = (GDisplay *) gdisp_ptr;
 
@@ -495,24 +931,12 @@ threshold_initialize (void *gdisp_ptr)
       return;
     }
 
-  switch( tag_precision( gimage_tag( gdisp->gimage ) ) )
-  {
-  case PRECISION_U8:
-      bins = 256;
-      break;
-
-  case PRECISION_U16:
-      bins = 65536;
-      break;
-
-  case PRECISION_FLOAT:
-      g_warning( "histogram_float not implemented yet." );
-      return;
-  }
+  tag = gimage_tag (gdisp->gimage);
+  threshold_funcs (tag);
 
   /*  The threshold dialog  */
   if (!threshold_dialog)
-    threshold_dialog = threshold_new_dialog ( bins );
+    threshold_dialog = threshold_new_dialog (tag);
   else
     if (!GTK_WIDGET_VISIBLE (threshold_dialog->shell))
       gtk_widget_show (threshold_dialog->shell);
@@ -524,17 +948,33 @@ threshold_initialize (void *gdisp_ptr)
 		    threshold_dialog->drawable,
 		    threshold_histogram_info,
 		    (void *) threshold_dialog);
-  histogram_range (threshold_dialog->histogram,
-		   threshold_dialog->low_threshold,
-		   threshold_dialog->high_threshold);
+
+  switch (tag_precision (tag))
+  {
+  case PRECISION_U8:
+     start = threshold_dialog->low_threshold;
+     end = threshold_dialog->high_threshold;
+     break;
+  case PRECISION_U16:
+     start = threshold_dialog->low_threshold/256;
+     end = threshold_dialog->high_threshold/256;
+     break;
+  case PRECISION_FLOAT:
+  case PRECISION_FLOAT16:
+     start = (gint)(threshold_dialog->low_threshold * 255);
+     end =  (gint)(threshold_dialog->high_threshold * 255);
+     break;
+  default:
+     start = 0;
+     end = 255;
+    break;
+  }
+
+  histogram_range (threshold_dialog->histogram, start, end);
   if (threshold_dialog->preview)
     threshold_preview (threshold_dialog);
 }
 
-
-/****************************/
-/*  Select by Color dialog  */
-/****************************/
 
 /*  the action area structure  */
 static ActionAreaItem action_items[] =
@@ -543,11 +983,8 @@ static ActionAreaItem action_items[] =
   { "Cancel", threshold_cancel_callback, NULL, NULL }
 };
 
-/*
- *  TBD - WRB -make work with float data
-*/
 static ThresholdDialog *
-threshold_new_dialog (gint bins)
+threshold_new_dialog (Tag tag)
 {
   ThresholdDialog *td;
   GtkWidget *vbox;
@@ -555,12 +992,34 @@ threshold_new_dialog (gint bins)
   GtkWidget *label;
   GtkWidget *frame;
   GtkWidget *toggle;
+  gint start, end;
 
   td = g_malloc (sizeof (ThresholdDialog));
   td->preview = TRUE;
-  td->high_threshold = bins-1;
-  td->low_threshold = td->high_threshold/2;
-  td->bins = bins;
+  
+  switch (tag_precision (tag))
+  {
+  case PRECISION_U8:
+      td->high_threshold = 255;
+      td->low_threshold = 255/2;
+      td->bins = 256;
+     break;
+  case PRECISION_U16:
+      td->high_threshold = 65535;
+      td->low_threshold = 65535/2;
+      td->bins = 256;
+     break;
+  case PRECISION_FLOAT:
+  case PRECISION_FLOAT16:
+      td->high_threshold = 1.0;
+      td->low_threshold = .5;
+      td->bins = 256;
+     break;
+     break;
+  default:
+    break;
+  }
+  
 
   /*  The shell and main vbox  */
   td->shell = gtk_dialog_new ();
@@ -586,16 +1045,24 @@ threshold_new_dialog (gint bins)
 
   /*  low threshold text  */
   td->low_threshold_text = gtk_entry_new ();
-  if( bins == 256 )
+
+  switch (tag_precision (tag))
   {
-    gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), "127");
-    gtk_widget_set_usize (td->low_threshold_text, TEXT_WIDTH, 25);
+  case PRECISION_U8:
+     gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), "127");
+     break;
+  case PRECISION_U16:
+     gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), "32767");
+     break;
+  case PRECISION_FLOAT:
+  case PRECISION_FLOAT16:
+     gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), "0.5");
+     break;
+  default:
+    break;
   }
-  else
-  {
-    gtk_entry_set_text (GTK_ENTRY (td->low_threshold_text), "32767");
-    gtk_widget_set_usize (td->low_threshold_text, TEXT_WIDTH*1.5, 25);
-  }
+
+  gtk_widget_set_usize (td->low_threshold_text, TEXT_WIDTH, 25);
   gtk_box_pack_start (GTK_BOX (hbox), td->low_threshold_text, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (td->low_threshold_text), "changed",
 		      (GtkSignalFunc) threshold_low_threshold_text_update,
@@ -604,16 +1071,25 @@ threshold_new_dialog (gint bins)
 
   /* high threshold text  */
   td->high_threshold_text = gtk_entry_new ();
-  if( bins == 256 )
+
+  switch (tag_precision (tag))
   {
+  case PRECISION_U8:
     gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), "255");
-    gtk_widget_set_usize (td->high_threshold_text, TEXT_WIDTH, 25);
-  }
-  else
-  {
+     break;
+  case PRECISION_U16:
     gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), "65535");
-    gtk_widget_set_usize (td->high_threshold_text, TEXT_WIDTH*1.5, 25);
+     break;
+  case PRECISION_FLOAT:
+  case PRECISION_FLOAT16:
+    gtk_entry_set_text (GTK_ENTRY (td->high_threshold_text), "1.0");
+     break;
+  default:
+    break;
   }
+  
+  gtk_widget_set_usize (td->high_threshold_text, TEXT_WIDTH, 25);
+
   gtk_box_pack_start (GTK_BOX (hbox), td->high_threshold_text, FALSE, FALSE, 0);
   gtk_signal_connect (GTK_OBJECT (td->high_threshold_text), "changed",
 		      (GtkSignalFunc) threshold_high_threshold_text_update,
@@ -629,7 +1105,7 @@ threshold_new_dialog (gint bins)
   gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_ETCHED_IN);
   gtk_box_pack_start (GTK_BOX (hbox), frame, TRUE, FALSE, 0);
 
-  td->histogram = histogram_create (HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT, bins,
+  td->histogram = histogram_create (HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT, td->bins,
 				    threshold_histogram_range, (void *) td);
   gtk_container_add (GTK_CONTAINER (frame), td->histogram->histogram_widget);
   gtk_widget_show (td->histogram->histogram_widget);
@@ -663,7 +1139,29 @@ threshold_new_dialog (gint bins)
   /* This code is so far removed from the histogram creation because the
      function histogram_range requires a non-NULL drawable, and that
      doesn't happen until after the top-level dialog is shown. */
-  histogram_range (td->histogram, td->low_threshold, td->high_threshold);
+
+  switch (tag_precision (tag))
+  {
+  case PRECISION_U8:
+     start = td->low_threshold;
+     end = td->high_threshold;
+     break;
+  case PRECISION_U16:
+     start = td->low_threshold/256;
+     end = td->high_threshold/256;
+     break;
+  case PRECISION_FLOAT:
+  case PRECISION_FLOAT16:
+     start = (gint) (td->low_threshold  * 255);
+     end = (gint) (td->high_threshold * 255);
+     break;
+  default:
+     start = -1;
+     end = -1; 
+    break;
+  }
+
+  histogram_range (td->histogram, start, end);
   return td;
 }
 
@@ -747,12 +1245,13 @@ threshold_preview_update (GtkWidget *w,
 }
 
 static void
-threshold_low_threshold_text_update (GtkWidget *w,
+threshold_low_threshold_text_update_u8 (GtkWidget *w,
 				     gpointer   data)
 {
   ThresholdDialog *td;
   char *str;
   int value;
+  gint start, end;
 
   td = (ThresholdDialog *) data;
   str = gtk_entry_get_text (GTK_ENTRY (w));
@@ -761,40 +1260,153 @@ threshold_low_threshold_text_update (GtkWidget *w,
   if (value != td->low_threshold)
     {
       td->low_threshold = value;
-      histogram_range (td->histogram,
-		       td->low_threshold,
-		       td->high_threshold);
+      start = td->low_threshold;
+      end = td->high_threshold;
+      histogram_range (td->histogram, start, end);
       if (td->preview)
 	threshold_preview (td);
     }
 }
 
-/*
- *  TBD - WRB -make work with float data
-*/
 static void
-threshold_high_threshold_text_update (GtkWidget *w,
+threshold_low_threshold_text_update_u16 (GtkWidget *w,
+				     gpointer   data)
+{
+  ThresholdDialog *td;
+  char *str;
+  int value;
+  gint start, end;
+
+  td = (ThresholdDialog *) data;
+  str = gtk_entry_get_text (GTK_ENTRY (w));
+  value = BOUNDS (((int) atof (str)), 0, td->high_threshold);
+
+  if (value != td->low_threshold)
+    {
+      td->low_threshold = value;
+      start = td->low_threshold/256;
+      end = td->high_threshold/256;
+      histogram_range (td->histogram, start, end);
+      if (td->preview)
+	threshold_preview (td);
+    }
+}
+
+static void
+threshold_low_threshold_text_update_float (GtkWidget *w,
+				     gpointer   data)
+{
+  ThresholdDialog *td;
+  char *str;
+  gfloat value;
+  gint start, end;
+
+  td = (ThresholdDialog *) data;
+  str = gtk_entry_get_text (GTK_ENTRY (w));
+  value = BOUNDS ( atof (str), 0.0, td->high_threshold);
+
+  if (value != td->low_threshold)
+    {
+      td->low_threshold = value;
+      start = (gint)(td->low_threshold * 255);
+      end = (gint)(td->high_threshold * 255);
+      histogram_range (td->histogram, start, end);
+      if (td->preview)
+	threshold_preview (td);
+    }
+}
+
+static void
+threshold_low_threshold_text_update_float16 (GtkWidget *w,
+				     gpointer   data)
+{
+  threshold_low_threshold_text_update_float (w,data);
+}
+
+static void
+threshold_high_threshold_text_update_u8 (GtkWidget *w,
 				      gpointer   data)
 {
   ThresholdDialog *td;
   char *str;
   int value;
+  gint start, end;
+  Tag tag;
 
   td = (ThresholdDialog *) data;
+  tag = drawable_tag (td->drawable);
   str = gtk_entry_get_text (GTK_ENTRY (w));
   value = BOUNDS (((int) atof (str)), td->low_threshold, td->bins-1);
 
   if (value != td->high_threshold)
     {
       td->high_threshold = value;
-      histogram_range (td->histogram,
-		       td->low_threshold,
-		       td->high_threshold);
+      start = td->low_threshold;
+      end = td->high_threshold;
+      histogram_range (td->histogram, start, end);
       if (td->preview)
 	threshold_preview (td);
     }
 }
 
+static void
+threshold_high_threshold_text_update_u16 (GtkWidget *w,
+				      gpointer   data)
+{
+  ThresholdDialog *td;
+  char *str;
+  int value;
+  gint start, end;
+  Tag tag;
+
+  td = (ThresholdDialog *) data;
+  tag = drawable_tag (td->drawable);
+  str = gtk_entry_get_text (GTK_ENTRY (w));
+  value = BOUNDS (((int) atof (str)), td->low_threshold, 65535);
+
+  if (value != td->high_threshold)
+    {
+      td->high_threshold = value;
+      start = td->low_threshold/256;
+      end = td->high_threshold/256;
+      histogram_range (td->histogram, start, end);
+      if (td->preview)
+	threshold_preview (td);
+    }
+}
+
+static void
+threshold_high_threshold_text_update_float (GtkWidget *w,
+				      gpointer   data)
+{
+  ThresholdDialog *td;
+  char *str;
+  gfloat value;
+  gint start, end;
+  Tag tag;
+
+  td = (ThresholdDialog *) data;
+  tag = drawable_tag (td->drawable);
+  str = gtk_entry_get_text (GTK_ENTRY (w));
+  value = BOUNDS ( atof (str), td->low_threshold, 1.0);
+
+  if (value != td->high_threshold)
+    {
+      td->high_threshold = value;
+      start =(gint) (td->low_threshold * 255);
+      end = (gint) (td->high_threshold *255);
+      histogram_range (td->histogram, start, end);
+      if (td->preview)
+	threshold_preview (td);
+    }
+}
+
+static void
+threshold_high_threshold_text_update_float16 (GtkWidget *w,
+				      gpointer   data)
+{
+  threshold_high_threshold_text_update_float (w,data);
+}
 
 /*  The threshold procedure definition  */
 ProcArg threshold_args[] =
@@ -839,10 +1451,6 @@ ProcRecord threshold_proc =
   { { threshold_invoker } },
 };
 
-
-/*
- *  TBD - WRB -make work with float data
-*/
 static Argument *
 threshold_invoker (args)
      Argument *args;

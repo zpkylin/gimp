@@ -20,25 +20,36 @@
 
 
 #include "gtk/gtk.h"
-
+#include "gdisplay.h" 
 
 void file_ops_pre_init               (void);
 void file_ops_post_init              (void);
+void file_reload_callback              (GDisplay *gdisplay); 
 void file_open_callback              (GtkWidget *w,
 				      gpointer   client_data);
 void file_save_callback              (GtkWidget *w,
 				      gpointer   client_data);
 void file_save_as_callback           (GtkWidget *w,
 				      gpointer   client_data);
+void file_save_copy_as_callback      (GtkWidget *w,
+				      gpointer   client_data);
 void file_load_by_extension_callback (GtkWidget *w,
 				      gpointer   client_data);
 void file_save_by_extension_callback (GtkWidget *w,
 				      gpointer   client_data);
+int  file_load                       (char      *filename,
+				      char      *raw_filename,
+				      GDisplay *gdisplay);
 int  file_open                       (char      *filename,
 				      char      *raw_filename);
 int  file_save                       (int        image_ID,
 				      char      *filename,
 				      char      *raw_filename);
+void  layer_save                       (int id);
+void  save_a_copy                      ();
+void  layer_load                       (GImage *gimage);
 
+void  file_tmp_save (int flag);
+void  file_channel_revert (int flag); 
 
 #endif /* FILE_IO_H */

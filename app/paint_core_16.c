@@ -20,7 +20,8 @@
 #include <math.h>
 
 #include "appenv.h"
-#include "brushes.h"
+#include "gimpbrush.h"
+#include "gimpbrushlist.h"
 #include "canvas.h"
 #include "draw_core.h"
 #include "drawable.h"
@@ -30,14 +31,16 @@
 #include "gimage.h"
 #include "gimage_mask.h"
 #include "layer.h"
+#include "noise.h"
 #include "paint_core_16.h"
 #include "paint_funcs_area.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
 #include "tools.h"
+#include "trace.h"
 #include "undo.h"
-
 #define    SQR(x) ((x) * (x))
+
 
 /*  global variables--for use in the various paint tools  */
 PaintCore16  non_gui_paint_core_16;
@@ -51,45 +54,54 @@ static void      paint_core_16_control         (Tool *, int, gpointer);
 static void      paint_core_16_no_draw         (Tool *);
 
 
-static void      painthit_init                 (GimpDrawable *, int, int, int, int);
-static void      painthit_create_constant      (PaintCore16 *, Canvas *, gfloat);
-static void      painthit_create_incremental   (PaintCore16 *, Canvas *, gfloat);
-static void      painthit_apply                (PaintCore16 *, Canvas *, gfloat,
-                                                GimpDrawable *, int);
-static void      painthit_replace              (PaintCore16 *, Canvas *, gfloat,
-                                                GimpDrawable *, gfloat);
+static void      painthit_init                 (PaintCore16 *, GimpDrawable *, Canvas *);
+
+static void
+brush_to_canvas_tiles(
+                          PaintCore16 * paint_core,
+                          Canvas * brush_mask,
+                          gfloat brush_opacity 
+			);
+
+static void
+canvas_tiles_to_brush(
+                          PaintCore16 * paint_core,
+                          Canvas * brush_mask,
+                          gfloat brush_opacity 
+			);
+
+static void
+canvas_tiles_to_canvas_buf(
+                          PaintCore16 * paint_core);
+static void
+brush_to_canvas_buf(
+                             PaintCore16 * paint_core,
+                             Canvas * brush_mask,
+                             gfloat brush_opacity
+                             );
+
 static void      painthit_finish               (GimpDrawable *, PaintCore16 *,
                                                 Canvas *);
 
+static int       paint_core_16_init_linked  (PaintCore16 *, 
+			GimpDrawable *, GimpDrawable *, double, double);
 
-static Canvas *  brush_mask_get                (PaintCore16 *, int);
+static Canvas *  brush_mask_get                (PaintCore16 *, Canvas *, int);
 #ifdef BRUSH_WITH_BORDER 
 static Canvas *  brush_mask_subsample          (Canvas *, double, double);
 #endif
-static Canvas *  brush_mask_solidify           (Canvas *);
+static Canvas *  brush_mask_solidify           (PaintCore16 *, Canvas *);
+static Canvas *  brush_mask_noise  	       (PaintCore16 *, Canvas *);
 
 static void brush_solidify_mask_u8 ( Canvas *, Canvas *);
 static void brush_solidify_mask_u16 ( Canvas *, Canvas *);
 static void brush_solidify_mask_float ( Canvas *, Canvas *);
 static void brush_solidify_mask_float16 ( Canvas *, Canvas *);
 
-
-/* the portions of the original image which have been modified */
-static Canvas *  undo_tiles = NULL;
-
-/* a mask holding the cumulative brush stroke */
-static Canvas *  canvas_tiles = NULL;
-
-/* the paint hit to mask and apply */
-static Canvas *  canvas_buf = NULL;
-static guint canvas_buf_height = 0;
-static guint canvas_buf_width = 0;
-
-/* original image for clone tool */
-static Canvas *  orig_buf = NULL;
-
-
-
+static void brush_mask_noise_u8 (PaintCore16 *, Canvas *, Canvas *);
+static void brush_mask_noise_u16 (PaintCore16 *, Canvas *, Canvas *);
+static void brush_mask_noise_float (PaintCore16 *, Canvas *, Canvas *);
+static void brush_mask_noise_float16 (PaintCore16 *, Canvas *, Canvas *);
 /* ------------------------------------------------------------------------
 
    PaintCore16 Frontend
@@ -123,6 +135,22 @@ paint_core_16_new  (
   tool->cursor_update_func = paint_core_16_cursor_update;
   tool->control_func = paint_core_16_control;
 
+  private->noise_mode = 1.0;
+  private->undo_tiles = NULL;
+  private->canvas_tiles = NULL;
+  private->canvas_buf = NULL;
+  private->orig_buf = NULL;
+  private->canvas_buf_width = 0;
+  private->canvas_buf_height = 0;
+  private->noise_mask = NULL;
+  private->solid_mask = NULL;
+
+  private->linked_undo_tiles = NULL;
+  private->linked_canvas_buf = NULL;
+  private->painthit_setup = NULL;
+  private->linked_drawable = NULL;
+  private->drawable = NULL;
+
   return tool;
 }
 
@@ -145,23 +173,25 @@ paint_core_16_free  (
     draw_core_free (paint_core->core);
 
   /*  Cleanup memory  */
-  paint_core_16_cleanup ();
+  paint_core_16_cleanup (paint_core);
 
   /*  Free the paint core  */
   g_free (paint_core);
 }
 
-
-int 
-paint_core_16_init  (
+static int 
+paint_core_16_init_linked  (
                      PaintCore16 * paint_core,
                      GimpDrawable *drawable,
+                     GimpDrawable *linked_drawable,
                      double x,
                      double y
                      )
 {
-  GBrushP brush;
+  GimpBrushP brush;
   
+  paint_core->drawable = drawable; 
+  paint_core->linked_drawable = linked_drawable; 
   paint_core->curx = x;
   paint_core->cury = y;
 
@@ -172,30 +202,46 @@ paint_core_16_init  (
       return FALSE;
     }
  
-#define PAINT_CORE_16_C_2_cw 
   paint_core->spacing =
     (double) MAX (canvas_height (brush->mask), canvas_width (brush->mask)) *
-    ((double) get_brush_spacing () / 100.0);
+    ((double) gimp_brush_get_spacing () / 100.0);
 
   if (paint_core->spacing < 1.0)
     paint_core->spacing = 1.0;
   
   paint_core->brush_mask = brush->mask;
+  paint_core->noise_mask = NULL;
+  paint_core->solid_mask = NULL;
+  paint_core->subsampled_mask = NULL;
 
   /*  Allocate the undo structure  */
-  if (undo_tiles)
-    canvas_delete (undo_tiles);
-  undo_tiles = canvas_new (drawable_tag (drawable),
+
+  if (paint_core->undo_tiles)
+    canvas_delete (paint_core->undo_tiles);
+  paint_core->undo_tiles = canvas_new (drawable_tag (drawable),
                            drawable_width (drawable),
                            drawable_height (drawable),
                            STORAGE_TILED);
-  canvas_set_autoalloc (undo_tiles, AUTOALLOC_OFF);
-  
+  canvas_set_autoalloc (paint_core->undo_tiles, AUTOALLOC_OFF);
 
-  /*  Allocate the cumulative brush stroke mask  */
-  if (canvas_tiles)
-    canvas_delete (canvas_tiles);
-  canvas_tiles = canvas_new (tag_new (tag_precision (drawable_tag (drawable)),
+/* For linked painting */ 
+
+  if (linked_drawable)
+    {
+      if (paint_core->linked_undo_tiles)
+	canvas_delete (paint_core->linked_undo_tiles);
+      paint_core->linked_undo_tiles = canvas_new (drawable_tag (linked_drawable),
+			       drawable_width (linked_drawable),
+			       drawable_height (linked_drawable),
+			       STORAGE_TILED);
+      canvas_set_autoalloc (paint_core->linked_undo_tiles, AUTOALLOC_OFF);
+    }
+
+  /*  Allocate the cumulative brush stroke mask --only need one of these  */
+
+  if (paint_core->canvas_tiles)
+    canvas_delete (paint_core->canvas_tiles);
+  paint_core->canvas_tiles = canvas_new (tag_new (tag_precision (drawable_tag (drawable)),
                                       FORMAT_GRAY,
                                       ALPHA_NO),
                              drawable_width (drawable),
@@ -210,8 +256,19 @@ paint_core_16_init  (
 
   return TRUE;
 }
-  
-  
+
+
+int 
+paint_core_16_init  (
+                     PaintCore16 * paint_core,
+                     GimpDrawable *drawable,
+                     double x,
+                     double y
+                     )
+{
+  return paint_core_16_init_linked (paint_core, drawable, NULL, x, y);
+}
+
 void 
 paint_core_16_interpolate  (
                             PaintCore16 * paint_core,
@@ -296,8 +353,25 @@ paint_core_16_finish  (
     drawable_apply_image (drawable,
                           paint_core->x1, paint_core->y1,
                           paint_core->x2, paint_core->y2,
-                          undo_tiles);
-    undo_tiles = NULL;
+                          paint_core->undo_tiles);
+     
+    paint_core->undo_tiles = NULL;
+  }
+
+  /* push a linked undo if there is one */
+  if (paint_core->linked_drawable)
+  {
+    pu = (PaintUndo *) g_malloc (sizeof (PaintUndo));
+    pu->tool_ID = tool_id;
+    pu->lastx = paint_core->startx;
+    pu->lasty = paint_core->starty;
+    undo_push_paint (gimage, pu);
+    drawable_apply_image (paint_core->linked_drawable,
+			  paint_core->x1, paint_core->y1,
+			  paint_core->x2, paint_core->y2,
+			  paint_core->linked_undo_tiles);
+     
+    paint_core->linked_undo_tiles = NULL;
   }
 
   /*  push the group end  */
@@ -307,41 +381,56 @@ paint_core_16_finish  (
    *  it is not done during the actual painting.
    */
   drawable_invalidate_preview (drawable);
+  if (paint_core->linked_drawable)
+    drawable_invalidate_preview (paint_core->linked_drawable);
+
+
 }
 
 
 void 
 paint_core_16_cleanup  (
-                        void
+                        PaintCore16 * paint_core 
                         )
 {
-  if (undo_tiles)
+  if (paint_core->undo_tiles)
     {
-      canvas_delete (undo_tiles);
-      undo_tiles = NULL;
+      canvas_delete (paint_core->undo_tiles);
+      paint_core->undo_tiles = NULL;
     }
 
-  if (canvas_tiles)
+  if (paint_core->linked_undo_tiles)
     {
-      canvas_delete (canvas_tiles);
-      canvas_tiles = NULL;
+      canvas_delete (paint_core->linked_undo_tiles);
+      paint_core->linked_undo_tiles = NULL;
     }
 
-  if (canvas_buf)
+  if (paint_core->canvas_tiles)
     {
-      canvas_delete (canvas_buf);
-      canvas_buf = NULL;
-      canvas_buf_height = 0;
-      canvas_buf_width = 0;
+      canvas_delete (paint_core->canvas_tiles);
+      paint_core->canvas_tiles = NULL;
     }
 
-  if (orig_buf)
+  if (paint_core->canvas_buf)
     {
-      canvas_delete (orig_buf);
-      orig_buf = NULL;
+      canvas_delete (paint_core->canvas_buf);
+      paint_core->canvas_buf = NULL;
+      paint_core->canvas_buf_height = 0;
+      paint_core->canvas_buf_width = 0;
+    }
+
+  if (paint_core->linked_canvas_buf)
+    {
+      canvas_delete (paint_core->linked_canvas_buf);
+      paint_core->linked_canvas_buf = NULL;
+    }
+
+  if (paint_core->orig_buf)
+    {
+      canvas_delete (paint_core->orig_buf);
+      paint_core->orig_buf = NULL;
     }
 }
-
 
 static void 
 paint_core_16_button_press  (
@@ -353,6 +442,7 @@ paint_core_16_button_press  (
   PaintCore16 * paint_core;
   GDisplay * gdisp;
   GimpDrawable * drawable;
+  GimpDrawable * linked_drawable;
   int draw_line = 0;
   double x, y;
 
@@ -365,7 +455,12 @@ paint_core_16_button_press  (
                                  TRUE);
   drawable = gimage_active_drawable (gdisp->gimage);
 
-  if (! paint_core_16_init (paint_core, drawable, x, y))
+  if (GIMP_IS_LAYER (drawable))
+    linked_drawable = gimage_linked_drawable (gdisp->gimage);
+  else 
+    linked_drawable = NULL; 
+  
+  if (! paint_core_16_init_linked (paint_core, drawable, linked_drawable, x, y))
     return;
 
   paint_core->state = bevent->state;
@@ -522,6 +617,16 @@ paint_core_16_cursor_update  (
         }
     }
   gdisplay_install_tool_cursor (gdisp, ctype);
+
+  if (tool->type == CLONE)
+    {
+      ((PaintCore *)tool->private)->curx = x;
+      ((PaintCore *)tool->private)->cury = y;  
+      (*((PaintCore *)tool->private)->cursor_func) ((PaintCore *)tool->private, 
+						    GIMP_DRAWABLE(layer),
+						    mevent->state); 
+    }
+    
 }
 
 
@@ -550,7 +655,7 @@ paint_core_16_control  (
       break;
     case HALT :
       (* paint_core->paint_func) (paint_core, drawable, FINISH_PAINT);
-      paint_core_16_cleanup ();
+      paint_core_16_cleanup (paint_core);
       break;
     }
 }
@@ -565,24 +670,13 @@ paint_core_16_no_draw  (
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 /* ------------------------------------------------------------------------
 
    PaintCore16 Backend
 
 */
-Canvas * 
-paint_core_16_area  (
+void 
+paint_core_16_area_setup  (
                      PaintCore16 * paint_core,
                      GimpDrawable * drawable
                      )
@@ -625,17 +719,33 @@ paint_core_16_area  (
   /* configure the canvas buffer */
   tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);
 
-  if (canvas_buf)
-    canvas_delete (canvas_buf);
+  if (paint_core->canvas_buf)
+    canvas_delete (paint_core->canvas_buf);
 
-  canvas_buf = canvas_new (tag,
+  paint_core->canvas_buf = canvas_new (tag,
                            (x2 - x1), (y2 - y1),
                            STORAGE_FLAT);
+  paint_core->setup_mode = NORMAL_SETUP;
+  (*paint_core->painthit_setup) (paint_core, paint_core->canvas_buf); 
 
-  canvas_buf_width = (x2 - x1);
-  canvas_buf_height = (y2 - y1);
+  /* configure the linked_canvas_buffer if there is one */
+  if (paint_core->linked_drawable)
+  {
+    tag = tag_set_alpha (drawable_tag (paint_core->linked_drawable), ALPHA_YES);
+
+    if (paint_core->linked_canvas_buf)
+      canvas_delete (paint_core->linked_canvas_buf);
+
+    paint_core->linked_canvas_buf = canvas_new (tag,
+			     (x2 - x1), (y2 - y1),
+			     STORAGE_FLAT);
+    paint_core->setup_mode = LINKED_SETUP;
+    (*paint_core->painthit_setup) (paint_core, paint_core->linked_canvas_buf); 
+  }
+
+  paint_core->canvas_buf_width = (x2 - x1);
+  paint_core->canvas_buf_height = (y2 - y1);
   
-  return canvas_buf;
 }
 
 
@@ -653,11 +763,11 @@ paint_core_16_area_original  (
   PixelArea srcPR, destPR, undoPR;
   Tag tag;
 
-  
-  tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);
-  if (orig_buf)
-    canvas_delete (orig_buf);
-  orig_buf = canvas_new (tag, (x2 - x1), (y2 - y1), STORAGE_TILED);
+  /*tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);*/
+  tag = drawable_tag (drawable);
+  if (paint_core->orig_buf)
+    canvas_delete (paint_core->orig_buf);
+  paint_core->orig_buf = canvas_new (tag, (x2 - x1), (y2 - y1), STORAGE_TILED);
 
   
   x1 = CLAMP (x1, 0, drawable_width (drawable));
@@ -668,9 +778,9 @@ paint_core_16_area_original  (
   
   pixelarea_init (&srcPR, drawable_data (drawable),
                   x1, y1, (x2 - x1), (y2 - y1), FALSE);
-  pixelarea_init (&undoPR, undo_tiles,
+  pixelarea_init (&undoPR, paint_core->undo_tiles,
                   x1, y1, (x2 - x1), (y2 - y1), FALSE);
-  pixelarea_init (&destPR, orig_buf,
+  pixelarea_init (&destPR, paint_core->orig_buf,
                   0, 0, (x2 - x1), (y2 - y1), TRUE);
 
 
@@ -689,7 +799,7 @@ paint_core_16_area_original  (
         {
           int x = pixelarea_x (&undoPR);
           int y = pixelarea_y (&undoPR);
-          if (canvas_portion_alloced (undo_tiles, x, y) == TRUE)
+          if (canvas_portion_alloced (paint_core->undo_tiles, x, y) == TRUE)
             s = &undoPR;
           else
             s = &srcPR;
@@ -713,7 +823,87 @@ paint_core_16_area_original  (
       }
   }
   
-  return orig_buf;
+  return paint_core->orig_buf;
+}
+
+Canvas * 
+paint_core_16_area_original2  (
+                              PaintCore16 * paint_core,
+                              GimpDrawable *drawable,
+                              int x1,
+                              int y1,
+                              int x2,
+                              int y2
+                              )
+{
+  PixelArea srcPR, destPR, undoPR;
+  Tag tag;
+
+  /*tag = tag_set_alpha (drawable_tag (drawable), ALPHA_YES);*/
+  tag = drawable_tag (drawable);
+  if (paint_core->orig_buf)
+    canvas_delete (paint_core->orig_buf);
+  paint_core->orig_buf = canvas_new (tag, (x2 - x1), (y2 - y1), STORAGE_TILED);
+
+  
+  x1 = CLAMP (x1, 0, drawable_width (drawable));
+  y1 = CLAMP (y1, 0, drawable_height (drawable));
+  x2 = CLAMP (x2, 0, drawable_width (drawable));
+  y2 = CLAMP (y2, 0, drawable_height (drawable));
+
+  
+  pixelarea_init (&srcPR, drawable_data (drawable),
+                  x1, y1, (x2 - x1), (y2 - y1), FALSE);
+  pixelarea_init (&undoPR, paint_core->undo_tiles,
+                  x1, y1, (x2 - x1), (y2 - y1), FALSE);
+  pixelarea_init (&destPR, paint_core->orig_buf,
+                  0, 0, (x2 - x1), (y2 - y1), TRUE);
+
+
+  {
+    void * pag;
+    int h;
+    
+    for (pag = pixelarea_register_noref (3, &srcPR, &undoPR, &destPR);
+         pag != NULL;
+         pag = pixelarea_process (pag))
+      {
+        PixelRow srow, drow;
+        PixelArea *s, *d;
+
+        d = &destPR;
+        {
+          int x = pixelarea_x (&undoPR);
+          int y = pixelarea_y (&undoPR);
+          /*if (canvas_portion_alloced (paint_core->undo_tiles, x, y) == TRUE)
+            s = &undoPR;
+          else
+            s = &srcPR;*/
+          if (canvas_portion_alloced (drawable_data (drawable), x, y) == TRUE)
+            s = &srcPR;
+          else
+            s = &undoPR;
+        }
+        
+        if (pixelarea_ref (s) == TRUE)
+          {
+            if (pixelarea_ref (d) == TRUE)
+              {
+                h = pixelarea_height (s);
+                while (h--)
+                  {
+                    pixelarea_getdata (s, &srow, h);
+                    pixelarea_getdata (d, &drow, h);
+                    copy_row (&srow, &drow);
+                  }
+                pixelarea_unref (d);
+              }
+            pixelarea_unref (s);
+          }
+      }
+  }
+  
+  return paint_core->orig_buf;
 }
 
 
@@ -729,30 +919,56 @@ paint_core_16_area_paste  (
                            )
 {
   Canvas *brush_mask;
+  Canvas *undo_canvas;
+  Canvas *undo_linked_canvas;
 
   if (! drawable_gimage (drawable))
     return;
-  
-  brush_mask = brush_mask_get (paint_core, brush_hardness);
-  
-  painthit_init (drawable,
-                 paint_core->x, paint_core->y,
-                 canvas_buf_width, canvas_buf_height);
+
+  painthit_init (paint_core, drawable, paint_core->undo_tiles);
+
+  if (paint_core->linked_drawable)
+    painthit_init (paint_core, paint_core->linked_drawable, paint_core->linked_undo_tiles);
+
+  if (gimp_brush_get_noise_mode()) 
+    brush_mask = brush_mask_noise (paint_core, paint_core->brush_mask);
+  else 
+    brush_mask = paint_core->brush_mask;
+
+  brush_mask = brush_mask_get (paint_core, brush_mask, brush_hardness);
+
   switch (apply_mode)
     {
     case CONSTANT:
-      painthit_create_constant (paint_core, brush_mask, brush_opacity);
-      painthit_apply (paint_core, undo_tiles, image_opacity, drawable, paint_mode);
+      brush_to_canvas_tiles(paint_core,brush_mask,brush_opacity);
+      canvas_tiles_to_canvas_buf(paint_core); 
+      undo_canvas = paint_core->undo_tiles; 
+      undo_linked_canvas = paint_core->linked_undo_tiles; 
       break;
-    case INCREMENTAL: /* convolve tool */
-      painthit_create_incremental (paint_core, brush_mask, brush_opacity);
-      painthit_apply (paint_core, NULL, image_opacity, drawable, paint_mode);
+    case INCREMENTAL:
+      brush_to_canvas_buf(paint_core,brush_mask,brush_opacity);
+      undo_canvas = NULL; 
+      undo_linked_canvas = NULL; 
       break;
     }
   
-  painthit_finish (drawable, paint_core, canvas_buf);
-}
+  gimage_apply_painthit (drawable_gimage (drawable), drawable,
+			 undo_canvas, paint_core->canvas_buf,
+			 0, 0,
+			 0, 0,
+			 FALSE, image_opacity, paint_mode,
+			 paint_core->x, paint_core->y);
 
+  if (paint_core->linked_drawable)
+    gimage_apply_painthit (drawable_gimage (drawable), paint_core->linked_drawable,
+			   undo_linked_canvas, paint_core->linked_canvas_buf,
+			   0, 0,
+			   0, 0,
+			   FALSE, image_opacity, paint_mode,
+			   paint_core->x, paint_core->y);
+
+  painthit_finish (drawable, paint_core, paint_core->canvas_buf);
+}
 
 void
 paint_core_16_area_replace  (
@@ -761,7 +977,8 @@ paint_core_16_area_replace  (
                              gfloat brush_opacity,
                              gfloat image_opacity,
                              BrushHardness brush_hardness,
-                             ApplyMode apply_mode
+                             ApplyMode apply_mode,
+                             int paint_mode  /*this is not used here*/
                              )
 {
   Canvas *brush_mask;
@@ -774,39 +991,56 @@ paint_core_16_area_replace  (
       paint_core_16_area_paste (paint_core, drawable,
                                 brush_opacity, image_opacity,
                                 brush_hardness, apply_mode, NORMAL_MODE);
+      if (paint_core->linked_drawable)
+	paint_core_16_area_paste (paint_core, paint_core->linked_drawable,
+				  brush_opacity, image_opacity,
+				  brush_hardness, apply_mode, NORMAL_MODE);
       return;
     }
   
-  if (apply_mode != INCREMENTAL)
-    return;
+  painthit_init (paint_core, drawable, paint_core->undo_tiles);
 
-  brush_mask = brush_mask_get (paint_core, brush_hardness);
+  if (paint_core->linked_drawable)
+    painthit_init (paint_core, paint_core->linked_drawable, paint_core->linked_undo_tiles);
+
+  brush_mask = brush_mask_get (paint_core, paint_core->brush_mask, brush_hardness);
+
   
-  painthit_init (drawable,
-                 paint_core->x, paint_core->y,
-                 canvas_buf_width, canvas_buf_height);
-  
-  painthit_replace (paint_core, brush_mask, brush_opacity,
-                    drawable, image_opacity);
-  
-  painthit_finish (drawable, paint_core, canvas_buf);
+  gimage_replace_painthit (drawable_gimage (drawable), drawable,
+			 paint_core->canvas_buf,
+			 NULL, 
+			 FALSE, image_opacity, brush_mask,
+			 paint_core->x, paint_core->y);
+
+  if (paint_core->linked_drawable)
+    gimage_replace_painthit (drawable_gimage (drawable), paint_core->linked_drawable,
+			   paint_core->linked_canvas_buf,
+			   NULL, 
+			   FALSE, image_opacity, brush_mask,
+			   paint_core->x, paint_core->y);
+
+  painthit_finish (drawable, paint_core, paint_core->canvas_buf);
 }
 
 
 static void 
 painthit_init  (
+                PaintCore16 * paint_core,
                 GimpDrawable *drawable,
-                int x,
-                int y,
-                int w,
-                int h
+		Canvas * undo_tiles
                 )
 {
+
   PixelArea undo;
   PixelArea canvas;
   PixelArea src;
   PixelArea dst;
   void * pag;
+
+  gint x = paint_core->x;  
+  gint y = paint_core->y; 
+  gint w = paint_core->canvas_buf_width; 
+  gint h = paint_core->canvas_buf_height; 
 
   pixelarea_init (&undo, undo_tiles,
                   x, y, w, h, TRUE);
@@ -840,18 +1074,14 @@ painthit_init  (
     }
 }
 
-
 static void
-painthit_create_constant (
-                          PaintCore16 * paint_core,
-                          Canvas * brush_mask,
-                          gfloat brush_opacity 
-                          )
+canvas_tiles_to_brush(
+                             PaintCore16 * paint_core,
+                             Canvas * brush_mask,
+                             gfloat brush_opacity 
+                             )
 {
   PixelArea srcPR, maskPR;
-
-  /*  combine the mask and canvas tiles  */
-  {
     int xoff, yoff;
     int x, y;
       
@@ -860,32 +1090,83 @@ painthit_create_constant (
     xoff = (x < 0) ? -x : 0;
     yoff = (y < 0) ? -y : 0;
     
-    pixelarea_init (&srcPR, canvas_tiles,
+    pixelarea_init (&srcPR, paint_core->canvas_tiles,
                     paint_core->x, paint_core->y,
-                    canvas_buf_width, canvas_buf_height,
-                    TRUE);      
+                    paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+                    FALSE);      
     pixelarea_init (&maskPR, brush_mask,
                     xoff, yoff,
                     canvas_width (brush_mask), canvas_height (brush_mask),
                     TRUE);
-    combine_mask_and_area (&srcPR, &maskPR, brush_opacity);
-  }
+
+    copy_area (&srcPR, &maskPR);
+}
+
+static void
+brush_to_canvas_tiles(
+                             PaintCore16 * paint_core,
+                             Canvas * brush_mask,
+                             gfloat brush_opacity 
+                             )
+{
+  PixelArea srcPR, maskPR;
+    int xoff, yoff;
+    int x, y;
       
+    x = (int) paint_core->curx - (canvas_width (brush_mask) >> 1);
+    y = (int) paint_core->cury - (canvas_height (brush_mask) >> 1);
+    xoff = (x < 0) ? -x : 0;
+    yoff = (y < 0) ? -y : 0;
+    
+    pixelarea_init (&srcPR, paint_core->canvas_tiles,
+                    paint_core->x, paint_core->y,
+                    paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+                    TRUE);      
+
+    pixelarea_init (&maskPR, brush_mask,
+                    xoff, yoff,
+                    canvas_width (brush_mask), canvas_height (brush_mask),
+                    TRUE);
+
+    combine_mask_and_area (&srcPR, &maskPR, brush_opacity);
+}
+
+static void
+canvas_tiles_to_canvas_buf(
+                          PaintCore16 * paint_core
+                          )
+{
+  PixelArea srcPR, maskPR;
+
   /*  apply the canvas tiles to the canvas buf  */
-  pixelarea_init (&srcPR, canvas_buf,
+  pixelarea_init (&srcPR, paint_core->canvas_buf,
                   0, 0,
-                  canvas_buf_width, canvas_buf_height,
+                  paint_core->canvas_buf_width, paint_core->canvas_buf_height,
                   TRUE);
-  pixelarea_init (&maskPR, canvas_tiles,
+  pixelarea_init (&maskPR, paint_core->canvas_tiles,
                   paint_core->x, paint_core->y,
-                  canvas_buf_width, canvas_buf_height,
+                  paint_core->canvas_buf_width, paint_core->canvas_buf_height,
                   FALSE);      
   apply_mask_to_area (&srcPR, &maskPR, 1.0);
+
+  if (paint_core->linked_drawable)
+  { 
+    /*  apply the canvas tiles to the linked canvas buf  */
+    pixelarea_init (&srcPR, paint_core->linked_canvas_buf,
+		    0, 0,
+		    paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+		    TRUE);
+    pixelarea_init (&maskPR, paint_core->canvas_tiles,
+		    paint_core->x, paint_core->y,
+		    paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+		    FALSE);      
+    apply_mask_to_area (&srcPR, &maskPR, 1.0);
+  }
 }
 
 
 static void
-painthit_create_incremental (
+brush_to_canvas_buf(
                              PaintCore16 * paint_core,
                              Canvas * brush_mask,
                              gfloat brush_opacity 
@@ -894,54 +1175,31 @@ painthit_create_incremental (
   PixelArea srcPR, maskPR;
 
   /*  combine the canvas buf and the brush mask to the canvas buf  */
-  pixelarea_init (&srcPR, canvas_buf,
+  pixelarea_init (&srcPR, paint_core->canvas_buf,
                   0, 0,
-                  canvas_buf_width, canvas_buf_height,
+                  paint_core->canvas_buf_width, paint_core->canvas_buf_height,
                   TRUE);
   pixelarea_init (&maskPR, brush_mask,
                   0, 0,
                   canvas_width (brush_mask), canvas_height (brush_mask),
-                  FALSE);
+                  TRUE);
   apply_mask_to_area (&srcPR, &maskPR, brush_opacity);
+
+  if (paint_core->linked_drawable)
+    {
+	/*  combine the linked canvas buf and the brush mask to the canvas buf  */
+	pixelarea_init (&srcPR, paint_core->linked_canvas_buf,
+			0, 0,
+			paint_core->canvas_buf_width, paint_core->canvas_buf_height,
+			TRUE);
+	pixelarea_init (&maskPR, brush_mask,
+			0, 0,
+			canvas_width (brush_mask), canvas_height (brush_mask),
+			TRUE);
+	apply_mask_to_area (&srcPR, &maskPR, brush_opacity);
+    }
 }
   
-
-
-static void
-painthit_apply (
-                PaintCore16 * paint_core,
-                Canvas * orig_tiles,
-                gfloat image_opacity,
-                GimpDrawable * drawable,
-                int paint_mode
-                )
-{
-  gimage_apply_painthit (drawable_gimage (drawable), drawable,
-                         orig_tiles, canvas_buf,
-                         0, 0,
-                         0, 0,
-                         FALSE, image_opacity, paint_mode,
-                         paint_core->x, paint_core->y);
-}
-
-
-
-static void
-painthit_replace (
-                  PaintCore16 * paint_core,
-                  Canvas * brush_mask,
-                  gfloat brush_opacity,
-                  GimpDrawable * drawable,
-                  gfloat image_opacity
-                  )
-{
-  GImage * gimage = drawable_gimage (drawable);
-  
-  gimage_replace_painthit (gimage, drawable, canvas_buf,
-                           FALSE, image_opacity,
-                           brush_mask,
-                           paint_core->x, paint_core->y);
-}
 
 
 static void
@@ -969,12 +1227,26 @@ painthit_finish (
   gdisplays_update_area (gimage->ID,
                          paint_core->x + offx, paint_core->y + offy,
                          canvas_width (painthit), canvas_height (painthit));
+
+  if (paint_core->noise_mask)
+   {
+     canvas_delete (paint_core->noise_mask);
+     paint_core->noise_mask = NULL;
+   }
+
+  if (paint_core->solid_mask)
+   {
+     canvas_delete (paint_core->solid_mask);
+     paint_core->solid_mask = NULL;
+   }
+
 }
 
 
 static Canvas * 
 brush_mask_get  (
-                 PaintCore16 * paint_core,
+		 PaintCore16 *paint_core,
+                 Canvas* brush_mask,
                  int brush_hardness
                  )
 {
@@ -984,19 +1256,19 @@ brush_mask_get  (
     {
     case SOFT:
 #ifdef BRUSH_WITH_BORDER 
-      bm = brush_mask_subsample (paint_core->brush_mask,
+      bm = brush_mask_subsample (brush_mask,
                                  paint_core->curx, paint_core->cury);
 #else
-      bm = paint_core->brush_mask;
+      bm = brush_mask;
 #endif
       break;
       
     case HARD:
-      bm = brush_mask_solidify (paint_core->brush_mask);
+      bm = brush_mask_solidify (paint_core, brush_mask);
       break;
 
     case EXACT:
-      bm = paint_core->brush_mask;
+      bm = brush_mask;
       break;
       
     default:
@@ -1128,6 +1400,229 @@ brush_mask_subsample  (
 }
 #endif
 
+typedef void  (*BrushMaskNoiseFunc) (PaintCore16 *,Canvas*,Canvas*);
+static BrushMaskNoiseFunc brush_mask_noise_funcs[] =
+{
+  brush_mask_noise_u8,
+  brush_mask_noise_u16,
+  brush_mask_noise_float,
+  brush_mask_noise_float16
+};
+
+static Canvas * 
+brush_mask_noise  (
+                      PaintCore16 * paint_core,
+                      Canvas * brush_mask
+                      )
+{
+  Canvas * noise_brush = NULL;
+  Precision prec = tag_precision (canvas_tag (brush_mask));  
+
+#ifdef BRUSH_WITH_BORDER  
+  noise_brush = canvas_new (canvas_tag (brush_mask),
+                            canvas_width (brush_mask) + 2,
+                            canvas_height (brush_mask) + 2,
+                            canvas_storage (brush_mask));
+#else 
+  noise_brush = canvas_new (canvas_tag (brush_mask),
+                            canvas_width (brush_mask),
+                            canvas_height (brush_mask),
+                            canvas_storage (brush_mask));
+#endif
+  canvas_portion_refro (brush_mask, 0, 0);
+  canvas_portion_refrw (noise_brush, 0, 0);
+  
+  (*brush_mask_noise_funcs [prec-1]) (paint_core, brush_mask, noise_brush); 
+
+  canvas_portion_unref (noise_brush, 0, 0);
+  canvas_portion_unref (brush_mask, 0, 0);
+
+  paint_core->noise_mask = noise_brush;
+  
+  return noise_brush;
+}
+
+static void brush_mask_noise_u8 (
+                        PaintCore16 * paint_core,
+			Canvas *brush_mask,
+			Canvas *noise_brush
+		      )
+{  
+  /* get the data and advance one line into it  */
+#ifdef BRUSH_WITH_BORDER
+  guint8* data = (guint8*)canvas_portion_data (noise_brush, 0, 1);
+#else
+  guint8* data = (guint8*)canvas_portion_data (noise_brush, 0, 0);
+#endif
+  guint8* src = (guint8*)canvas_portion_data (brush_mask, 0, 0);
+  gint i, j;
+
+  for (i = 0; i < canvas_height (brush_mask); i++)
+    {
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+      for (j = 0; j < canvas_width (brush_mask); j++)
+	{
+	  *data++ = (*src++) ? 255 : 0;
+	}
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+    }
+}
+
+
+static void brush_mask_noise_u16 (
+                        PaintCore16 * paint_core,
+			Canvas *brush_mask,
+			Canvas *noise_brush
+		      )
+{  
+  /* get the data and advance one line into it  */
+#ifdef BRUSH_WITH_BORDER
+  guint16* data = (guint16*)canvas_portion_data (noise_brush, 0, 1);
+#else
+  guint16* data = (guint16*)canvas_portion_data (noise_brush, 0, 0);
+#endif
+  guint16* src = (guint16*)canvas_portion_data (brush_mask, 0, 0);
+  gint i, j;
+
+  for (i = 0; i < canvas_height (brush_mask); i++)
+    {
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+      for (j = 0; j < canvas_width (brush_mask); j++)
+	{
+	  *data++ = (*src++) ? 65535 : 0;
+	}
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+    }
+}
+
+static void brush_mask_noise_float (
+                        PaintCore16 * paint_core,
+			Canvas *brush_mask,
+			Canvas *noise_brush
+		      )
+{  
+  /* get the data and advance one line into it  */
+#ifdef BRUSH_WITH_BORDER
+  gfloat* data =(gfloat*)canvas_portion_data (noise_brush, 0, 1);
+#else
+  gfloat* data =(gfloat*)canvas_portion_data (noise_brush, 0, 0);
+#endif
+  gfloat* src = (gfloat*)canvas_portion_data (brush_mask, 0, 0);
+  gint i, j;
+
+  for (i = 0; i < canvas_height (brush_mask); i++)
+    {
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+      for (j = 0; j < canvas_width (brush_mask); j++)
+	{
+	  *data++ = (*src++) ? 1.0 : 0.0;
+	}
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+    }
+}
+
+static void brush_mask_noise_float16 (
+                        PaintCore16 * paint_core,
+			Canvas *brush_mask,
+			Canvas *noise_brush
+		      )
+{  
+  ShortsFloat u;
+  float x,y;
+  gint i, j;
+  gint draw_w = drawable_width (paint_core->drawable);
+  gint draw_h = drawable_height (paint_core->drawable);
+  BrushNoiseInfo  info;
+  float f;
+  float start;
+  float width;
+  float end;
+  gint w = canvas_width (brush_mask);
+  gint h = canvas_height (brush_mask);
+  gfloat val;
+  gfloat src_val;
+  gfloat xoff; 
+  gfloat yoff; 
+  gfloat out;
+  gfloat c,s,theta,xnew,ynew;
+  
+#ifdef BRUSH_WITH_BORDER
+  guint16* data =(guint16*)canvas_portion_data (noise_brush, 0, 1);
+#else
+  guint16* data =(guint16*)canvas_portion_data (noise_brush, 0, 0);
+#endif
+  guint16* src = (guint16*)canvas_portion_data (brush_mask, 0, 0);
+
+  gimp_brush_get_noise_info (&info);
+ 
+  f = info.freq * 256;
+
+  if (f) 
+  {
+    xoff = (int)((rand()/32767.0)*255); 
+    yoff = (int)((rand()/32767.0)*255); 
+  }
+  else 
+  {
+    xoff = 0;
+    yoff = 0;
+  }
+
+  xoff = xoff + .5;
+  yoff = yoff + .5;
+
+  start = info.step_start * .7;
+  width = info.step_width;
+
+  theta = rand()/32767.0; 
+  c = cos (2 * 3.14 * theta);
+  s = sin (2 * 3.14 * theta);
+  
+  for (i = 0; i < h; i++)
+    {
+      y = (i/256.0)  * f + yoff;
+
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+      for (j = 0; j < w; j++)
+	{
+	  x = (j/256.0) * f + xoff;
+		
+#if 1 
+  	  xnew = c*x + s*y;
+	  ynew = -s*x + c*y;
+#endif
+
+	  val = noise (xnew, ynew);   
+#if 1 
+	  out =  (.5 * (val + 1)); 
+	  end = start + width;
+          if (end>1) end = 1.0;
+	  out = noise_smoothstep (start, end, out);
+#endif
+	  
+	  src_val = FLT( *src++, u);
+
+	  *data++ = FLT16(out *src_val , u);
+	}
+#ifdef BRUSH_WITH_BORDER
+      data++;
+#endif
+    }
+}
 
 typedef void  (*BrushSolidifyMaskFunc) (Canvas*,Canvas*);
 static BrushSolidifyMaskFunc brush_solidify_mask_funcs[] =
@@ -1140,19 +1635,13 @@ static BrushSolidifyMaskFunc brush_solidify_mask_funcs[] =
 
 static Canvas * 
 brush_mask_solidify  (
+		      PaintCore16 * paint_core,	
                       Canvas * brush_mask
                       )
 {
-  static Canvas * solid_brush = NULL;
-  static Canvas * last_brush  = NULL;
+  Canvas * solid_brush = NULL;
   Precision prec = tag_precision (canvas_tag (brush_mask));  
 
-  if (brush_mask == last_brush)
-    return solid_brush;
-
-  last_brush = brush_mask;
-  if (solid_brush)
-    canvas_delete (solid_brush);
 #ifdef BRUSH_WITH_BORDER  
   solid_brush = canvas_new (canvas_tag (brush_mask),
                             canvas_width (brush_mask) + 2,
@@ -1171,6 +1660,8 @@ brush_mask_solidify  (
 
   canvas_portion_unref (solid_brush, 0, 0);
   canvas_portion_unref (brush_mask, 0, 0);
+  
+  paint_core->solid_mask = solid_brush;
   
   return solid_brush;
 }

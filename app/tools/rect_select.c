@@ -59,6 +59,24 @@ selection_scale_update (GtkAdjustment *adjustment,
   *scale_val = adjustment->value;
 }
 
+static void
+threshold_scale_update (GtkAdjustment *adjustment,
+			double        *scale_val)
+{
+  *scale_val = adjustment->value;
+}
+
+static void
+threshold_text_update (GtkWidget *w,
+			      gpointer   data)
+{
+  char *str;
+  SelectionOptions *options = (SelectionOptions *)data; 
+
+  str = gtk_entry_get_text (GTK_ENTRY (w));
+  options->threshold = atof (str);
+}
+
 SelectionOptions *
 create_selection_options (ToolType tool_type)
 {
@@ -66,20 +84,27 @@ create_selection_options (ToolType tool_type)
   GtkWidget *vbox;
   GtkWidget *hbox;
   GtkWidget *label;
+  GtkWidget *threshold_text;
   GtkWidget *antialias_toggle;
   GtkWidget *feather_toggle;
   GtkWidget *feather_scale;
   GtkWidget *sample_merged_toggle;
   GtkObject *feather_scale_data;
+  GtkWidget *threshold_scale;
+  GtkObject *threshold_scale_data;
 
   label = NULL;
 
   /*  the new options structure  */
   options = (SelectionOptions *) g_malloc (sizeof (SelectionOptions));
-  options->antialias = TRUE;
+  if (tool_type != FUZZY_SELECT)
+    options->antialias = TRUE;
+  else 
+    options->antialias = FALSE;
   options->feather = FALSE;
   options->feather_radius = 10.0;
   options->sample_merged = FALSE;
+  options->threshold = 0.001;
 
   /*  the main vbox  */
   vbox = gtk_vbox_new (FALSE, 1);
@@ -177,6 +202,47 @@ create_selection_options (ToolType tool_type)
 		      &options->feather_radius);
   gtk_widget_show (feather_scale);
   gtk_widget_show (hbox);
+
+  if (tool_type == FUZZY_SELECT)
+  {
+    char buffer[16];
+
+    hbox = gtk_hbox_new (FALSE, 1);
+    gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new ("Threshold");
+    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+    gtk_widget_show (label);
+    threshold_text = gtk_entry_new ();
+    sprintf(buffer, "%.3f", options->threshold); 
+    gtk_entry_set_text (GTK_ENTRY (threshold_text), buffer);
+    gtk_widget_set_usize (threshold_text, 55, 25);
+    gtk_box_pack_start (GTK_BOX (hbox), threshold_text, TRUE, FALSE, 0);
+    gtk_signal_connect (GTK_OBJECT (threshold_text), "changed",
+			(GtkSignalFunc) threshold_text_update,
+			options);
+    gtk_widget_show (threshold_text);
+    gtk_widget_show (hbox);
+#if 0
+    hbox = gtk_hbox_new (FALSE, 1);
+    gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
+
+    label = gtk_label_new ("Threshold:");
+    gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+    gtk_widget_show (label);
+
+    threshold_scale_data = gtk_adjustment_new (options->threshold, 0.0, 1.0, .01, .01, 0.0);
+    threshold_scale = gtk_hscale_new (GTK_ADJUSTMENT (threshold_scale_data));
+    gtk_box_pack_start (GTK_BOX (hbox), threshold_scale, TRUE, TRUE, 0);
+    gtk_scale_set_value_pos (GTK_SCALE (threshold_scale), GTK_POS_TOP);
+    gtk_scale_set_digits (GTK_SCALE (threshold_scale), 3);
+    gtk_range_set_update_policy (GTK_RANGE (threshold_scale), GTK_UPDATE_DELAYED);
+    gtk_signal_connect (GTK_OBJECT (threshold_scale_data), "value_changed",
+			(GtkSignalFunc) threshold_scale_update,
+			&options->threshold);
+    gtk_widget_show (threshold_scale);
+    gtk_widget_show (hbox);
+#endif
+  }
 
   /*  Register this selection options widget with the main tools options dialog  */
   tools_register_options (tool_type, vbox);
