@@ -30,7 +30,7 @@ LDADD = \
 	$(X_LIBS) \
         -lXpm -lUI -lXrh -lvk -lvkhelp -lXpm -lGLw \
 	-lXm -lXmu -lGLw -lXm -lXmu -lXt -lGL -lX11 -lm  -lpts \
-	-lbuf -lclass -ldm -lmi -ltxt -lio -lc -lutil -lm 
+	-lbuf -lclass -ldm -ltxt -lio -lc -lutil -lm 
 
 DEPS = \
 	$(top_builddir)/libgimp/libgimpui.la	\
