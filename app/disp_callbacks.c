@@ -206,14 +206,6 @@ gdisplay_canvas_events (GtkWidget *canvas,
       state = bevent->state;
       middle_mouse_button = 0;
       zoom_set_focus(gdisp);
-      printf("d width %d, d height %d, i width %d, i height %d\n", 
-		      SCALESRC(gdisp) * gdisp->disp_width, SCALESRC(gdisp) * gdisp->disp_height,
-		      SCALEDEST(gdisp) * gdisp->gimage->width,
-		      SCALEDEST(gdisp) * gdisp->gimage->height);
-
-//      printf("offset_x %d, offset_y %d, disp_width %d, disp_height %d,\n\tdisp_xoffset %d, disp_yoffset %d\n", 
-//		      gdisp->offset_x, gdisp->offset_y, gdisp->disp_width, gdisp->disp_height,
-//		      gdisp->disp_xoffset, gdisp->disp_yoffset);
 
       switch (bevent->button)
       {

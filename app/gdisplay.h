@@ -133,6 +133,7 @@ void       gdisplay_snap_rectangle         (GDisplay *, int, int, int, int, int 
 
 /*  function declarations  */
 
+GDisplay * gdisplay_get_from_gimage        (GImage *image);
 GDisplay * gdisplay_active                 (void);
 GDisplay * gdisplay_get_ID                 (int);
 void       gdisplays_update_title          (int);

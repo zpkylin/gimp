@@ -40,6 +40,7 @@
 #include "plug_in.h"
 #include "tools.h"
 #include "undo.h"
+#include "zoom.h"
 
 #include "layer_pvt.h"
 #include "drawable_pvt.h"		/* ick ick. */
@@ -496,6 +497,8 @@ gimage_resize (GImage *gimage, int new_width, int new_height,
   gimage_invalidate_preview (gimage);
   gdisplays_update_full (gimage->ID);
   gdisplays_shrink_wrap (gimage->ID);
+
+  zoom_view_changed(gdisplay_get_from_gimage(gimage));
 }
 
 
@@ -567,6 +570,8 @@ gimage_scale (GImage *gimage, int new_width, int new_height)
   gimage_invalidate_preview (gimage);
   gdisplays_update_full (gimage->ID);
   gdisplays_shrink_wrap (gimage->ID);
+
+  zoom_view_changed(gdisplay_get_from_gimage(gimage));
 }
 
 

@@ -93,6 +93,8 @@ void zoom_view_changed(GDisplay *disp)
 
 void zoom_image_preview_changed(GImage *image)
 {
+   // need to redraw, since the image we are previewing has changed
+   zoom_preview_draw();
 }
 
 void zoom_set_focus(GDisplay *gdisp)
@@ -347,6 +349,8 @@ static void zoom_preview_render_image()
    if (!zoom_control || !zoom_control->pixmap)
       return;
 
+   // for now, just draw a white rectangle.  Ideally, we'd actually draw a mini version of the
+   // image, but that would be a serious pain to implement, and arguably isn't that important.
    gdk_draw_rectangle(zoom_control->pixmap, zoom_control->preview->style->white_gc, TRUE, 
 		   zoom_control->preview_x_offset, zoom_control->preview_y_offset, 
 		   zoom_control->preview_width, 

@@ -1409,6 +1409,24 @@ gdisplays_update_full (int ID)
 }
 
 
+GDisplay * 
+gdisplay_get_from_gimage(GImage *image)
+{
+  GDisplay *gdisp;
+  GSList *list = display_list;
+
+  while (list) {
+      gdisp = (GDisplay *) list->data;
+      if (gdisp->gimage == image) {
+	 return gdisp;
+      }
+
+      list = g_slist_next (list);
+  }
+  return NULL;
+}
+
+
 void
 gdisplays_shrink_wrap (int ID)
 {
