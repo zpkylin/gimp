@@ -1,0 +1,3 @@
+CMDLINE=/bin/CC -DEFAULT:abi=n32:isa=mips4:proc=r10k -n32 -DHAVE_CONFIG_H -I. -I. -I../.. -I/software/thalia/gnu/irix6.5-mips-n32/lib/glib/include -I/software/thalia/gnu/include -I../.. -I/software/thalia/gnu/include -I/usr/ToolTalk/include -I/software/thalia/h -g -c RH_FileSB.c
+PWD=/rosie/muse/thalia/gimp/gimp/plug-ins/pts
+----
