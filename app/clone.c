@@ -125,7 +125,7 @@ static int          src_gdisp_ID = -1;          /*  ID of source gdisplay  */
 static CloneOptions *clone_options = NULL;
 static	char	    rm_cross=0; 
 static char 	    clone_now = TRUE; 
-static char 	    dont_dist = 0; 
+static char 	    dont_dist = 1; 
 static	char	    expose = 0;
 
 
@@ -407,7 +407,10 @@ clone_cursor_func (PaintCore *paint_core,
 	  src_gdisp_ID = gdisp->ID;
 	  src_gdisp = gdisplay_get_ID (src_gdisp_ID);
 	}
-      dont_dist = 1;
+      if (src_gdisp != gdisp)
+	dont_dist = 1;
+      else
+	dont_dist = 0;
 
       if (src_gdisp && clone_point_set && second_mv)
 	{
@@ -436,7 +439,7 @@ clone_cursor_func (PaintCore *paint_core,
 static void *
 clone_paint_func (PaintCore *paint_core,
 		  GimpDrawable *drawable,
-		  int        state)
+		  int state)
 {
   GDisplay * gdisp;
   GDisplay * src_gdisp;
@@ -445,6 +448,18 @@ clone_paint_func (PaintCore *paint_core,
 
   gdisp = (GDisplay *) active_tool->gdisp_ptr;
 
+  if (!source_drawable || !drawable_gimage (source_drawable))
+    {
+      clean_up = 0;
+      first_down = TRUE;
+      first_up = TRUE;
+      first_mv = TRUE;
+      second_mv = TRUE;
+      rm_cross=0;
+      clone_now = TRUE;
+      dont_dist = 1;
+      clone_point_set = 0;
+    }
   if (!first_up)
     {
       clone_now = FALSE; 
@@ -562,6 +577,7 @@ clone_paint_func (PaintCore *paint_core,
       if (clone_point_set && gdisp->framemanager && 
 	  source_drawable != frame_manager_bg_drawable ())
 	{
+
 	  source_drawable = frame_manager_bg_drawable (); 
 	}
       if (clone_point_set && gdisp->gimage->onionskin)
@@ -609,10 +625,15 @@ clone_paint_func (PaintCore *paint_core,
 	  first_down = TRUE;
 	  first_mv = TRUE;
 	}
-      else if (clone_options->aligned == AlignNo && clone_point_set)
-	first_down = TRUE;
+      else if (clone_options->aligned == AlignNo && 
+	  clone_point_set==1)
+	{
+	  first_down = TRUE;
+	}
       else if (!clone_point_set)
+	{
 	g_message ("Set clone point with CTRL + left mouse button.");
+	}
       first_up = TRUE;
       clone_now = TRUE; 
       break;
@@ -686,11 +707,7 @@ static void
 clone_draw (Tool *tool)
 {
   PaintCore * paint_core = NULL;
-
   paint_core = (PaintCore *) tool->private;
-
-
-
 
   if (tool && paint_core && clone_point_set && !expose)
     {
@@ -740,7 +757,7 @@ clone_draw (Tool *tool)
 		  radius, radius,
 		  0, 23040);
 	    }
-	  if (!dont_dist)
+	  if (!dont_dist && clone_options->aligned == AlignYes)
 	    gdk_draw_line (paint_core->core->win, paint_core->core->gc,
 		trans_tx, trans_ty,
 		dtrans_tx, dtrans_ty); 
@@ -799,7 +816,7 @@ clone_delete_image (GImage *gimage)
       second_mv = TRUE;
       rm_cross=0;
       clone_now = TRUE;
-      dont_dist = 0;
+      dont_dist = 1;
       clone_point_set = FALSE;
 
     }

@@ -241,13 +241,9 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
        */
       if (first_transform)
 	{
-	  if (gdisp->gimage->onionskin)
-	    transform_core->original = transform_core_cut (gdisp->gimage,
-		frame_manager_onionskin_drawable (), &new_layer);
-	  else  
-	    transform_core->original = transform_core_cut (gdisp->gimage,
-		gimage_active_drawable (gdisp->gimage),
-		&new_layer);
+	  transform_core->original = transform_core_cut (gdisp->gimage,
+	      gimage_active_drawable (gdisp->gimage),
+	      &new_layer);
 	}
 	else
 	new_layer = FALSE;
@@ -261,12 +257,8 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
 	  /*  paste the new transformed image to the gimage...also implement
 	   *  undo...
 	   */
-	  if (gdisp->gimage->onionskin)
-	    transform_core_paste (gdisp->gimage, frame_manager_onionskin_drawable (),
-		new_tiles, new_layer);
-	  else
 	  transform_core_paste (gdisp->gimage, gimage_active_drawable (gdisp->gimage),
-				new_tiles, new_layer);
+	      new_tiles, new_layer);
 
 	  /*  create and initialize the transform_undo structure  */
 	  tu = (TransformUndo *) g_malloc (sizeof (TransformUndo));
@@ -279,10 +271,7 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
 
 	  /* Make a note of the new current drawable (since we may have
 	     a floating selection, etc now. */
-	  if (gdisp->gimage->onionskin)
-	    tool->drawable = frame_manager_onionskin_drawable ();
-	  else
-	    tool->drawable = gimage_active_drawable (gdisp->gimage);
+	  tool->drawable = gimage_active_drawable (gdisp->gimage);
 
 	  undo_push_transform (gdisp->gimage, (void *) tu);
 	}

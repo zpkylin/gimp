@@ -1945,12 +1945,6 @@ frame_manager_change_frame_num (frame_manager_t *fm, store_t *item)
 	gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp);
 	gtk_widget_show (fm->change_frame_num);
       }
-    else
-      {
-	temp = strdup (frame_manager_get_frame (item->gimage));
-	gtk_entry_set_text (GTK_ENTRY (fm->jump_to), temp);
-	gdk_window_raise(GTK_WINDOW (fm->change_frame_num));	
-      }
 }
 
 static gint 
@@ -1962,12 +1956,9 @@ frame_manager_store_size (GtkWidget *w, gpointer client_data)
 
   if (!frame_manager_check (fm))
     {
-      printf ("lfdlaskdjlaks\n"); 
     return;
     } 
-      printf ("lfdlaskdjlaks\n"); 
   frame_manager_rm_onionskin (fm); 
-      printf ("lfdlaskdjlaks\n"); 
 
   frame_manager_store_new_options (fm); 
   return TRUE; 
