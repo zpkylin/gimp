@@ -632,7 +632,7 @@ toolbox_raise_callback (GtkWidget *widget,
 
 
 void
-create_display_shell (int   gdisp_id,
+create_display_shell (int   gdisp_unique_id,
 		      int   width,
 		      int   height,
 		      char *title,
@@ -648,7 +648,7 @@ create_display_shell (int   gdisp_id,
   int scalesrc, scaledest;
 
   /*  Get the gdisplay  */
-  if (! (gdisp = gdisplay_get_ID (gdisp_id)))
+  if (! (gdisp = gdisplay_get_unique_id (gdisp_unique_id)))
     return;
 
   /*  adjust the initial scale -- so that window fits on screen */
@@ -827,12 +827,13 @@ create_display_shell (int   gdisp_id,
 
   gtk_widget_show (gdisp->canvas);
   gtk_widget_show (table);
-  gtk_widget_show (gdisp->shell);
   gtk_widget_show (vbox);
 
   gtk_widget_set_uposition(gdisp->shell, image_x + 10, image_y + 10);
   layout_connect_window_position(gdisp->shell, &image_x, &image_y);
   minimize_register(gdisp->shell);
+
+  gtk_widget_show (gdisp->shell);
 
   /*  set the focus to the canvas area  */
   gtk_widget_grab_focus (gdisp->canvas);

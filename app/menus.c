@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <unistd.h>
 #include "appenv.h"
 #include "colormaps.h"
 #include "commands.h"
@@ -37,60 +39,62 @@
 #endif
 
 static void menus_init (void);
+static void
+menus_strip_extra_entries(const char *tmp_filename, const char *filename);
 
 static GtkItemFactoryEntry toolbox_entries[] =
 {
-  { "/File/New", "<control>N", file_new_cmd_callback, 0 },
-  { "/File/Open/File", "<control>O", file_open_cmd_callback, 0 },
+  { "/File/New", "<alt>N", file_new_cmd_callback, 0 },
+  { "/File/Open/File", "<alt>O", file_open_cmd_callback, 0 },
   { "/File/About...", NULL, about_dialog_cmd_callback, 0 },
   { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/Tip of the day", NULL, tips_dialog_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
-  { "/File/Dialogs/Brushes...", "<control><shift>B", dialogs_brushes_cmd_callback, 0 },
+  { "/File/Dialogs/Brushes...", "<control>B", dialogs_brushes_cmd_callback, 0 },
 #if 0
   { "/File/Dialogs/Patterns...", "<control><shift>P", dialogs_patterns_cmd_callback, 0 },
 #endif
   { "/File/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
   { "/File/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
-  { "/File/Dialogs/Tool Options...", "<control><shift>T", dialogs_tools_options_cmd_callback, 0 },
-    { "/File/Device Dialog", NULL, dialogs_input_devices_cmd_callback, 0}, 
-    { "/File/---", NULL, NULL, 0, "<Separator>" },
-  { "/File/Quit", "<control>Q", file_quit_cmd_callback, 0 },
+  { "/File/Dialogs/Tool Options...", "<control>T", dialogs_tools_options_cmd_callback, 0 },
+  { "/File/Device Dialog", NULL, dialogs_input_devices_cmd_callback, 0}, 
+  { "/File/---", NULL, NULL, 0, "<Separator>" },
+  { "/File/Quit", "<alt>Q", file_quit_cmd_callback, 0 },
 };
 static guint n_toolbox_entries = sizeof (toolbox_entries) / sizeof (toolbox_entries[0]);
 static GtkItemFactory *toolbox_factory = NULL;
 
 static GtkItemFactoryEntry image_entries[] =
 {
-  { "/File/New", "<control>N", file_new_cmd_callback, 1 },
+  { "/File/New", "<alt>N", file_new_cmd_callback, 1 },
   { "/File/Revert to Saved", "<alt>R", file_reload_cmd_callback, 0 },
-  { "/File/Open/File", "<control>O", file_open_cmd_callback, 0 },
-  { "/File/Save/File", "<control>S", file_save_cmd_callback, 0 },
-  { "/File/Save as/File", NULL, file_save_as_cmd_callback, 0 },
+  { "/File/Open/File", "<alt>O", file_open_cmd_callback, 0 },
+  { "/File/Save/File", "<alt>S", file_save_cmd_callback, 0 },
+  { "/File/Save as/File", "<alt><shift>s", file_save_as_cmd_callback, 0 },
   { "/File/SaveFile copy as", NULL, file_save_copy_as_cmd_callback, 0 }, 
 #if 0
-    { "/File/OpenPTS", "<alt>O", NULL, 0 },
+  { "/File/OpenPTS", "<alt>O", NULL, 0 },
   { "/File/SavePTS", "<alt>S", NULL, 0 },
   { "/File/SavePTS as", NULL, NULL, 0 },
 #endif 
-    { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
+  { "/File/Preferences...", NULL, file_pref_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
-  { "/File/Close", "<control>W", file_close_cmd_callback, 0 },
-  { "/File/Quit", "<control>Q", file_quit_cmd_callback, 0 },
+  { "/File/Close", "<alt>W", file_close_cmd_callback, 0 },
+  { "/File/Quit", "<alt>Q", file_quit_cmd_callback, 0 },
   { "/File/---", NULL, NULL, 0, "<Separator>" },
-  { "/Edit/Cut", "<control>X", edit_cut_cmd_callback, 0 },
-  { "/Edit/Copy", "<control>C", edit_copy_cmd_callback, 0 },
-  { "/Edit/Paste", "<control>V", edit_paste_cmd_callback, 0 },
+  { "/Edit/Cut", "<alt>X", edit_cut_cmd_callback, 0 },
+  { "/Edit/Copy", "<alt>C", edit_copy_cmd_callback, 0 },
+  { "/Edit/Paste", "<alt>V", edit_paste_cmd_callback, 0 },
   { "/Edit/Paste Into", NULL, edit_paste_into_cmd_callback, 0 },
   { "/Edit/Clear", "<control>K", edit_clear_cmd_callback, 0 },
   { "/Edit/Fill", "<control>.", edit_fill_cmd_callback, 0 },
   { "/Edit/Stroke", NULL, edit_stroke_cmd_callback, 0 },
-  { "/Edit/Undo", "<control>Z", edit_undo_cmd_callback, 0 },
-  { "/Edit/Redo", "<control>R", edit_redo_cmd_callback, 0 },
+  { "/Edit/Undo", "<alt>Z", edit_undo_cmd_callback, 0 },
+  { "/Edit/Redo", "<alt><shift>z", edit_redo_cmd_callback, 0 },
   { "/Edit/---", NULL, NULL, 0, "<Separator>" },
-  { "/Edit/Cut Named", "<control><shift>X", edit_named_cut_cmd_callback, 0 },
-  { "/Edit/Copy Named", "<control><shift>C", edit_named_copy_cmd_callback, 0 },
-  { "/Edit/Paste Named", "<control><shift>V", edit_named_paste_cmd_callback, 0 },
+  { "/Edit/Cut Named", "<control><alt>X", edit_named_cut_cmd_callback, 0 },
+  { "/Edit/Copy Named", "<control><alt>C", edit_named_copy_cmd_callback, 0 },
+  { "/Edit/Paste Named", "<control><alt>V", edit_named_paste_cmd_callback, 0 },
   { "/Edit/---", NULL, NULL, 0, "<Separator>" },
   { "/Select/Toggle", "<control>T", select_toggle_cmd_callback, 0 },
   { "/Select/Invert", "<control>I", select_invert_cmd_callback, 0 },
@@ -132,7 +136,7 @@ static GtkItemFactoryEntry image_entries[] =
   { "/View/Toggle Guides", "<control><shift>T", view_toggle_guides_cmd_callback, 0, "<ToggleItem>" },
   { "/View/Snap To Guides", NULL, view_snap_to_guides_cmd_callback, 0, "<ToggleItem>" },
   { "/View/---", NULL, NULL, 0, "<Separator>" },
-/*  { "/View/New View", NULL, view_new_view_cmd_callback, 0 }, */
+  { "/View/New View", NULL, view_new_view_cmd_callback, 0 }, 
   { "/View/Shrink Wrap", "<control>E", view_shrink_wrap_cmd_callback, 0 },
   { "/Image/Colors/Equalize", NULL, image_equalize_cmd_callback, 0 },
   { "/Image/Colors/Invert", NULL, image_invert_cmd_callback, 0 },
@@ -167,10 +171,10 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Image/---", NULL, NULL, 0, "<Separator>" },
   { "/Image/Histogram", NULL, image_histogram_cmd_callback, 0 },
   { "/Layers/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
-  { "/Layers/Raise Layer", "<control>F", layers_raise_cmd_callback, 0 },
-  { "/Layers/Lower Layer", "<control>B", layers_lower_cmd_callback, 0 },
-  { "/Layers/Anchor Layer", "<control>H", layers_anchor_cmd_callback, 0 },
-  { "/Layers/Merge Visible Layers", "<control>M", layers_merge_cmd_callback, 0 },
+  { "/Layers/Raise Layer", "<shift>F", layers_raise_cmd_callback, 0 },
+  { "/Layers/Lower Layer", "<shift>B", layers_lower_cmd_callback, 0 },
+  { "/Layers/Anchor Layer", "<shift>H", layers_anchor_cmd_callback, 0 },
+  { "/Layers/Merge Visible Layers", "<shift>M", layers_merge_cmd_callback, 0 },
   { "/Layers/Flatten Image", NULL, layers_flatten_cmd_callback, 0 },
 #if 0
   { "/Layers/Alpha To Selection", NULL, layers_alpha_select_cmd_callback, 0 },
@@ -181,34 +185,38 @@ static GtkItemFactoryEntry image_entries[] =
 #endif
   { "/Layers/Make Layer", NULL, layers_add_alpha_channel_cmd_callback, 0 },
 #if 1
-  { "/Tools/Rect Select", "R", tools_select_cmd_callback, RECT_SELECT },
-  { "/Tools/Ellipse Select", "E", tools_select_cmd_callback, ELLIPSE_SELECT },
-  { "/Tools/Free Select", "F", tools_select_cmd_callback, FREE_SELECT },
-  { "/Tools/Fuzzy Select", "Z", tools_select_cmd_callback, FUZZY_SELECT },
-  { "/Tools/Bezier Select", "B", tools_select_cmd_callback, BEZIER_SELECT },
-  /*{ "/Tools/Intelligent Scissors", "I", tools_select_cmd_callback, ISCISSORS },*/
-  { "/Tools/Move", "M", tools_select_cmd_callback, MOVE },
-  { "/Tools/Magnify", "<shift>M", tools_select_cmd_callback, MAGNIFY },
-  { "/Tools/Crop", "<shift>C", tools_select_cmd_callback, CROP },
-  { "/Tools/Transform", "<shift>T", tools_select_cmd_callback, ROTATE },
-  { "/Tools/Flip", "<shift>F", tools_select_cmd_callback, FLIP_HORZ },
-  /*{ "/Tools/Text", "T", tools_select_cmd_callback, TEXT },*/
-  { "/Tools/Color Picker", "O", tools_select_cmd_callback, COLOR_PICKER },
+  { "/Tools/Rect Select", NULL, tools_select_cmd_callback, RECT_SELECT },
+  { "/Tools/Ellipse Select", NULL, tools_select_cmd_callback, ELLIPSE_SELECT },
+  { "/Tools/Free Select", NULL, tools_select_cmd_callback, FREE_SELECT },
+  { "/Tools/Fuzzy Select", NULL, tools_select_cmd_callback, FUZZY_SELECT },
+  { "/Tools/Bezier Select", NULL, tools_select_cmd_callback, BEZIER_SELECT },
 #if 0
-    { "/Tools/Color Picker Down", "I", select_color_picker, NULL },
+  { "/Tools/Intelligent Scissors", "I", tools_select_cmd_callback, ISCISSORS },
 #endif
-      { "/Tools/Bucket Fill", "<shift>B", tools_select_cmd_callback, BUCKET_FILL },
-  { "/Tools/Blend", "L", tools_select_cmd_callback, BLEND },
-  { "/Tools/Paintbrush", "P", tools_select_cmd_callback, PAINTBRUSH },
-  { "/Tools/Pencil", "<shift>P", tools_select_cmd_callback, PENCIL },
-  { "/Tools/Eraser", "<shift>E", tools_select_cmd_callback, ERASER },
-  { "/Tools/Airbrush", "A", tools_select_cmd_callback, AIRBRUSH },
-  { "/Tools/Clone", "C", tools_select_cmd_callback, CLONE },
-  { "/Tools/Convolve", "C", tools_select_cmd_callback, CONVOLVE },
-  { "/Tools/Dodge or Burn", "D", tools_select_cmd_callback, DODGEBURN },
-  { "/Tools/Smudge", "S", tools_select_cmd_callback, SMUDGE },
-  { "/Tools/Default Colors", "D", tools_default_colors_cmd_callback, 0 },
-  { "/Tools/Swap Colors", "X", tools_swap_colors_cmd_callback, 0 },  
+  { "/Tools/Move", NULL, tools_select_cmd_callback, MOVE },
+  { "/Tools/Magnify", NULL, tools_select_cmd_callback, MAGNIFY },
+  { "/Tools/Crop", NULL, tools_select_cmd_callback, CROP },
+  { "/Tools/Transform", NULL, tools_select_cmd_callback, ROTATE },
+  { "/Tools/Flip", NULL, tools_select_cmd_callback, FLIP_HORZ },
+#if 0
+  { "/Tools/Text", "T", tools_select_cmd_callback, TEXT },
+#endif
+  { "/Tools/Color Picker", NULL, tools_select_cmd_callback, COLOR_PICKER },
+#if 0
+  { "/Tools/Color Picker Down", "I", select_color_picker, NULL },
+#endif
+  { "/Tools/Bucket Fill", NULL, tools_select_cmd_callback, BUCKET_FILL },
+  { "/Tools/Blend", NULL, tools_select_cmd_callback, BLEND },
+  { "/Tools/Paintbrush", NULL, tools_select_cmd_callback, PAINTBRUSH },
+  { "/Tools/Pencil", NULL, tools_select_cmd_callback, PENCIL },
+  { "/Tools/Eraser", NULL, tools_select_cmd_callback, ERASER },
+  { "/Tools/Airbrush", NULL, tools_select_cmd_callback, AIRBRUSH },
+  { "/Tools/Clone", NULL, tools_select_cmd_callback, CLONE },
+  { "/Tools/Convolve", NULL, tools_select_cmd_callback, CONVOLVE },
+  { "/Tools/Dodge or Burn", NULL, tools_select_cmd_callback, DODGEBURN },
+  { "/Tools/Smudge", NULL, tools_select_cmd_callback, SMUDGE },
+  { "/Tools/Default Colors", NULL, tools_default_colors_cmd_callback, 0 },
+  { "/Tools/Swap Colors", NULL, tools_swap_colors_cmd_callback, 0 },  
   { "/Tools/---", NULL, NULL, 0, "<Separator>" },
   { "/Tools/Toolbox", NULL, toolbox_raise_callback, 0 },
 #endif
@@ -231,15 +239,15 @@ static GtkItemFactoryEntry image_entries[] =
   { "/Dialogs/Patterns...", "<control><shift>P", dialogs_patterns_cmd_callback, 0 },
 #endif
   { "/Dialogs/Palette...", "<control>P", dialogs_palette_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/create", "<alt>F", dialogs_frame_manager_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/step forward", "s", dialogs_frame_manager_step_forward_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/step backwards", "a", dialogs_frame_manager_step_backwards_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/flip forward", "w", dialogs_frame_manager_flip_forward_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/flip backwards", "q", dialogs_frame_manager_flip_backwards_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/raise store", "x", dialogs_frame_manager_raise_store_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/lower store", "z", dialogs_frame_manager_lower_store_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/lower step forward", "r", dialogs_frame_manager_lower_step_forward_cmd_callback, 0 },
-  { "/Dialogs/Frame Manager/lower step backwards", "e", dialogs_frame_manager_lower_step_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/create", "<control>F", dialogs_frame_manager_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/step forward", "S", dialogs_frame_manager_step_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/step backwards", "A", dialogs_frame_manager_step_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/flip forward", "W", dialogs_frame_manager_flip_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/flip backwards", "Q", dialogs_frame_manager_flip_backwards_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/raise store", "X", dialogs_frame_manager_raise_store_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower store", "Z", dialogs_frame_manager_lower_store_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower step forward", "R", dialogs_frame_manager_lower_step_forward_cmd_callback, 0 },
+  { "/Dialogs/Frame Manager/lower step backwards", "E", dialogs_frame_manager_lower_step_backwards_cmd_callback, 0 },
   { "/Dialogs/Gradient Editor...", "<control>G", dialogs_gradient_editor_cmd_callback, 0 },
   { "/Dialogs/Layers & Channels...", "<control>L", dialogs_lc_cmd_callback, 0 },
 #if 0
@@ -272,6 +280,7 @@ static void
 menu_remove_default_accel(const gchar *name)
 {
    int i=0;
+
    for (i=0; i < n_image_entries; i++) {
       if (strcmp(image_entries[i].path, name) == 0) {
           image_entries[i].accelerator = NULL;
@@ -297,7 +306,7 @@ menu_set_default_accel(const gchar *name, guint accel_key, GdkModifierType accel
    for (i=0; i < n_image_entries; i++) {
       if (strcmp(image_entries[i].path, name) == 0) {
           // I know this is a memory leak, but it's really minor, and there's no
-          // easy tway to avoid id.  So just ignore it.  -- jcohen
+          // easy way to avoid it  So just ignore it.  -- jcohen
           image_entries[i].accelerator = strdup(buff);
           return;
       }
@@ -331,6 +340,7 @@ pop_up_menu_add_accel_cb(
   GDisplay *cur_gdisp;
   GtkWidget * related_widget;
 
+//  printf("inside pop_up_menu_add_accel_cb\n");
   if (accel_inside_update)
      return;
   else 
@@ -338,6 +348,7 @@ pop_up_menu_add_accel_cb(
 
   item = (GtkMenuItem *)widget;
   wid_path = strstr(gtk_widget_get_name(widget), ">/");
+// printf("   %s\n", wid_path);
 
   // go to all other pulldown menus and the popup menu
   // propoate changes to them as well.
@@ -347,13 +358,16 @@ pop_up_menu_add_accel_cb(
      
      // since corresponding menu entries in different menus have the same name,
      // we can take advantage of that to look up the related menu item from other menus.
-     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->unique_id, wid_path);
      related_widget =  gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
                       
      if (related_widget) {
         gtk_widget_add_accelerator(
                 related_widget, gtk_signal_name(item->accelerator_signal),
                 cur_gdisp->menubar_fac->accel_group, accel_key, accel_mods, accel_flags);
+     }
+     else {
+        printf("Could not find widget %s\n", buff);
      }
 
      disp_list = disp_list->next;
@@ -382,6 +396,7 @@ pull_down_menu_add_accel_cb(
   GDisplay *cur_gdisp;
   GtkWidget * related_widget;
 
+//  printf("inside pull_down_menu_add_accel_cb\n");
   if (accel_inside_update)
      return;
   else 
@@ -392,6 +407,7 @@ pull_down_menu_add_accel_cb(
   this_gdisp = (GDisplay *)user_data;
   item = (GtkMenuItem *)widget;
   wid_path = strstr(gtk_widget_get_name(widget), ">/");
+//  printf("   %s\n", wid_path);
 
   // go to all other pulldown menus and the popup menu
   // propoate changes to them as well.
@@ -403,13 +419,16 @@ pull_down_menu_add_accel_cb(
         cur_gdisp = (GDisplay *)disp_list->data;
         // since corresponding menu entries in different menus have the same name,
         // we can take advantage of that to look up the related menu item from other menus.
-        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->unique_id, wid_path);
         related_widget = 
                 gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
         if (related_widget) {
            gtk_widget_add_accelerator(
                 related_widget, gtk_signal_name(item->accelerator_signal),
                 cur_gdisp->menubar_fac->accel_group, accel_key, accel_mods, accel_flags);
+        }
+        else {
+           printf("Could not find widget %s\n", buff);
         }
      }
 
@@ -424,6 +443,9 @@ pull_down_menu_add_accel_cb(
      gtk_widget_add_accelerator(
             related_widget, gtk_signal_name(item->accelerator_signal),
             image_factory->accel_group, accel_key, accel_mods, accel_flags);
+  }
+  else {
+     printf("Could not find widget %s\n", buff);
   }
  
   menu_set_default_accel(wid_path + 1, accel_key, accel_mods);
@@ -448,15 +470,17 @@ pull_down_menu_rem_accel_cb(
   GDisplay *cur_gdisp;
   GtkWidget * related_widget;
 
+//  printf("inside pull_down_menu_rem_accel_cb\n");
+
   if (accel_inside_update)
      return;
   else 
      accel_inside_update = 1;
-  //printf("Entering pull_down_menu_rem_accel_cb\n");
 
   this_gdisp = (GDisplay *)user_data;
   item = (GtkMenuItem *)widget;
   wid_path = strstr(gtk_widget_get_name(widget), ">/");
+//  printf("   %s\n", wid_path);
 
   // go to all other pulldown menus and the popup menu
   // propoate changes to them as well.
@@ -467,12 +491,15 @@ pull_down_menu_rem_accel_cb(
         cur_gdisp = (GDisplay *)disp_list->data;
         // since corresponding menu entries in different menus have the same name,
         // we can take advantage of that to look up the related menu item from other menus.
-        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+        g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->unique_id, wid_path);
         related_widget = 
                 gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
         if (related_widget) {
            gtk_widget_remove_accelerators(
                 related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
+        }
+        else {
+           printf("Could not find widget %s\n", buff);
         }
      }
 
@@ -487,10 +514,12 @@ pull_down_menu_rem_accel_cb(
      gtk_widget_remove_accelerators(
             related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
   }
+  else {
+     printf("Could not find widget %s\n", buff);
+  }
  
   menu_remove_default_accel(wid_path + 1);
 
-  //printf("Leaving pull_down_menu_rem_accel_cb\n");
   accel_inside_update = 0;
 }
 
@@ -527,12 +556,15 @@ pop_up_menu_rem_accel_cb(
      
      // since corresponding menu entries in different menus have the same name,
      // we can take advantage of that to look up the related menu item from other menus.
-     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->ID, wid_path);
+     g_snprintf(buff, 1024, "<Image%d%s", cur_gdisp->unique_id, wid_path);
      related_widget =  gtk_item_factory_get_widget (cur_gdisp->menubar_fac, buff);
                       
      if (related_widget) {
         gtk_widget_remove_accelerators(
                 related_widget, gtk_signal_name(item->accelerator_signal), TRUE);
+     }
+     else {
+        printf("Could not find widget %s\n", buff);
      }
 
      disp_list = disp_list->next;
@@ -540,7 +572,6 @@ pop_up_menu_rem_accel_cb(
 
   // remove from future window pulldown menus
   menu_remove_default_accel(wid_path + 1);
-  // printf("Leaving pop_up_menu_rem_accel_cb\n");
 
   accel_inside_update = 0;
 }
@@ -555,9 +586,14 @@ menus_get_image_menubar(GDisplay *gdisp)
   GSList *cur_slist;
   GSList *cur_wid_list;
 
-  g_snprintf(buff, 256, "<Image%d>", gdisp->ID);
+  g_snprintf(buff, 256, "<Image%d>", gdisp->unique_id);
   gdisp->menubar_fac = gtk_item_factory_new (GTK_TYPE_MENU_BAR, buff, NULL);
   gtk_item_factory_create_items_ac (gdisp->menubar_fac , n_image_entries,image_entries, NULL, 2);
+
+  if (!gdisp->menubar_fac->widget) {
+     printf("menus_get_image_menubar -- could not create widget\n");
+     return;
+  }
   gdisp->menubar = gdisp->menubar_fac->widget;
 
   // iterate through all GtkMenuItmes that were created
@@ -704,13 +740,46 @@ menus_destroy (char *path)
 }
 
 void
+menus_strip_extra_entries(const char *tmp_filename, const char *filename)
+{
+   FILE *fpr, *fpw;
+   gchar buff[1024];
+   gchar *ptr;
+   int filter;
+
+   fpr = fopen(tmp_filename, "rt");
+   fpw = fopen(filename, "wt");
+    
+   if (!fpr || !fpw) {
+      printf("menus_strip_extra_entries -- could not open files\n");
+      return;
+   }
+
+   while (!feof(fpr)) {
+      filter = 0;
+      fgets(buff, 1024, fpr);
+      ptr = strstr(buff, "<Image");
+      if (ptr) {
+         filter = (ptr[6] != '>');
+      }
+      if (!filter) {
+         fputs(buff, fpw);
+      }
+   }
+}
+
+void
 menus_quit ()
 {
-  gchar *filename;
+  gchar tmp_filename[1024];
+  gchar filename[1024];
 
-  filename = g_strconcat (gimp_directory (), "/menurc", NULL);
-  gtk_item_factory_dump_rc (filename, NULL, TRUE); 
-  g_free (filename);
+  sprintf(tmp_filename, "%s.%d", "/tmp/.menurc", getpid());
+  sprintf(filename, "%s/menurc", gimp_directory ());
+  gtk_item_factory_dump_rc (tmp_filename, NULL, TRUE); 
+
+  // run through the menurc file and remove all the extra entries
+  menus_strip_extra_entries(tmp_filename, filename); 
 
   if (!initialize)
     {

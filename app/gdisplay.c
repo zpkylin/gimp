@@ -104,7 +104,8 @@ gdisplay_new (GImage       *gimage,
   gdisp->window_info_dialog = NULL;
   gdisp->depth = g_visual->depth;
   gdisp->select = NULL;
-  gdisp->ID = gimage->ID/*display_num++*/;
+  gdisp->ID = gimage->ID;
+  gdisp->unique_id = display_num++;
   gdisp->instance = instance;
   gdisp->update_areas = NULL;
   gdisp->display_areas = NULL;
@@ -127,7 +128,7 @@ gdisplay_new (GImage       *gimage,
   display_list = g_slist_append (display_list, (void *) gdisp);
 
   /*  create the shell for the image  */
-  create_display_shell (gdisp->ID, gimage->width, gimage->height,
+  create_display_shell (gdisp->unique_id, gimage->width, gimage->height,
 			title, 0);
 
   /*  set the user data  */
@@ -1038,77 +1039,77 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
       t = drawable_tag (drawable);
     }
 
-  g_snprintf(buff, 1024, "<Image%d>/File/Revert to Saved", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/File/Revert to Saved", gdisp->unique_id);
   menus_set_sensitive (buff, from_disk);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->unique_id);
   menus_set_sensitive (buff, !fs && !aux && lp && alpha);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Lower Layer", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Lower Layer", gdisp->unique_id);
   menus_set_sensitive (buff, !fs && !aux && lp && alpha);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->unique_id);
   menus_set_sensitive (buff, fs && !aux && lp);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Merge Visible Layers", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Merge Visible Layers", gdisp->unique_id);
   menus_set_sensitive (buff, !fs && !aux && lp);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Flatten Image", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Flatten Image", gdisp->unique_id);
   menus_set_sensitive (buff, !fs && !aux && lp);
-  g_snprintf(buff, 1024, "<Image%d>/Layers/Mask To Selection", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Layers/Mask To Selection", gdisp->unique_id);
   menus_set_sensitive (buff, !fs && !aux && lp);
-  g_snprintf(buff, 1024, "<Image%d>/Image/RGB", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/RGB", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_RGB));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Grayscale", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Grayscale", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_GRAY));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Threshold", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Threshold", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Posterize", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Posterize", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Equalize", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Equalize", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Invert", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Invert", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Color Balance", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Color Balance", gdisp->unique_id);
   menus_set_sensitive (buff, (format == FORMAT_RGB));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Brightness-Contrast", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Brightness-Contrast", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Hue-Saturation", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Hue-Saturation", gdisp->unique_id);
   menus_set_sensitive (buff, (format == FORMAT_RGB));
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Levels", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors/Levels", gdisp->unique_id);
   menus_set_sensitive (buff, (format != FORMAT_INDEXED));
-  g_snprintf(buff, 1024, "<Image%d>/Select", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Select", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Into", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Into", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Clear", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Clear", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Fill", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Fill", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Stroke", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Stroke", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut Named", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Cut Named", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy Named", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Copy Named", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Named", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Edit/Paste Named", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Image/Colors", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Colors", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Image/Channel Ops/Offset", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Channel Ops/Offset", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Image/Histogram", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Image/Histogram", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Filters", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Filters", gdisp->unique_id);
   menus_set_sensitive (buff, lp);
-  g_snprintf(buff, 1024, "<Image%d>/Select/Save To Channel", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/Select/Save To Channel", gdisp->unique_id);
   menus_set_sensitive (buff, !fs);
-  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Rulers", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Rulers", gdisp->unique_id);
   menus_set_sensitive (buff, GTK_WIDGET_VISIBLE (gdisp->origin) ? 1 : 0);
-  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Guides", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/View/Toggle Guides", gdisp->unique_id);
   menus_set_sensitive (buff, gdisp->draw_guides);
-  g_snprintf(buff, 1024, "<Image%d>/View/Snap To Guides", gdisp->ID);
+  g_snprintf(buff, 1024, "<Image%d>/View/Snap To Guides", gdisp->unique_id);
   menus_set_sensitive (buff, gdisp->snap_to_guides);
 
   
@@ -1276,6 +1277,26 @@ gdisplays_delete_image (GImage *image)
           display_list = g_slist_remove (display_list, (void *) gdisp);
 	}
     }
+}
+
+GDisplay * 
+gdisplay_get_unique_id (int ID)
+{
+  GDisplay *gdisp;
+  GSList *list = display_list;
+
+  /*  Traverse the list of displays, returning the one that matches the ID  */
+  /*  If no display in the list is a match, return NULL.                    */
+  while (list)
+    {
+      gdisp = (GDisplay *) list->data;
+      if (gdisp->unique_id == ID)
+	return gdisp;
+
+      list = g_slist_next (list);
+    }
+
+  return NULL;
 }
 
 GDisplay *

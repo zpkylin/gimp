@@ -52,7 +52,10 @@ typedef struct _frame_manager_t frame_manager_t;
 typedef struct _GDisplay GDisplay;
 struct _GDisplay
 {
-  int ID;                         /*  unique identifier for this gdisplay     */
+  int ID;                         /*  ID of the image referenced by this 
+				   *  display.  *Not unique*, since many
+				   *  displaus can reference the same image.  */
+  int unique_id;                  /* A *unique* id for this display           */
 
   GtkWidget *shell;               /*  shell widget for this gdisplay          */
   GtkWidget *canvas;              /*  canvas widget for this gdisplay         */
@@ -136,6 +139,7 @@ void       gdisplay_snap_rectangle         (GDisplay *, int, int, int, int, int 
 GDisplay * gdisplay_get_from_gimage        (GImage *image);
 GDisplay * gdisplay_active                 (void);
 GDisplay * gdisplay_get_ID                 (int);
+GDisplay * gdisplay_get_unique_id          (int);
 void       gdisplays_update_title          (int);
 void       gdisplay_add_update_area  (GDisplay *, int, int, int, int);
 void       gdisplays_update_area           (int, int, int, int, int);
