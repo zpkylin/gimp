@@ -121,6 +121,7 @@ gdisplay_new (GImage       *gimage,
   gdisp->framemanager = 0;
 
   gdisp->frame_manager = NULL;
+  gdisp->bfm = NULL;
 
   /* format the title */
   gdisplay_format_title (gimage, title, gdisp);

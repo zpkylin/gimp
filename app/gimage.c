@@ -41,6 +41,7 @@
 #include "tools.h"
 #include "undo.h"
 #include "zoom.h"
+#include "gdisplay.h"
 
 #include "layer_pvt.h"
 #include "drawable_pvt.h"		/* ick ick. */
