@@ -7,6 +7,7 @@
 #include "tools.h"
 #include "gimpbrushlist.h"
 #include "layers_dialog.h"
+#include "color_area.h"
 
 
 static int g_ignore_further_updates = 0;
@@ -119,7 +120,7 @@ layout_connect_window_visible(GtkWidget *widget, int *visible)
    gtk_signal_connect (GTK_OBJECT (widget), "hide",
 		      GTK_SIGNAL_FUNC (layout_hide_event),
 		      visible);
-   gtk_signal_connect (GTK_OBJECT (widget), "unmap",
+   gtk_signal_connect (GTK_OBJECT (widget), "unrealize",
 		      GTK_SIGNAL_FUNC (layout_hide_event),
 		      visible);
    gtk_widget_add_events(widget, GDK_VISIBILITY_NOTIFY_MASK);
@@ -156,6 +157,7 @@ void layout_restore()
    }
 
    if (color_visible) {
+      color_area_edit();
    }
 
    if (palette_visible) {

@@ -691,8 +691,6 @@ create_display_shell (int   gdisp_id,
       	GDK_BUTTON_PRESS_MASK |
       	GDK_KEY_PRESS_MASK |
       	GDK_KEY_RELEASE_MASK); 
-  gtk_widget_set_uposition(gdisp->shell, image_x + 10, image_y + 10);
-  layout_connect_window_position(gdisp->shell, &image_x, &image_y);
 
   gtk_signal_connect (GTK_OBJECT (gdisp->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (gdisplay_delete),
@@ -829,6 +827,9 @@ create_display_shell (int   gdisp_id,
   gtk_widget_show (table);
   gtk_widget_show (gdisp->shell);
   gtk_widget_show (vbox);
+
+  gtk_widget_set_uposition(gdisp->shell, image_x + 10, image_y + 10);
+  layout_connect_window_position(gdisp->shell, &image_x, &image_y);
 
   /*  set the focus to the canvas area  */
   gtk_widget_grab_focus (gdisp->canvas);

@@ -793,13 +793,12 @@ grad_create_gradient_editor(void)
 	/* Shell and main vbox */
 
 	g_editor->shell = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
-        layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
-        layout_connect_window_visible(g_editor->shell, &gradient_visible);
 	gtk_window_set_wmclass (GTK_WINDOW(g_editor->shell), "gradient_editor", "Gimp");
 	gtk_container_border_width(GTK_CONTAINER(g_editor->shell), 0);
 	gtk_window_set_title(GTK_WINDOW(g_editor->shell), "Gradient Editor");
-	gtk_window_position(GTK_WINDOW(g_editor->shell), GTK_WIN_POS_CENTER);
+   gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
+   layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
+   layout_connect_window_visible(g_editor->shell, &gradient_visible);
 
 	/* handle window manager close signals */
 	gtk_signal_connect (GTK_OBJECT (g_editor->shell), "delete_event",

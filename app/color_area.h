@@ -27,7 +27,7 @@ GtkWidget * color_area_create (int        width,
 			       GdkPixmap *default_pixmap,
 			       GdkPixmap *swap_pixmap);
 void        color_area_update (void);
-
+void        color_area_edit ();
 /*
  *  Global variables
  */

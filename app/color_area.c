@@ -169,7 +169,7 @@ color_area_select_callback (PixelRow * color,
     }
 }
 
-static void
+void
 color_area_edit (void)
 {
   PixelRow r;
