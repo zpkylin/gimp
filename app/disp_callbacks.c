@@ -35,6 +35,7 @@
 #include "tools.h"
 #include "clone.h"
 #include "frame_manager.h"
+#include "zoom.h"
 
 
 #define HORIZONTAL  1
@@ -106,6 +107,7 @@ gdisplay_menubar_down(
   GDisplay * disp;
   disp = (GDisplay *)user_data;   
   gdisplay_set_menu_sensitivity (disp);
+  zoom_set_focus(disp);
 
   return FALSE;
 }
@@ -158,6 +160,9 @@ gdisplay_canvas_events (GtkWidget *canvas,
 
     /*  setup scale properly  */
     setup_scale (gdisp);
+
+    /* set the zoom control's focus to this display since it is new */
+    zoom_set_focus(gdisp);
   }
 
   /*  Find out what device the event occurred upon  */
@@ -200,6 +205,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
       bevent = (GdkEventButton *) event;
       state = bevent->state;
       middle_mouse_button = 0;
+      zoom_set_focus(gdisp);
 
       switch (bevent->button)
       {
@@ -431,6 +437,7 @@ gdisplay_canvas_events (GtkWidget *canvas,
     case GDK_KEY_PRESS:
       kevent = (GdkEventKey *) event;
       state = kevent->state;
+      zoom_set_focus(gdisp);
 
       switch (kevent->keyval)
       {

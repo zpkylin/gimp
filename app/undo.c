@@ -40,6 +40,7 @@
 #include "tools.h"
 #include "transform_core.h"
 #include "undo.h"
+#include "zoom.h"
 
 #include "drawable_pvt.h"
 #include "layer_pvt.h"
@@ -422,6 +423,8 @@ undo_push_group_start (GImage *gimage,
 int
 undo_push_group_end (GImage *gimage)
 {
+  zoom_image_preview_changed(gimage);
+
   if (! gimage->undo_on)
     return FALSE;
 

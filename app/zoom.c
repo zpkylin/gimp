@@ -5,9 +5,9 @@
 #include "zoom.h"
 #include "stdio.h"
 
-static int zoom_external_generated = 0;
-static int zoom_updating_ui = 0;
-static int zoom_updating_scale = 0;
+/************************************************************/
+/*     Internal Function Declarations                       */
+/************************************************************/
 static void zoom_control_close(GtkObject *wid, gpointer data);
 
 static void zoom_update_pulldown_slider(GDisplay *disp);
@@ -23,8 +23,74 @@ static void zoom_pulldown_value_changed(
    GtkList *list,
    GtkWidget *widget,
    gpointer user_data);
+static gboolean zoom_preview_expose_event(
+   GtkWidget *widget,
+   GdkEventExpose *event,
+   gpointer user_data);
+static gboolean zoom_preview_configure_event(
+   GtkWidget *widget,
+   GdkEventConfigure *event,
+   gpointer user_data); 
+static gboolean zoom_preview_motion_notify_event(
+   GtkWidget *widget,
+   GdkEventMotion *event,
+   gpointer user_data);
+static gboolean zoom_preview_button_press_event(
+   GtkWidget *widget,
+   GdkEventButton *event,
+   gpointer user_data);
+static void zoom_clear_pixmap(GtkWidget *preview, GdkPixmap *pixmap);
 
+/************************************************************/
+/*     Global variables (yikes!)                            */
+/************************************************************/
+static int zoom_external_generated = 0;
+static int zoom_updating_ui = 0;
+static int zoom_updating_scale = 0;
 ZoomControl * zoom_control = 0;
+static GDisplay *zoom_gdisp = 0;
+
+/************************************************************/
+/*     Externally called functions (Notifications)          */
+/************************************************************/
+
+void zoom_view_changed(GDisplay *disp)
+{
+   // ignore this event if we are updating scale, because that indicates
+   // that we caused the event to occur.
+   if (zoom_updating_scale)
+      return;
+
+   // first get the active display if there is none
+   if (!zoom_control || !zoom_control->gdisp || zoom_control->gdisp != disp) {
+      return;
+   }
+
+   // indicate this event was generated externally
+   zoom_external_generated = 1;
+   
+   // notify dialog's widgets to update zoom
+   zoom_update_pulldown_slider(disp); 
+   // notify drawing area to update rect.
+   
+   // reset state
+   zoom_external_generated = 0;
+}
+
+void zoom_image_preview_changed(GImage *image)
+{
+   printf("Image changed\n");
+}
+
+void zoom_set_focus(GDisplay *gdisp)
+{
+   GDisplay *old_disp;
+   old_disp = zoom_gdisp;
+   zoom_gdisp = gdisp;
+   if (zoom_control && zoom_gdisp && zoom_gdisp != old_disp) {
+      zoom_control_activate();
+   }
+}
 
 void zoom_control_close(GtkObject *wid, gpointer data)
 {
@@ -64,6 +130,12 @@ ZoomControl * zoom_control_new()
 
   zoom = (ZoomControl *)malloc(sizeof(ZoomControl));
   zoom->gdisp = NULL;
+  zoom->pixmap = NULL;
+  zoom->window = NULL;  
+  zoom->pull_down = NULL;
+  zoom->slider = NULL;
+  zoom->preview = NULL;
+  zoom->adjust = NULL;  
 
   zoom->window = gtk_dialog_new();
   gtk_signal_connect(GTK_OBJECT(zoom->window), "destroy", 
@@ -116,16 +188,25 @@ ZoomControl * zoom_control_new()
   gtk_signal_connect(GTK_OBJECT(zoom->adjust), "value-changed", 
                   GTK_SIGNAL_FUNC(zoom_slider_value_changed), 0);
 
-  zoom->drawing_area = gtk_drawing_area_new();
-  gtk_drawing_area_size(GTK_DRAWING_AREA(zoom->drawing_area), 128, 128);
+  zoom->preview = gtk_drawing_area_new();
+  gtk_drawing_area_size(GTK_DRAWING_AREA(zoom->preview), 128, 128);
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "expose_event",
+		      (GtkSignalFunc) zoom_preview_expose_event, NULL);
+  gtk_signal_connect (GTK_OBJECT(zoom->preview),"configure_event",
+		      (GtkSignalFunc) zoom_preview_configure_event, NULL);
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "motion_notify_event",
+		      (GtkSignalFunc) zoom_preview_motion_notify_event, NULL);
+  gtk_signal_connect (GTK_OBJECT (zoom->preview), "button_press_event",
+		      (GtkSignalFunc) zoom_preview_button_press_event, NULL);
+
  
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), zoom->pull_down, TRUE, TRUE, 0); 
   gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->action_area), zoom->slider, TRUE, TRUE, 0); 
-  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->vbox), zoom->drawing_area, TRUE, TRUE, 0); 
+  gtk_box_pack_start(GTK_BOX(GTK_DIALOG(zoom->window)->vbox), zoom->preview, TRUE, TRUE, 0); 
 
   gtk_widget_show(zoom->pull_down);
   gtk_widget_show(zoom->slider);
-  gtk_widget_show(zoom->drawing_area);
+  gtk_widget_show(zoom->preview);
   // don't show it, it is up to the caller to manage visibility state information.
 
   return zoom;
@@ -137,7 +218,72 @@ void zoom_control_delete(ZoomControl *zoom)
    free(zoom);
 }
 
-/* Utility Functions */
+/************************************************************/
+/*     Utility Functions                                    */
+/************************************************************/
+
+void zoom_update_pulldown_slider(GDisplay *disp)
+{
+   zoom_update_pulldown(disp);
+   zoom_update_slider(disp);
+}
+
+void zoom_update_slider(GDisplay *disp)
+{
+   gfloat val;
+   gint src, dst;
+
+   zoom_updating_ui = 1;
+
+   // extract the scale from the display, update the slider's value accordingly
+   src = SCALESRC(disp);
+   dst = SCALEDEST(disp);
+
+   if (src == 1) {
+      val = (-dst + 1); 
+   }
+   else {
+      val = src - 1;
+   }
+
+   //printf("src %d dst %d val %f\n", src, dst, val);
+   gtk_adjustment_set_value(zoom_control->adjust, -val);
+   zoom_updating_ui = 0;
+}
+
+void zoom_update_pulldown(GDisplay *disp)
+{
+   GtkList *list = 0;
+   gint src, dst;
+   gint item;
+
+   zoom_updating_ui = 1;
+   list = GTK_LIST(GTK_COMBO(zoom_control->pull_down)->list);
+   
+   // extract the scale from the display, update the pulldown's value accordingly
+   src = SCALESRC(disp);
+   dst = SCALEDEST(disp);
+
+   if (src == 1) {
+      item = 14 + dst; 
+   }
+   else {
+      item = 16 - src;
+   }
+
+   gtk_list_unselect_all(list);
+   gtk_list_select_item(list, item);
+   zoom_updating_ui = 0;
+}
+
+void zoom_update_scale(GDisplay *gdisp, gint scale_val)
+{
+   zoom_updating_scale = 1;
+   change_scale(zoom_control->gdisp, scale_val);
+   zoom_updating_scale = 0;
+}
+
+
 
 static int 
 zoom_control_activate()
@@ -166,15 +312,27 @@ zoom_control_activate()
 static GDisplay *
 zoom_get_active_display()
 {
-   // for now, just return the first one we find.
+   // if there are no displays, return 0
    if (!display_list)
       return NULL;
-   else
-      return (GDisplay *)display_list->data;
+
+   // if we think we have one, check to make sure its still valid
+   // if it's not still valid, forget about it
+   if (zoom_gdisp && g_slist_find(display_list, (gpointer)zoom_gdisp)) {
+      return zoom_gdisp; 
+   }
+   else {
+      zoom_gdisp = 0;
+   }
+
+   // otherwise there's nothing to do, so just return the first one we find.
+   zoom_gdisp = (GDisplay *)display_list->data;
+   return zoom_gdisp; 
 }
 
-
-/* Callback functions for the zoom dialog */
+/************************************************************/
+/*     Callback functions for the zoom dialog               */
+/************************************************************/
 
 // called when the value of the zoom slider changes
 static void 
@@ -192,7 +350,7 @@ zoom_slider_value_changed(
 
    // convert to an integer value, and round
    scale_val = (int) (-adjustment->value + .5);
-   printf("Raw value %f, int %d\n", -adjustment->value, scale_val);
+   //printf("Raw value %f, int %d\n", -adjustment->value, scale_val);
 
    // need to pack scale_val into the weird format used by change_scale().  
    scale_val = scale_val < 0 ? (-scale_val + 1) * 100 + 1 :
@@ -245,88 +403,69 @@ static void zoom_pulldown_value_changed(
    zoom_update_slider(zoom_control->gdisp);
 }
 
-void zoom_view_changed(GDisplay *disp)
+
+/************************************************************/
+/*     Callback functions for preview widget events         */
+/************************************************************/
+
+static void zoom_clear_pixmap(GtkWidget *preview, GdkPixmap *pixmap)
 {
-   // ignore this event if we are updating scale, because that indicates
-   // that we caused the event to occur.
-   if (zoom_updating_scale)
-      return;
-
-   // first get the active display if there is none
-   if (!zoom_control || !zoom_control->gdisp || zoom_control->gdisp != disp) {
-      return;
-   }
-
-   // indicate this event was generated externally
-   zoom_external_generated = 1;
-   
-   // notify dialog's widgets to update zoom
-   zoom_update_pulldown_slider(disp); 
-   // notify drawing area to update rect.
-   
-   // reset state
-   zoom_external_generated = 0;
+   gdk_draw_rectangle(pixmap, preview->style->white_gc, TRUE, 0, 0, 
+		   preview->allocation.width, preview->allocation.height);
+   gdk_draw_line(pixmap,
+		   preview->style->black_gc,
+		   10, 10, 100,45);
 }
 
-void zoom_update_pulldown_slider(GDisplay *disp)
+static gboolean zoom_preview_expose_event(
+   GtkWidget *widget,
+   GdkEventExpose *event,
+   gpointer user_data)
 {
-   zoom_update_pulldown(disp);
-   zoom_update_slider(disp);
+   if (!zoom_control || !zoom_control->pixmap) 
+      return FALSE;
+
+   gdk_draw_pixmap(widget->window,
+                   widget->style->fg_gc[GTK_WIDGET_STATE (widget)],
+                   zoom_control->pixmap,
+                   event->area.x, event->area.y,
+                   event->area.x, event->area.y,
+                   event->area.width, event->area.height);
+   return FALSE;
 }
 
-void zoom_update_slider(GDisplay *disp)
+static gboolean zoom_preview_configure_event(
+   GtkWidget *widget,
+   GdkEventConfigure *event,
+   gpointer user_data)
 {
-   gfloat val;
-   gint src, dst;
+   if (!zoom_control)
+      return FALSE;
 
-   zoom_updating_ui = 1;
-
-   // extract the scale from the display, update the slider's value accordingly
-   src = SCALESRC(disp);
-   dst = SCALEDEST(disp);
-
-   if (src == 1) {
-      val = (-dst + 1); 
-   }
-   else {
-      val = src - 1;
+   if (!zoom_control->pixmap) {
+      // make one
+      zoom_control->pixmap = 
+	 gdk_pixmap_new(widget->window, widget->allocation.width, widget->allocation.height, -1);
+      zoom_clear_pixmap(widget, zoom_control->pixmap);
    }
 
-   printf("src %d dst %d val %f\n", src, dst, val);
-   gtk_adjustment_set_value(zoom_control->adjust, -val);
-   zoom_updating_ui = 0;
+   return TRUE;
 }
 
-void zoom_update_pulldown(GDisplay *disp)
+static gboolean zoom_preview_motion_notify_event(
+   GtkWidget *widget,
+   GdkEventMotion *event,
+   gpointer user_data)
 {
-   GtkList *list = 0;
-   gint src, dst;
-   gint item;
-
-   zoom_updating_ui = 1;
-   list = GTK_LIST(GTK_COMBO(zoom_control->pull_down)->list);
-   
-   // extract the scale from the display, update the pulldown's value accordingly
-   src = SCALESRC(disp);
-   dst = SCALEDEST(disp);
-
-   if (src == 1) {
-      item = 14 + dst; 
-   }
-   else {
-      item = 16 - src;
-   }
-
-   gtk_list_unselect_all(list);
-   gtk_list_select_item(list, item);
-   zoom_updating_ui = 0;
+   return FALSE;
 }
 
-void zoom_update_scale(GDisplay *gdisp, gint scale_val)
+static gboolean zoom_preview_button_press_event(
+   GtkWidget *widget,
+   GdkEventButton *event,
+   gpointer user_data)
 {
-   zoom_updating_scale = 1;
-   change_scale(zoom_control->gdisp, scale_val);
-   zoom_updating_scale = 0;
+   return FALSE;
 }
 
 

@@ -3,7 +3,9 @@
 
 #include <gtk/gtkwidget.h>
 #include <gtk/gtkadjustment.h>
+//#include <gdk/gdk.h>
 #include "gdisplay.h"
+#include "gimage.h"
 
 /* This struct holds the information for
  * the zoom/pan widget.  
@@ -12,12 +14,13 @@
 
 typedef struct 
 {
-  GtkWidget *window;
-  GtkWidget *pull_down;
-  GtkWidget *slider;
-  GtkWidget *drawing_area;
-  GtkAdjustment * adjust;
-  GDisplay  *gdisp;
+  GtkWidget *window;        // GtkDialog
+  GtkWidget *pull_down;     // GtkCombo
+  GtkWidget *slider;        // GtkHScale
+  GtkWidget *preview;       // GtkDrawingArea
+  GtkAdjustment * adjust;  
+  GDisplay  *gdisp;         
+  GdkPixmap *pixmap;
 } ZoomControl;
 
 ZoomControl * zoom_control_open();
@@ -30,6 +33,9 @@ void zoom_control_extents_changed();
 // whether it is currently tracking that view, although it always should be traching
 // the display that had the most recent event).
 void zoom_view_changed(GDisplay *disp);
+
+void zoom_set_focus(GDisplay *gdisp);
+void zoom_image_preview_changed(GImage *image);
 
 extern ZoomControl * zoom_control;
 #endif
