@@ -37,6 +37,7 @@
 #include "palette.h"
 #include "pixelrow.h"
 #include "undo.h"
+#include "minimize.h"
 
 #define EVENT_MASK     GDK_BUTTON_PRESS_MASK | GDK_ENTER_NOTIFY_MASK
 
@@ -142,6 +143,7 @@ indexed_palette_create (int gimage_id)
 			  NULL);
       gtk_quit_add_destroy (1, GTK_OBJECT (indexedP->shell));
 
+      minimize_register(indexedP->shell);
       indexedP->vbox = vbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);
       gtk_box_pack_start (GTK_BOX (GTK_DIALOG (indexedP->shell)->vbox), vbox, TRUE, TRUE, 0);

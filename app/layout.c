@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <gtk/gtk.h>
 #include "layout.h"
 #include "gimprc.h"
@@ -20,6 +21,20 @@ void layout_freeze_current_layout()
 void layout_unfreeze_current_layout()
 {
    g_ignore_further_updates = 0;
+}
+
+static void
+layout_map(GtkWidget *widget,
+	gpointer user)
+{
+   printf("Map received\n");
+}
+
+static void
+layout_unmap(GtkWidget *widget,
+	gpointer user)
+{
+   printf("Unmap received\n");
 }
 
 static void 
@@ -123,6 +138,7 @@ layout_connect_window_visible(GtkWidget *widget, int *visible)
    gtk_signal_connect (GTK_OBJECT (widget), "unrealize",
 		      GTK_SIGNAL_FUNC (layout_hide_event),
 		      visible);
+
    gtk_widget_add_events(widget, GDK_VISIBILITY_NOTIFY_MASK);
 }
 

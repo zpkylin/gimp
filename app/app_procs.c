@@ -63,6 +63,7 @@
 #include "actionarea.h"
 #include "gimpbrush.h"
 #include "layout.h"
+#include "minimize.h"
 
 #include "config.h"
 
@@ -672,7 +673,11 @@ really_quit_dialog ()
   gtk_window_set_wmclass (GTK_WINDOW (dialog), "really_quit", "Gimp");
   gtk_window_set_title (GTK_WINDOW (dialog), "Really Quit?");
   gtk_window_set_policy (GTK_WINDOW (dialog), FALSE, FALSE, FALSE);
-  gtk_window_position (GTK_WINDOW (dialog), GTK_WIN_POS_MOUSE);
+
+  gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
+  layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+  minimize_register(dialog);
+
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (dialog)->action_area), 2);
   /*
      gtk_signal_connect (GTK_OBJECT (dialog), "delete_event",

@@ -33,6 +33,7 @@
 #include "levels.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 #define LOW_INPUT          0x1
 #define GAMMA              0x2
@@ -2480,6 +2481,7 @@ levels_new_dialog (void)
   ld->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (ld->shell), "levels", "Gimp");
   gtk_window_set_title (GTK_WINDOW (ld->shell), "Levels");
+  minimize_register(ld->shell);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (ld->shell), "delete_event",

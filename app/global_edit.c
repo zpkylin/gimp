@@ -35,6 +35,8 @@
 #include "tools.h"
 #include "undo.h"
 #include "gimprc.h"
+#include "layout.h"
+#include "minimize.h"
 
 #include "drawable_pvt.h"
 
@@ -635,7 +637,9 @@ paste_named_buffer (GDisplay *gdisp)
   pn_dlg->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (pn_dlg->shell), "paste_named_buffer", "Gimp");
   gtk_window_set_title (GTK_WINDOW (pn_dlg->shell), "Paste Named Buffer");
-  gtk_window_position (GTK_WINDOW (pn_dlg->shell), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(pn_dlg->shell, generic_window_x, generic_window_y);
+  layout_connect_window_position(pn_dlg->shell, &generic_window_x, &generic_window_y);
+  minimize_register(pn_dlg->shell);
 
   gtk_signal_connect (GTK_OBJECT (pn_dlg->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (named_buffer_dialog_delete_callback),

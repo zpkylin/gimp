@@ -29,6 +29,7 @@
 #include "histogram_tool.h"
 #include "image_map.h"
 #include "interface.h"
+#include "minimize.h"
 
 #define TEXT_WIDTH 45
 #define HISTOGRAM_WIDTH 256
@@ -1052,6 +1053,7 @@ histogram_tool_new_dialog ( gint bins )
   htd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (htd->shell), "histogram", "Gimp");
   gtk_window_set_title (GTK_WINDOW (htd->shell), "Histogram");
+  minimize_register(htd->shell);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (htd->shell), "delete_event",

@@ -57,6 +57,7 @@
 #include "tools.h"
 #include "transform_tool.h"
 #include "layout.h"
+#include "minimize.h"
 
 /* Global Data */
 
@@ -658,6 +659,7 @@ tools_options_dialog_new ()
   gtk_widget_set_uposition (options_shell, tool_options_x, tool_options_y);
   layout_connect_window_position(options_shell, &tool_options_x, &tool_options_y);
   layout_connect_window_visible(options_shell, &tool_options_visible);
+  minimize_register(options_shell);
 
   options_vbox = gtk_vbox_new (FALSE, 2);
   gtk_container_border_width (GTK_CONTAINER (options_vbox), 2);

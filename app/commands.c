@@ -74,6 +74,7 @@
 #include "gimpbrushgenerated.h"
 #include "zoom.h"
 #include "zoombookmark.h"
+#include "minimize.h"
 
 /*  external functions  */
 extern void layers_dialog_layer_merge_query (GImage *, int);
@@ -352,7 +353,9 @@ file_new_cmd_callback (GtkWidget *widget,
   vals->dlg = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (vals->dlg), "new_image", "Gimp");
   gtk_window_set_title (GTK_WINDOW (vals->dlg), "New Image");
-  gtk_window_position (GTK_WINDOW (vals->dlg), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(vals->dlg, generic_window_x, generic_window_y);
+  layout_connect_window_position(vals->dlg, &generic_window_x, &generic_window_y);
+  minimize_register(vals->dlg);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (vals->dlg), "delete_event",
@@ -1223,6 +1226,9 @@ file_pref_cmd_callback (GtkWidget *widget,
       prefs_dlg = gtk_dialog_new ();
       gtk_window_set_wmclass (GTK_WINDOW (prefs_dlg), "preferences", "Gimp");
       gtk_window_set_title (GTK_WINDOW (prefs_dlg), "Preferences");
+/*      gtk_widget_set_uposition(prefs_dlg, generic_window_x, generic_window_y); */
+/*      layout_connect_window_position(prefs_dlg, &generic_window_x, &generic_window_y); */
+      minimize_register(prefs_dlg);
 
       /* handle the wm close signal */
       gtk_signal_connect (GTK_OBJECT (prefs_dlg), "delete_event",
@@ -2592,7 +2598,9 @@ image_resize_cmd_callback (GtkWidget *widget,
   gtk_window_set_wmclass (GTK_WINDOW (image_resize->shell), "image_resize", "Gimp");
   gtk_window_set_title (GTK_WINDOW (image_resize->shell), "Image Resize");
   gtk_window_set_policy (GTK_WINDOW (image_resize->shell), FALSE, FALSE, TRUE);
-  gtk_window_position (GTK_WINDOW (image_resize->shell), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(image_resize->shell, generic_window_x, generic_window_y);
+  layout_connect_window_position(image_resize->shell, &generic_window_x, &generic_window_y);
+  minimize_register(image_resize->shell);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (image_resize->shell), "delete_event",
@@ -2639,7 +2647,9 @@ image_scale_cmd_callback (GtkWidget *widget,
   gtk_window_set_wmclass (GTK_WINDOW (image_scale->shell), "image_scale", "Gimp");
   gtk_window_set_title (GTK_WINDOW (image_scale->shell), "Image Scale");
   gtk_window_set_policy (GTK_WINDOW (image_scale->shell), FALSE, FALSE, TRUE);
-  gtk_window_position (GTK_WINDOW (image_scale->shell), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(image_scale->shell, generic_window_x, generic_window_y);
+  layout_connect_window_position(image_scale->shell, &generic_window_x, &generic_window_y);
+  minimize_register(image_scale->shell);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (image_scale->shell), "delete_event",

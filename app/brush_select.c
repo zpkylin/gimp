@@ -33,6 +33,7 @@
 #include "float16.h"
 #include "paint_funcs.h"
 #include "layout.h"
+#include "minimize.h"
 #include "gimprc.h"
 
 #define STD_CELL_WIDTH    24
@@ -219,6 +220,7 @@ brush_select_new (gchar * title,
   gtk_widget_set_uposition(bsp->shell, brush_select_x, brush_select_y);
   layout_connect_window_position(bsp->shell, &brush_select_x, &brush_select_y);
   layout_connect_window_visible(bsp->shell, &brush_select_visible);
+  minimize_register(bsp->shell);
 
   if(!title)
     {
@@ -687,6 +689,7 @@ brush_popup_open (BrushSelectP bsp,
       GtkWidget *frame;
 
       bsp->brush_popup = gtk_window_new (GTK_WINDOW_POPUP);
+      minimize_register(bsp->brush_popup);
       gtk_window_set_policy (GTK_WINDOW (bsp->brush_popup), FALSE, FALSE, TRUE);
 
       frame = gtk_frame_new (NULL);

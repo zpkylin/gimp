@@ -37,6 +37,7 @@
 #include "palette.h"
 #include "paint_funcs_area.h"
 #include "resize.h"
+#include "minimize.h"
 
 #include "tools/eye.xbm"
 #include "tools/channel.xbm"
@@ -1860,6 +1861,7 @@ channels_dialog_new_channel_query (int gimage_id)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "new_channel_options", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "New Channel Options");
   gtk_window_position (GTK_WINDOW (options->query_box), GTK_WIN_POS_MOUSE);
+  minimize_register(options->query_box);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (options->query_box), "delete_event",
@@ -2150,6 +2152,7 @@ channels_dialog_edit_channel_query (ChannelWidget *channel_widget)
   gtk_window_set_wmclass (GTK_WINDOW (options->query_box), "edit_channel_atributes", "Gimp");
   gtk_window_set_title (GTK_WINDOW (options->query_box), "Channel Attributes");
   gtk_window_position (GTK_WINDOW (options->query_box), GTK_WIN_POS_MOUSE);
+  minimize_register(options->query_box);
 
   /* deal with the wm close signal */
   gtk_signal_connect (GTK_OBJECT (options->query_box), "delete_event",

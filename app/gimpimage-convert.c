@@ -72,6 +72,7 @@
 #include "paint_funcs_area.h"
 #include "palette.h"
 #include "pixelarea.h"
+#include "minimize.h"
 
 #include "layer_pvt.h"
 
@@ -412,6 +413,7 @@ convert_to_indexed (void *gimage_ptr)
 		      GTK_SIGNAL_FUNC (indexed_delete_callback),
 		      dialog);
 
+  minimize_register(dialog->shell);
   frame = gtk_frame_new ("Palette Options");
   gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_ETCHED_IN);
   gtk_container_border_width (GTK_CONTAINER (frame), 2);

@@ -31,6 +31,7 @@
 #include "interface.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 #define TEXT_WIDTH 45
 #define TEXT_HEIGHT 25
@@ -687,6 +688,7 @@ brightness_contrast_new_dialog ()
   bcd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (bcd->shell), "brightness_contrast", "Gimp");
   gtk_window_set_title (GTK_WINDOW (bcd->shell), "Brightness-Contrast");
+  minimize_register(bcd->shell);
   
   /* handle wm close signal */
   gtk_signal_connect (GTK_OBJECT (bcd->shell), "delete_event",

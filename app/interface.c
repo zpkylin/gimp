@@ -36,6 +36,7 @@
 #include "layout.h"
 #include "gimprc.h"
 #include "pixmaps.h"
+#include "minimize.h"
 
 
 /*  local functions  */
@@ -561,6 +562,7 @@ create_toolbox ()
   gtk_window_set_title (GTK_WINDOW (window), "The GIMP");
   gtk_widget_set_uposition (window, toolbox_x, toolbox_y);
   layout_connect_window_position(window, &toolbox_x, &toolbox_y);
+  minimize_track_toolbox(window);
   gtk_signal_connect (GTK_OBJECT (window), "delete_event",
 		      GTK_SIGNAL_FUNC (toolbox_delete),
 		      NULL);
@@ -830,6 +832,7 @@ create_display_shell (int   gdisp_id,
 
   gtk_widget_set_uposition(gdisp->shell, image_x + 10, image_y + 10);
   layout_connect_window_position(gdisp->shell, &image_x, &image_y);
+  minimize_register(gdisp->shell);
 
   /*  set the focus to the canvas area  */
   gtk_widget_grab_focus (gdisp->canvas);
@@ -873,7 +876,11 @@ query_string_box (char        *title,
   qbox = gtk_dialog_new ();
   gtk_window_set_title (GTK_WINDOW (qbox), title);
   gtk_window_set_wmclass (GTK_WINDOW (qbox), "query_box", "Gimp");
-  gtk_window_position (GTK_WINDOW (qbox), GTK_WIN_POS_MOUSE);
+
+  gtk_widget_set_uposition(qbox, generic_window_x, generic_window_y);
+  layout_connect_window_position(qbox, &generic_window_x, &generic_window_y);
+  minimize_register(qbox);
+
   gtk_signal_connect (GTK_OBJECT (qbox), "delete_event",
 		      (GtkSignalFunc) query_box_delete_callback,
 		      query_box);
@@ -1007,7 +1014,9 @@ message_box (char        *message,
   mbox = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (mbox), "gimp_message", "Gimp");
   gtk_window_set_title (GTK_WINDOW (mbox), "GIMP Message");
-  gtk_window_position (GTK_WINDOW (mbox), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(mbox, generic_window_x, generic_window_y);
+  layout_connect_window_position(mbox, &generic_window_x, &generic_window_y);
+  minimize_register(mbox);
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (mbox)->action_area), 2);
   gtk_signal_connect (GTK_OBJECT (mbox), "delete_event",
 		      GTK_SIGNAL_FUNC (message_box_delete_callback),

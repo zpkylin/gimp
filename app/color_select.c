@@ -28,6 +28,7 @@
 #include "paint_funcs_area.h"
 #include "pixelrow.h"
 #include "layout.h"
+#include "minimize.h"
 
 #define XY_DEF_WIDTH       192
 #define XY_DEF_HEIGHT      192
@@ -198,7 +199,8 @@ color_select_new (PixelRow           * col,
   gtk_widget_set_uposition (csp->shell, color_select_x, color_select_y);
   layout_connect_window_position(csp->shell, &color_select_x, &color_select_y);
   layout_connect_window_visible(csp->shell, &color_visible);
-
+  minimize_register(csp->shell);
+  
   /*  handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (csp->shell), "delete_event",
 		      (GtkSignalFunc) color_select_delete_callback, csp);

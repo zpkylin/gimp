@@ -38,6 +38,8 @@
 #include "gimprc.h"
 #include "channel_pvt.h"
 #include "layer_pvt.h"
+#include "layout.h"
+#include "minimize.h"
 
 typedef struct _OverwriteBox OverwriteBox;
 static GtkWidget *warning_dialog = NULL;
@@ -508,8 +510,10 @@ file_reload_callback (GDisplay *gdisplay)
   gtk_window_set_wmclass (GTK_WINDOW (warning_dialog), "really_reload", "Gimp");
   gtk_window_set_policy (GTK_WINDOW (warning_dialog), FALSE, FALSE, FALSE);
   gtk_window_set_title (GTK_WINDOW (warning_dialog), "Warning");
-  gtk_window_position (GTK_WINDOW (warning_dialog), GTK_WIN_POS_MOUSE);
   gtk_object_set_user_data (GTK_OBJECT (warning_dialog), cur_gdisplay);
+  gtk_widget_set_uposition(warning_dialog, generic_window_x, generic_window_y);
+  layout_connect_window_position(warning_dialog, &generic_window_x, &generic_window_y);
+  minimize_register(warning_dialog);
 
 
   vbox = gtk_vbox_new (FALSE, 1);
@@ -887,6 +891,10 @@ file_load (char *filename, char* raw_filename, GDisplay *gdisplay)
   int gimage_ID;
   int return_val;
   int i;
+
+  // can't load without a filename
+  if (!filename)
+     return FALSE;
 
   file_proc = load_file_proc;
   if (!file_proc)
@@ -1450,7 +1458,9 @@ file_overwrite (char *filename, char* raw_filename)
   overwrite_box->obox = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (overwrite_box->obox), "file_exists", "Gimp");
   gtk_window_set_title (GTK_WINDOW (overwrite_box->obox), "File Exists!");
-  gtk_window_position (GTK_WINDOW (overwrite_box->obox), GTK_WIN_POS_MOUSE);
+  gtk_widget_set_uposition(overwrite_box->obox, generic_window_x, generic_window_y);
+  layout_connect_window_position(overwrite_box->obox, &generic_window_x, &generic_window_y);
+  minimize_register(overwrite_box->obox);
 
   gtk_signal_connect (GTK_OBJECT (overwrite_box->obox),
 		      "delete_event",

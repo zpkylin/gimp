@@ -7,6 +7,7 @@
 #include "gimprc.h"
 #include "interface.h"
 #include "wilber.h"
+#include "minimize.h"
 
 #define TIPS_FILE_NAME "gimp_tips.txt"
 
@@ -52,6 +53,7 @@ tips_dialog_create ()
   if (!tips_dialog)
     {
       tips_dialog = gtk_window_new (GTK_WINDOW_DIALOG);
+      minimize_register(tips_dialog);
       gtk_window_set_wmclass (GTK_WINDOW (tips_dialog), "tip_of_the_day", "Gimp");
       gtk_window_set_title (GTK_WINDOW (tips_dialog), "GIMP Tip of the day");
       gtk_window_position (GTK_WINDOW (tips_dialog), GTK_WIN_POS_CENTER);

@@ -26,6 +26,8 @@ gimp_SOURCES = \
 	paint_funcs_row_float16.h \
 	float16.c               \
 	float16.h               \
+	minimize.c               \
+	minimize.h               \
 	layout.c               \
 	layout.h               \
 	smudge.c               \

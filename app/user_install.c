@@ -25,6 +25,7 @@
 #include "install.h"
 #include "interface.h"
 #include "gimprc.h"
+#include "minimize.h"
 
 
 static void install_run (InstallCallback);
@@ -103,6 +104,7 @@ install_help (InstallCallback callback)
   gtk_window_set_wmclass (GTK_WINDOW (help_widget), "gimp_installation", "Gimp");
   gtk_window_set_title (GTK_WINDOW (help_widget), "GIMP Installation");
   gtk_window_position (GTK_WINDOW (help_widget), GTK_WIN_POS_CENTER);
+  minimize_register(help_widget);
 
   vadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
   vsb = gtk_vscrollbar_new (vadj);
@@ -388,6 +390,7 @@ install_run (InstallCallback callback)
   vsb  = gtk_vscrollbar_new (vadj);
   text = gtk_text_new (NULL, vadj);
   gtk_widget_set_usize (text, 384, 256);
+  minimize_register(install_widget);
 
   table  = gtk_table_new (1, 2, FALSE);
   gtk_table_set_col_spacing (GTK_TABLE (table), 0, 2);

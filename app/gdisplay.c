@@ -1012,6 +1012,7 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   gint aux;
   gint lm;
   gint lp;
+  gint from_disk;
   gint alpha = FALSE;
   gchar buff[1024];
   GimpDrawable *drawable;
@@ -1028,6 +1029,8 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   lp = (gdisp->gimage->layers != NULL);
   alpha = layer && layer_has_alpha (layer);
 
+  from_disk = (gdisp->gimage->has_filename && gdisp->gimage->filename != 0);
+
   t = tag_null ();
   if (lp)
     {
@@ -1035,7 +1038,8 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
       t = drawable_tag (drawable);
     }
 
-
+  g_snprintf(buff, 1024, "<Image%d>/File/Revert to Saved", gdisp->ID);
+  menus_set_sensitive (buff, from_disk);
   g_snprintf(buff, 1024, "<Image%d>/Layers/Raise Layer", gdisp->ID);
   menus_set_sensitive (buff, !fs && !aux && lp && alpha);
   g_snprintf(buff, 1024, "<Image%d>/Layers/Lower Layer", gdisp->ID);
@@ -1108,6 +1112,7 @@ gdisplay_set_menu_sensitivity (GDisplay *gdisp)
   menus_set_sensitive (buff, gdisp->snap_to_guides);
 
   
+  menus_set_sensitive ("<Image>/File/Revert to Saved", from_disk);
   menus_set_sensitive ("<Image>/Layers/Raise Layer", !fs && !aux && lp && alpha);
   menus_set_sensitive ("<Image>/Layers/Lower Layer", !fs && !aux && lp && alpha);
   menus_set_sensitive ("<Image>/Layers/Anchor Layer", fs && !aux && lp);

@@ -34,6 +34,7 @@
 #include "interface.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 #define ROUND(x)  ((int) ((x) + 0.5))
 
@@ -685,6 +686,7 @@ curves_new_dialog ()
   cd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (cd->shell), "curves", "Gimp");
   gtk_window_set_title (GTK_WINDOW (cd->shell), "Curves");
+  minimize_register(cd->shell);
 
   gtk_signal_connect (GTK_OBJECT (cd->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (curves_delete_callback),

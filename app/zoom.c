@@ -8,6 +8,7 @@
 #include "zoombookmark.h"
 #include "layout.h"
 #include "gimprc.h"
+#include "minimize.h"
 
 /************************************************************/
 /*     Internal Function Declarations                       */
@@ -173,6 +174,7 @@ ZoomControl * zoom_control_new()
   gtk_widget_set_uposition(zoom->window, zoom_window_x, zoom_window_y);
   layout_connect_window_position(zoom->window, &zoom_window_x, &zoom_window_y);
   layout_connect_window_visible(zoom->window, &zoom_window_visible);
+  minimize_register(zoom->window);
 
   gtk_object_sink(GTK_OBJECT(zoom->window));
   gtk_object_ref(GTK_OBJECT(zoom->window));

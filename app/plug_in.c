@@ -56,6 +56,7 @@
 #include "plug_in.h"
 #include "tag.h"
 #include "layout.h"
+#include "minimize.h"
 
 #define FIXME
 #define TILE_WIDTH 64
@@ -3228,6 +3229,7 @@ plug_in_progress_init (PlugIn *plug_in,
       gtk_window_set_title (GTK_WINDOW (plug_in->progress), prune_filename (plug_in->args[0]));
       gtk_widget_set_uposition (plug_in->progress, progress_x, progress_y);
       layout_connect_window_position(plug_in->progress, &progress_x, &progress_y);
+      minimize_register(plug_in->progress);
       gtk_signal_connect (GTK_OBJECT (plug_in->progress), "destroy",
 			  (GtkSignalFunc) plug_in_progress_cancel,
 			  plug_in);

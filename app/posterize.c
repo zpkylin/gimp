@@ -28,6 +28,7 @@
 #include "pixelarea.h"
 #include "posterize.h"
 #include "tag.h"
+#include "minimize.h"
 
 #define TEXT_WIDTH 55
 
@@ -497,6 +498,7 @@ posterize_new_dialog ()
   pd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (pd->shell), "posterize", "Gimp");
   gtk_window_set_title (GTK_WINDOW (pd->shell), "Posterize");
+  minimize_register(pd->shell);
 
   gtk_signal_connect (GTK_OBJECT (pd->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (posterize_delete_callback),

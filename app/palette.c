@@ -39,6 +39,7 @@
 #include "pixelrow.h"
 #include "tag.h"
 #include "layout.h"
+#include "minimize.h"
 
 #define ENTRY_WIDTH  14
 #define ENTRY_HEIGHT 10
@@ -227,6 +228,7 @@ palette_create ()
       gtk_widget_set_uposition(palette->shell, palette_x, palette_y);
       layout_connect_window_position(palette->shell, &palette_x, &palette_y);
       layout_connect_window_visible(palette->shell, &palette_visible);
+      minimize_register(palette->shell);
 
       vbox = gtk_vbox_new (FALSE, 1);
       gtk_container_border_width (GTK_CONTAINER (vbox), 1);

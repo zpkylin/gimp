@@ -165,6 +165,7 @@
 #include "palette.h"
 #include "pixelrow.h"
 #include "layout.h"
+#include "minimize.h"
 
 
 /***** Magic numbers *****/
@@ -793,12 +794,14 @@ grad_create_gradient_editor(void)
 	/* Shell and main vbox */
 
 	g_editor->shell = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	minimize_register(g_editor->shell);
 	gtk_window_set_wmclass (GTK_WINDOW(g_editor->shell), "gradient_editor", "Gimp");
 	gtk_container_border_width(GTK_CONTAINER(g_editor->shell), 0);
 	gtk_window_set_title(GTK_WINDOW(g_editor->shell), "Gradient Editor");
-   gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
-   layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
-   layout_connect_window_visible(g_editor->shell, &gradient_visible);
+        gtk_widget_set_uposition (g_editor->shell, gradient_x, gradient_y);
+        layout_connect_window_position(g_editor->shell, &gradient_x, &gradient_y);
+        layout_connect_window_visible(g_editor->shell, &gradient_visible);
+	minimize_register(g_editor->shell);
 
 	/* handle window manager close signals */
 	gtk_signal_connect (GTK_OBJECT (g_editor->shell), "delete_event",
@@ -1443,7 +1446,9 @@ ed_delete_gradient_callback(GtkWidget *widget, gpointer client_data)
 
 	dialog = gtk_dialog_new();
 	gtk_window_set_title(GTK_WINDOW(dialog), "Delete gradient");
-	gtk_window_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
+        gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        minimize_register(dialog);
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
 
 	vbox = gtk_vbox_new(FALSE, 0);
@@ -4105,6 +4110,7 @@ cpopup_create_color_dialog(char *title, double r, double g, double b, double a,
 	GtkColorSelectionDialog *csd;
 
 	window = gtk_color_selection_dialog_new(title);
+	minimize_register(window);
 
 	csd = GTK_COLOR_SELECTION_DIALOG(window);
 	cs  = GTK_COLOR_SELECTION(csd->colorsel);
@@ -4469,8 +4475,10 @@ cpopup_split_uniform_callback(GtkWidget *widget, gpointer data)
 			     (g_editor->control_sel_l == g_editor->control_sel_r) ?
 			     "Split segment uniformly" :
 			     "Split segments uniformly");
-	gtk_window_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
+        gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        minimize_register(dialog);
 
 	vbox = gtk_vbox_new(FALSE, 0);
 	gtk_container_border_width(GTK_CONTAINER(vbox), 8);
@@ -4824,8 +4832,10 @@ cpopup_replicate_callback(GtkWidget *widget, gpointer data)
 			     (g_editor->control_sel_l == g_editor->control_sel_r) ?
 			     "Replicate segment" :
 			     "Replicate selection");
-	gtk_window_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
 	gtk_container_border_width(GTK_CONTAINER(dialog), 0);
+        gtk_widget_set_uposition(dialog, generic_window_x, generic_window_y);
+        layout_connect_window_position(dialog, &generic_window_x, &generic_window_y);
+        minimize_register(dialog);
 
 	vbox = gtk_vbox_new(FALSE, 0);
 	gtk_container_border_width(GTK_CONTAINER(vbox), 8);

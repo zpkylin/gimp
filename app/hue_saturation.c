@@ -32,6 +32,7 @@
 #include "interface.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 #define FIXME
 /* two temp routines */
@@ -967,7 +968,8 @@ hue_saturation_new_dialog ()
   hsd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (hsd->shell), "hue_saturation", "Gimp");
   gtk_window_set_title (GTK_WINDOW (hsd->shell), "Hue-Saturation");
-  
+  minimize_register(hsd->shell);
+
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (hsd->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (hue_saturation_delete_callback),

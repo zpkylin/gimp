@@ -33,6 +33,7 @@
 #include "paint_funcs_area.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 #define TEXT_WIDTH 55
 #define  SQR(x) ((x) * (x))
@@ -920,7 +921,8 @@ color_balance_new_dialog ()
   cbd->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (cbd->shell), "color_balance", "Gimp");
   gtk_window_set_title (GTK_WINDOW (cbd->shell), "Color Balance");
-  
+  minimize_register(cbd->shell);
+
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (cbd->shell), "delete_event",
 		      GTK_SIGNAL_FUNC (color_balance_delete_callback),

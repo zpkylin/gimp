@@ -33,6 +33,7 @@
 #include "paint_funcs_area.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "minimize.h"
 
 
 #define DEFAULT_FUZZINESS 0.10 /* was 15/255 originally */
@@ -476,6 +477,7 @@ by_color_select_new_dialog ()
   gtk_window_set_wmclass (GTK_WINDOW (bcd->shell), "by_color_selection", "Gimp");
   gtk_window_set_title (GTK_WINDOW (bcd->shell), "By Color Selection");
   gtk_container_border_width (GTK_CONTAINER (GTK_DIALOG (bcd->shell)->action_area), 2);
+  minimize_register(bcd->shell);
 
   /*  handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (bcd->shell), "delete_event",

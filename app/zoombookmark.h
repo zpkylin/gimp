@@ -2,7 +2,7 @@
 #define __ZOOM_BOOKMARK_H__
 
 
-#define ZOOM_BOOKMARK_NUM 4
+#define ZOOM_BOOKMARK_NUM 5
 
 #include "gdisplay.h"
 

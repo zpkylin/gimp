@@ -22,6 +22,7 @@
 #include "info_dialog.h"
 #include "interface.h"
 #include "layout.h"
+#include "minimize.h"
 
 /*  static functions  */
 static InfoField * info_field_new (InfoDialog *, char *, char *);
@@ -88,6 +89,7 @@ info_dialog_new (char *title)
   gtk_window_set_title (GTK_WINDOW (shell), title);
   gtk_widget_set_uposition (shell, info_x, info_y);
   layout_connect_window_position(shell, &info_x, &info_y);
+  minimize_register(shell);
 
   gtk_signal_connect (GTK_OBJECT (shell), "delete_event",
 		      GTK_SIGNAL_FUNC (info_dialog_delete_callback),

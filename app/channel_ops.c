@@ -31,6 +31,9 @@
 #include "palette.h"
 #include "pixelarea.h"
 #include "pixelrow.h"
+#include "layout.h"
+#include "gimprc.h"
+#include "minimize.h"
 
 #include "channel_pvt.h"
 
@@ -107,6 +110,10 @@ channel_ops_offset (void *gimage_ptr)
   off_d->dlg = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (off_d->dlg), "offset", "Gimp");
   gtk_window_set_title (GTK_WINDOW (off_d->dlg), "Offset");
+
+  minimize_register(off_d->dlg);
+  gtk_widget_set_uposition(off_d->dlg, generic_window_x, generic_window_y);
+  layout_connect_window_position(off_d->dlg, &generic_window_x, &generic_window_y);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (off_d->dlg), "delete_event",

@@ -27,6 +27,7 @@
 #include "interface.h"
 
 #include "config.h"
+#include "minimize.h"
 
 #define ANIMATION_STEPS 16
 #define ANIMATION_SIZE 2
@@ -143,6 +144,7 @@ about_dialog_create (int timeout)
   if (!about_dialog)
     {
       about_dialog = gtk_window_new (GTK_WINDOW_DIALOG);
+      minimize_register(about_dialog);
       gtk_window_set_wmclass (GTK_WINDOW (about_dialog), "about_dialog", "Gimp");
       gtk_window_set_title (GTK_WINDOW (about_dialog), "About the GIMP");
       gtk_window_set_policy (GTK_WINDOW (about_dialog), FALSE, FALSE, FALSE);

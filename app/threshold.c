@@ -29,6 +29,7 @@
 #include "interface.h"
 #include "threshold.h"
 #include "pixelarea.h"
+#include "minimize.h"
 
 #define TEXT_WIDTH 75 
 #define HISTOGRAM_WIDTH 256
@@ -1025,6 +1026,7 @@ threshold_new_dialog (Tag tag)
   td->shell = gtk_dialog_new ();
   gtk_window_set_wmclass (GTK_WINDOW (td->shell), "threshold", "Gimp");
   gtk_window_set_title (GTK_WINDOW (td->shell), "Threshold");
+  minimize_register(td->shell);
 
   /* handle the wm close signal */
   gtk_signal_connect (GTK_OBJECT (td->shell), "delete_event",

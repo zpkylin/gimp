@@ -28,6 +28,7 @@
 #include "disp_callbacks.h"
 #include "errors.h"
 #include "tag.h"
+#include "minimize.h"
 
 
 #define MIN_CELL_SIZE    32
@@ -116,6 +117,7 @@ pattern_select_new ()
   gtk_container_border_width (GTK_CONTAINER (vbox), 1);
   gtk_window_set_policy(GTK_WINDOW(psp->shell), FALSE, TRUE, FALSE);
   gtk_box_pack_start (GTK_BOX (GTK_DIALOG (psp->shell)->vbox), vbox, TRUE, TRUE, 0);
+  minimize_register(psp->shell);
 
   /* handle the wm close event */
   gtk_signal_connect (GTK_OBJECT (psp->shell), "delete_event",
@@ -248,6 +250,7 @@ pattern_popup_open (PatternSelectP psp,
     {
       GtkWidget *frame;
       psp->pattern_popup = gtk_window_new (GTK_WINDOW_POPUP);
+      minimize_register(psp->pattern_popup);
       gtk_window_set_policy (GTK_WINDOW (psp->pattern_popup), FALSE, FALSE, TRUE);
       frame = gtk_frame_new (NULL);
       gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_OUT);
