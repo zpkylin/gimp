@@ -3,6 +3,7 @@
 SUBDIRS = \
 	rll		\
 	pts		\
+	fm_pts		\
 	parsley		\
 	blur		\
 	bz2		\

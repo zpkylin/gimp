@@ -120,6 +120,7 @@ void		channel_invalidate_bounds (Channel *);
 struct _PixelRow * channel_color	(Channel *);
 gfloat		channel_opacity		(Channel *);
 gint		channel_visibility	(Channel *);
+void            channel_set_rgbm        (gint);
 gint            channel_set_link_paint  (Channel *, gint);
 gint            channel_get_link_paint  (Channel *);
 void            channel_set_link_paint_opacity  (Channel *, gfloat);

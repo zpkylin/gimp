@@ -247,6 +247,8 @@ gimp_SOURCES = \
 	magnify.h		\
 	main.c			\
 	marching_ants.h		\
+	measure.c		\
+	measure.h		\
 	menus.c			\
 	menus.h			\
 	move.c			\

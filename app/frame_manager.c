@@ -222,7 +222,7 @@ frame_manager_create ()
       /* the shell */
       frame_manager->shell = gtk_dialog_new ();
       gtk_window_set_wmclass (GTK_WINDOW (frame_manager->shell), "frame_manager", "Gimp");
-      gtk_window_set_policy (GTK_WINDOW (frame_manager->shell), FALSE, FALSE, FALSE);
+      gtk_window_set_policy (GTK_WINDOW (frame_manager->shell), FALSE, TRUE, FALSE);
       sprintf (tmp, "Frame Manager for %s\0", gdisplay->gimage->filename); 
       gtk_window_set_title (GTK_WINDOW (frame_manager->shell), tmp);
 
@@ -1203,9 +1203,11 @@ flip_delete (frame_manager_t *fm)
       item = NULL;
       if (fm->stores)
 	{
+	  dont_change_frame = 0;
 	  item = (store_t*) g_slist_nth (fm->stores, 0)->data;
 	  if (item)
 	    frame_manager_store_load (item, fm);
+	  dont_change_frame = 1;
 	}
     }
   return;
@@ -1511,7 +1513,7 @@ frame_manager_store_delete (store_t *store, frame_manager_t *fm, char flag)
 {
   if (!store->active)
     return;
-  
+
   /* get rid of gimage */
   if (gtk_toggle_button_get_active((GtkToggleButton*)fm->auto_save))
     {

@@ -329,7 +329,7 @@ gimage_copy  (GImage *gimage)
 
   image_list = g_slist_append (image_list, (void *) new_gimage);
 
-  new_gimage->filename = gimage->filename;
+  new_gimage->filename = strdup (gimage->filename);
   new_gimage->width = gimage->width;
   new_gimage->height = gimage->height; 
   
@@ -393,8 +393,8 @@ gimage_copy  (GImage *gimage)
       channel = (Channel*) list->data;
     
       new_channel = channel_copy (channel); 
-      gimage_add_layer (new_gimage, new_channel, i);
-      i++;  
+      gimage_add_channel (new_gimage, new_channel, i);
+      i++;
       list = g_slist_next (list);
     }
   

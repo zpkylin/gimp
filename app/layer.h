@@ -34,7 +34,8 @@ typedef enum
 {
   WhiteMask,
   BlackMask,
-  AlphaMask
+  AlphaMask,
+  AuxMask
 } AddMaskType;
 
 

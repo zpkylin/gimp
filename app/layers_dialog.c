@@ -3474,6 +3474,15 @@ fill_alpha_callback (GtkWidget *w,
 }
 
 static void
+fill_aux_callback (GtkWidget *w,
+                   gpointer   client_data)
+{
+  AddMaskOptions *options;
+  options = (AddMaskOptions *) client_data;
+  options->add_mask_type = AuxMask; 
+}
+
+static void
 layers_dialog_add_mask_query (Layer *layer)
 {
   static ActionAreaItem action_items[2] =
@@ -3489,17 +3498,19 @@ layers_dialog_add_mask_query (Layer *layer)
   GtkWidget *radio_button;
   GSList *group = NULL;
   int i;
-  char *button_names[3] =
+  char *button_names[4] =
   {
     "White (Full Opacity)",
     "Black (Full Transparency)",
-    "Layer's Alpha Channel"
+    "Layer's Alpha Channel",
+    "Use Aux Channel"
   };
-  ActionCallback button_callbacks[3] =
+  ActionCallback button_callbacks[4] =
   {
     fill_white_callback,
     fill_black_callback,
-    fill_alpha_callback
+    fill_alpha_callback,
+    fill_aux_callback
   };
 
   /*  the new options structure  */

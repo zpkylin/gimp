@@ -91,6 +91,7 @@ rotate_tool_transform (tool, gdisp_ptr, state)
       break;
 
     case FINISH :
+
       return rotate_tool_rotate (gdisp->gimage, gimage_active_drawable (gdisp->gimage),
 				 transform_core->trans_info[ANGLE], transform_core->original,
 				 transform_tool_smoothing (), transform_core->transform);

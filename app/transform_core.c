@@ -39,6 +39,7 @@
 #include "transform_tool.h"
 #include "tools.h"
 #include "undo.h"
+#include "frame_manager.h"
 
 #include "layer_pvt.h"
 #include "drawable_pvt.h"
@@ -238,11 +239,17 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
        *  the transform tool's private selection pointer, so that the
        *  original source can be repeatedly modified.
        */
-      if (first_transform) 
-	transform_core->original = transform_core_cut (gdisp->gimage,
-						       gimage_active_drawable (gdisp->gimage),
-						       &new_layer);
-      else
+      if (first_transform)
+	{
+	  if (gdisp->gimage->onionskin)
+	    transform_core->original = transform_core_cut (gdisp->gimage,
+		frame_manager_onionskin_drawable (), &new_layer);
+	  else  
+	    transform_core->original = transform_core_cut (gdisp->gimage,
+		gimage_active_drawable (gdisp->gimage),
+		&new_layer);
+	}
+	else
 	new_layer = FALSE;
 
       /*  Send the request for the transformation to the tool...
@@ -254,6 +261,10 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
 	  /*  paste the new transformed image to the gimage...also implement
 	   *  undo...
 	   */
+	  if (gdisp->gimage->onionskin)
+	    transform_core_paste (gdisp->gimage, frame_manager_onionskin_drawable (),
+		new_tiles, new_layer);
+	  else
 	  transform_core_paste (gdisp->gimage, gimage_active_drawable (gdisp->gimage),
 				new_tiles, new_layer);
 
@@ -268,8 +279,10 @@ transform_core_button_release (tool, bevent, gdisp_ptr)
 
 	  /* Make a note of the new current drawable (since we may have
 	     a floating selection, etc now. */
-	  
-	  tool->drawable = gimage_active_drawable (gdisp->gimage);
+	  if (gdisp->gimage->onionskin)
+	    tool->drawable = frame_manager_onionskin_drawable ();
+	  else
+	    tool->drawable = gimage_active_drawable (gdisp->gimage);
 
 	  undo_push_transform (gdisp->gimage, (void *) tu);
 	}
@@ -1853,6 +1866,7 @@ transform_core_do  (
     x2 = x1 + canvas_width (float_tiles);
     y2 = y1 + canvas_height (float_tiles);
 
+
     transform_point (matrix, x1, y1, &dx1, &dy1);
     transform_point (matrix, x2, y1, &dx2, &dy2);
     transform_point (matrix, x1, y2, &dx3, &dy3);
@@ -1892,15 +1906,20 @@ transform_core_do  (
   palette_get_transparent (&color);
   
   /* do the transformation */
+    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
+  
   pixelarea_init (&outputPR, tiles,
                   0, 0,
                   0, 0,
                   TRUE);
+    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   pixelarea_init (&inputPR, float_tiles,
                   0, 0,
                   0, 0,
                   FALSE);
+    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   texture_map_area (&outputPR, &inputPR, m, i, &color);
+    printf ("%d %d %d %d\n", tx1, tx2, ty1, ty2);
   
   /* return transformed image */
   return tiles;

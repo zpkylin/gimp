@@ -436,6 +436,7 @@ void       gimp_image_set_filename          (gint32     image_ID,
  ****************************************/
 
 gint32 gimp_display_new    (gint32 image_ID);
+gint32 gimp_display_fm    (gint32 image_ID);
 void   gimp_display_delete (gint32 display_ID);
 void   gimp_displays_delete_image (gint32 image_ID);
 void   gimp_displays_flush (void);

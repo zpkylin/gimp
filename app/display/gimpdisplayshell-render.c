@@ -1706,10 +1706,15 @@ render_image_rgb_float (RenderInfo *info)
 
 	  for (x = info->x; x < xe; x++)
 	    {
+#if 0
+	      dest[0] = (guint8) (src[RED_PIX] * 255);
+              dest[1] = (guint8) (src[GREEN_PIX] * 255);
+              dest[2] = (guint8) (src[BLUE_PIX] * 255);
+#else
 	      dest[0] = FLOAT_TO_8BIT(src[0]);
 	      dest[1] = FLOAT_TO_8BIT(src[1]);
 	      dest[2] = FLOAT_TO_8BIT(src[2]);
-
+#endif 
 	      src += 3;
 	      dest += 3;
 	    }
@@ -1983,10 +1988,16 @@ render_image_rgb_float16 (RenderInfo *info)
 
 	  for (x = info->x; x < xe; x++)
 	    {
+#if 0
+	      ShortsFloat u; 
+	      dest[0] = (guint8) (FLT (src[RED_PIX], u) * 255);
+              dest[1] = (guint8) (FLT (src[GREEN_PIX], u) * 255);
+              dest[2] = (guint8) (FLT (src[BLUE_PIX], u) * 255);
+#else
 	      dest[0] = display_u8_from_float16 (src[RED_PIX]);
 	      dest[1] = display_u8_from_float16 (src[GREEN_PIX]);
 	      dest[2] = display_u8_from_float16 (src[BLUE_PIX]);
-
+#endif
 	      src += 3;
 	      dest += 3;
 	    }
@@ -2048,7 +2059,14 @@ render_image_rgb_a_float16 (RenderInfo *info)
 
 	  for (x = info->x; x < xe; x++)
 	    {
+	      ShortsFloat u; 
+	      
 	      a = alpha[ display_u8_alpha_from_float16 (src[ALPHA_PIX]) ];
+#if 0
+	      r = (guint8) (FLT (src[RED_PIX], u) * 255);
+              g = (guint8) (FLT (src[GREEN_PIX], u) * 255);
+              b = (guint8) (FLT (src[BLUE_PIX], u) * 255);
+#else
 	      r = display_u8_from_float16 (src[RED_PIX]);
     	      g = display_u8_from_float16 (src[GREEN_PIX]);
 	      b = display_u8_from_float16 (src[BLUE_PIX]);
@@ -2064,6 +2082,7 @@ render_image_rgb_a_float16 (RenderInfo *info)
 		  g = blend_light_check[a | g];
 		  b = blend_light_check[a | b];
 		}
+#endif
 
 	      src += 4;
 

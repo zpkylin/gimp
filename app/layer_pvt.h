@@ -43,6 +43,7 @@ struct _GimpLayer
   gfloat opacity;               /*  layer opacity                */
   int mode;                     /*  layer combination mode       */
 
+  int gimage_id; 		/*  gimage id */
   /*  Floating selections  */
   struct
   {

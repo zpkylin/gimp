@@ -156,6 +156,11 @@ display_u8_from_float16 (guint16 code)
 	ShortsFloat u;
 	gfloat c = FLT(code, u);
 
+#if 0
+
+return (guint8) (c>1?1:c * 255);
+#else
+
 	if (IM_OldWhitePoint && IM_FilmMode)
 	{
 	  if ( c < 0.0 || code < IM_OLDFILM_LOOKUP_START )
@@ -183,7 +188,7 @@ display_u8_from_float16 (guint16 code)
 	  else
 	    return( IM_Gamma22Lookup[code - IM_GAMMA22LOOKUP_START] );
 	}
-
+#endif
 }
 
 guchar IM_OldFilm8bitLookup[IM_OLDFILM_LOOKUP_END-

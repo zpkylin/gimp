@@ -217,6 +217,8 @@ layer_new  (
   layer->edit_mask = 0;
   layer->show_mask = 0;
 
+  layer->gimage_id = gimage_ID;
+
   /*  mode and opacity  */
   layer->mode = mode;
   layer->opacity = opacity;
@@ -264,6 +266,8 @@ layer_copy (layer, add_alpha)
   sprintf (layer_name, "%s copy", GIMP_DRAWABLE(layer)->name);
 
   layer_tag = new_layer_tag = drawable_tag (GIMP_DRAWABLE(layer));
+ 
+  new_layer->gimage_id = layer->gimage_id;
   
   /*  when copying a layer, the copy ALWAYS has an alpha channel  */
   if (add_alpha)
@@ -443,6 +447,32 @@ layer_create_mask (layer, add_mask_type)
 	  extract_alpha_area (&layerPR, NULL, &maskPR);
 	}
       break;
+    case AuxMask:
+	{
+	  extern GSList *image_list;
+	  GSList *list = image_list;
+	  GImage *gimage;
+
+	  while (list)
+	    {
+	      gimage = (GImage*) list->data;
+	      if (gimage->ID == layer->gimage_id)
+		{
+		  if (gimage->channel_as_opacity)
+		    {
+		      pixelarea_init (&layerPR, GIMP_DRAWABLE (gimage->channel_as_opacity)->tiles,
+			  0, 0, 
+			  0, 0,
+			  FALSE);
+		      extract_alpha_area (&layerPR, NULL, &maskPR); 
+		    }
+		  break;
+		}
+	      list = g_slist_next (list);
+	    }
+	}
+      break;
+      
     }
 
   g_free (mask_name);

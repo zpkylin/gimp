@@ -9,7 +9,7 @@ GIMP_MINOR_VERSION=0
 dnl $Format: "GIMP_MICRO_VERSION=$ReleaseMicroVersion$" $
 GIMP_MICRO_VERSION=4
 dnl $Format: "GIMP_RNH_VERSION=$ReleaseRNHVersion$" $
-GIMP_RNH_VERSION=10b
+GIMP_RNH_VERSION=11b04 
 
 GIMP_VERSION=$GIMP_MAJOR_VERSION.$GIMP_MINOR_VERSION.$GIMP_MICRO_VERSION.$GIMP_RNH_VERSION
 
@@ -273,6 +273,7 @@ libgimp/gimpfeatures.h
 libgimp/Makefile
 plug-ins/Makefile
 plug-ins/pts/Makefile
+plug-ins/fm_pts/Makefile
 plug-ins/rll/Makefile
 plug-ins/parsley/Makefile
 plug-ins/blur/Makefile

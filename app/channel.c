@@ -414,6 +414,24 @@ channel_toggle_visibility (Channel *channel)
 }
 
 void
+channel_set_rgbm (gint rgbm)
+{
+  /* go through all the images and set value */
+  extern GSList *image_list;
+  GSList *list = image_list;
+ GImage *gimage;
+ 
+  while (list)
+    {
+      gimage = (GImage*) list->data;
+      if (gimage)
+	{
+	  ((Channel*) gimage->channels->data)->link_paint = rgbm;
+	}
+      list = g_slist_next (list);
+    }
+}
+void
 channel_set_link_paint_opacity (Channel *channel, gfloat link_paint_opacity)
 {
   channel->link_paint_opacity = link_paint_opacity;
@@ -445,6 +463,7 @@ channel_as_opacity (Channel *channel, gint gimage_ID)
 	{
 	  gimage->channel_as_opacity = channel; 
 	}
+      list = g_slist_next (list);
     }
   
 }

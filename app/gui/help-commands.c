@@ -995,8 +995,11 @@ file_prefs_toggle_callback (GtkWidget *widget,
   else if (data==&show_tool_tips)
     show_tool_tips = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&enable_rgbm_painting)
+  {
     enable_rgbm_painting = GTK_TOGGLE_BUTTON (widget)->active;
-  else if (data==&enable_paste_c_disp)
+    channel_set_rgbm (enable_rgbm_painting); 
+  } 
+ else if (data==&enable_paste_c_disp)
     enable_paste_c_disp = GTK_TOGGLE_BUTTON (widget)->active;
   else if (data==&enable_tmp_saving)
     enable_tmp_saving = GTK_TOGGLE_BUTTON (widget)->active;
@@ -1666,7 +1669,7 @@ file_pref_cmd_callback (GtkWidget *widget,
       gtk_notebook_append_page (GTK_NOTEBOOK(notebook), out_frame, label);
 
       /* Global Settings */
-      out_frame = gtk_frame_new ("Global Setting -- Not Implemented yet -- Do not use");
+      out_frame = gtk_frame_new ("Global Setting");
       gtk_container_border_width (GTK_CONTAINER (out_frame), 10);
       gtk_widget_set_usize (out_frame, 320, 200);
       gtk_widget_show (out_frame);

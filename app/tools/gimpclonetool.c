@@ -876,7 +876,7 @@ clone_line_image  (PaintCore * paint_core,
   if (gimage && src_gimage)
     {
       Matrix matrix;
-      Canvas * rot; 
+      Canvas * rot=NULL; 
       Canvas * orig;
       PixelArea srcPR, destPR;
       int x1, y1, x11, y11, x2, y2, x22, y22;
@@ -979,26 +979,36 @@ clone_line_image  (PaintCore * paint_core,
 	
 
 	  orig = paint_core_16_area_original (paint_core, drawable, x1, y1, x2, y2);
-	}
+        }
 
 
-      identity_matrix (matrix);
-      rotate_matrix (matrix, 2.0*M_PI-rotate);
-      scale_matrix (matrix, scale_x, scale_y);
-      rot = transform_core_do (src_gimage, src_drawable, 
-	  orig, 1, matrix);
-      /*error_x +=  (canvas_width (rot) - (x2 - x1))/2;
-      error_y +=  (canvas_height (rot) - (y2 - y1))/2;
-*/
-      pixelarea_init (&srcPR, orig/*rot*/, error_x, error_y,
-	  x2-x1,  y2-y1, FALSE);
+      if (scale_x == 1 && scale_y == 1 && rotate == 0)
+      {
+        pixelarea_init (&srcPR, orig, error_x, error_y,
+            x2-x1,  y2-y1, FALSE);
+      }
+      else
+      {
+        identity_matrix (matrix);
+        rotate_matrix (matrix, 2.0*M_PI-rotate);
+        scale_matrix (matrix, scale_x, scale_y);
+        rot = transform_core_do (src_gimage, src_drawable, 
+            orig, 1, matrix);
+        /*error_x +=  (canvas_width (rot) - (x2 - x1))/2;
+          error_y +=  (canvas_height (rot) - (y2 - y1))/2;
+         */
+        pixelarea_init (&srcPR, rot, error_x, error_y,
+            x2-x1,  y2-y1, FALSE);
+      }     
       pixelarea_init (&destPR, painthit,
-	  (x1 - x), (y1 - y), x2-x1, y2-y1, TRUE);
+          (x1 - x), (y1 - y), x2-x1, y2-y1, TRUE);
 
 
       copy_area (&srcPR, &destPR);
+      
+      if (rot)
+        canvas_delete (rot); 
 
-      canvas_delete (rot); 
       rc = TRUE;
     }
   return rc;
