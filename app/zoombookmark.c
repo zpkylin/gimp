@@ -54,6 +54,8 @@ void zoom_bookmark_set(ZoomBookmark* mark, const GDisplay *gdisp)
    mark->image_offset_y = gdisp->offset_y;
    mark->zoom = SCALEDEST(gdisp) * 100 + SCALESRC(gdisp);
    mark->is_set = TRUE;
+
+   zoom_control_update_bookmark_ui(zoom_control);
 }
 
 int zoom_bookmark_save(const char *filename)
@@ -77,7 +79,6 @@ int zoom_bookmark_save(const char *filename)
    fclose(file);
 
    //make sure the ui reflects the new bookmarks
-   zoom_control_update_bookmark_ui(zoom_control);
    return 1;
 }
 
@@ -103,6 +104,7 @@ int zoom_bookmark_load(const char *filename)
    }
 
    fclose(file);
+   zoom_control_update_bookmark_ui(zoom_control);
    return 1;
 }
 

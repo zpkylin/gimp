@@ -67,6 +67,7 @@ static void zoom_control_set_event(GtkButton *, gpointer user_data);
 static void zoom_control_jump_event(GtkButton *, gpointer user_data);
 static void zoom_enable_button(GtkButton *b);
 static void zoom_disable_button(GtkButton *b);
+static void zoom_highlight_current_bookmark();
 
 /************************************************************/
 /*     Global variables (yikes!)                            */
@@ -98,6 +99,8 @@ void zoom_control_update_bookmark_ui(ZoomControl *zoom)
          }
       }
    }
+
+   zoom_highlight_current_bookmark();
 }
 
 void zoom_view_changed(GDisplay *disp)
@@ -119,6 +122,8 @@ void zoom_view_changed(GDisplay *disp)
    zoom_update_pulldown_slider(disp); 
    // notify drawing area to update rect.
    zoom_update_extents(disp);
+
+   zoom_highlight_current_bookmark();
    
    // reset state
    zoom_external_generated = 0;
@@ -313,6 +318,33 @@ void zoom_control_delete(ZoomControl *zoom)
 /************************************************************/
 /*     Utility Functions                                    */
 /************************************************************/
+void zoom_highlight_current_bookmark()
+{
+   int i;
+   gchar buff[16];
+
+
+   if (!zoom_control || !zoom_control->gdisp)
+      return;
+
+   for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
+      if (zoom_control->bookmark_button[i]) {
+         if (zoom_bookmarks[i].is_set &&
+	     zoom_bookmarks[i].image_offset_x == zoom_control->gdisp->offset_x &&
+             zoom_bookmarks[i].image_offset_y == zoom_control->gdisp->offset_y &&
+             zoom_bookmarks[i].zoom == 
+	        (SCALEDEST(zoom_control->gdisp) * 100 + SCALESRC(zoom_control->gdisp))) {
+
+            g_snprintf(buff, 16, "<%d>", i+1);
+         }
+	 else {
+            g_snprintf(buff, 16, "%d", i+1);
+	 }
+         gtk_label_set_text(
+	        GTK_LABEL(GTK_BIN(zoom_control->bookmark_button[i])->child),buff);
+      }
+   }
+}
 
 void zoom_enable_button(GtkButton *b)
 {
@@ -587,6 +619,7 @@ zoom_slider_value_changed(
     // now set the zoom factor for the display
    zoom_update_scale(zoom_control->gdisp, scale_val);
    zoom_update_extents(zoom_control->gdisp);
+   zoom_highlight_current_bookmark();
    zoom_update_pulldown(zoom_control->gdisp);
 }
 
@@ -630,6 +663,7 @@ static void zoom_pulldown_value_changed(
 
    zoom_update_scale(zoom_control->gdisp, scale_val);
    zoom_update_extents(zoom_control->gdisp);
+   zoom_highlight_current_bookmark();
    zoom_update_slider(zoom_control->gdisp);
 }
 
@@ -770,7 +804,6 @@ static void zoom_control_set_event(GtkButton *button, gpointer user_data)
       return;
 
    zoom_bookmark_set(&zoom_bookmarks[i], zoom_control->gdisp);
-   zoom_enable_button(GTK_BUTTON(zoom_control->bookmark_button[i]));
 }
 
 static void zoom_control_jump_event(GtkButton *button, gpointer user_data)
