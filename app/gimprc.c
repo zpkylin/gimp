@@ -340,7 +340,6 @@ gimp_directory ()
     }
 
   gimp_dir[MAX_GIMPDIR_LEN] = '\000';
-  printf("Gimp Directory: %s\n", gimp_dir);
   return gimp_dir;
 }
 
@@ -377,8 +376,6 @@ parse_gimprc_file (char *filename)
   static char *home_dir = NULL;
   int status;
   char rfilename[512];
-
-  printf ("%s\n", filename);
 
   if (filename[0] != '/')
     {

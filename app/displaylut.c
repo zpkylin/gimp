@@ -154,6 +154,7 @@ display_u8_alpha_from_float16 (guint16 code)
 guint8
 display_u8_from_float16 (guint16 code)
 {
+
 	ShortsFloat u;
 	gfloat c = FLT(code, u);
 

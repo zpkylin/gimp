@@ -264,7 +264,8 @@ ZoomControl * zoom_control_new()
 		      (GtkSignalFunc) zoom_preview_button_press_event, NULL);
   gtk_signal_connect (GTK_OBJECT (zoom->preview), "button-release-event",
 		      (GtkSignalFunc) zoom_preview_button_release_event, NULL);
-  gtk_widget_set_events(zoom->preview, GDK_BUTTON_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
+  gtk_widget_set_events(zoom->preview, GDK_BUTTON_MOTION_MASK | GDK_BUTTON_PRESS_MASK | 
+                                       GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_RELEASE_MASK);
 
   table = gtk_table_new(2, ZOOM_BOOKMARK_NUM, TRUE);
   for (i=0; i < ZOOM_BOOKMARK_NUM; i++) {
@@ -357,6 +358,7 @@ void zoom_disable_button(GtkButton *b)
 void zoom_preview_jump_to(gfloat x, gfloat y)
 {
    gfloat x_dist, y_dist;
+   int xx, yy;
    gfloat scale;
 
    if (!zoom_control || !zoom_control->gdisp)
@@ -367,10 +369,15 @@ void zoom_preview_jump_to(gfloat x, gfloat y)
    x_dist = zoom_control->drag_offset_x + x - .5 * (zoom_control->left + zoom_control->right);
    y_dist = zoom_control->drag_offset_y + y - .5 * (zoom_control->top + zoom_control->bottom);
 
-   // convert to image units
+   // convert from zoom control window to image units
    scale = ((float)zoom_control->gdisp->gimage->width) / ((float)zoom_control->preview_width);
   
-   scroll_display(zoom_control->gdisp, (int) (x_dist * scale), (int) (y_dist * scale)); 
+   // convert from image units to screen units
+   xx = (int) (x_dist * scale);
+   yy = (int) (y_dist * scale);
+   xx = SCALE(zoom_control->gdisp, xx);
+   yy = SCALE(zoom_control->gdisp, yy);
+   scroll_display(zoom_control->gdisp, xx, yy); 
 }
 
 void zoom_update_extents(GDisplay *gdisp)
@@ -739,13 +746,24 @@ static gboolean zoom_preview_motion_notify_event(
    GdkEventMotion *event,
    gpointer user_data)
 {
+   gint x,y;
+   GdkModifierType state;
+
    if (!zoom_control || !zoom_control->gdisp)
       return FALSE;
 
    if (!zoom_control->mouse_capture)
       return FALSE;
 
-   zoom_preview_jump_to(event->x, event->y);
+   if (event->is_hint) {
+      gdk_window_get_pointer (event->window, &x, &y, &state);
+   }
+   else {
+      x = event->x;
+      y = event->y;
+   }
+
+   zoom_preview_jump_to(x, y);
    return FALSE;
 }
 
