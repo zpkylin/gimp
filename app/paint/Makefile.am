@@ -64,6 +64,10 @@ libapppaint_a_sources = \
 	gimppenciloptions.h	\
 	gimppaintbrush.c	\
 	gimppaintbrush.h	\
+	gimpperspectiveclone.c	\
+	gimpperspectiveclone.h	\
+	gimpperspectivecloneoptions.c \
+	gimpperspectivecloneoptions.h \
 	gimpsmudge.c		\
 	gimpsmudge.h		\
 	gimpsmudgeoptions.c	\

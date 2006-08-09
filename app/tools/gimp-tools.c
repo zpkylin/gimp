@@ -49,6 +49,7 @@
 #include "gimpbucketfilltool.h"
 #include "gimpbycolorselecttool.h"
 #include "gimpclonetool.h"
+#include "gimpperspectiveclonetool.h"
 #include "gimpcolorbalancetool.h"
 #include "gimpcolorizetool.h"
 #include "gimpcolorpickertool.h"
@@ -132,6 +133,7 @@ gimp_tools_init (Gimp *gimp)
     gimp_smudge_tool_register,
     gimp_convolve_tool_register,
     gimp_clone_tool_register,
+    gimp_perspective_clone_tool_register,
     gimp_ink_tool_register,
     gimp_airbrush_tool_register,
     gimp_eraser_tool_register,
@@ -506,6 +508,10 @@ gimp_tools_register (GType                   tool_type,
   else if (tool_type == GIMP_TYPE_CLONE_TOOL)
     {
       paint_core_name = "gimp-clone";
+    }
+  else if (tool_type == GIMP_TYPE_PERSPECTIVE_CLONE_TOOL)
+    {
+      paint_core_name = "gimp-perspective-clone";
     }
   else if (tool_type == GIMP_TYPE_CONVOLVE_TOOL)
     {
