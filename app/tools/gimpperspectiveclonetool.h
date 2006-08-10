@@ -77,8 +77,6 @@ struct _GimpPerspectiveCloneTool
 
   TransformAction function;       /*  current tool activity            */
 
-  gint            is_set_matrix;  /* hack */
-
   /*gint            ngx, ngy;*/       /*  number of grid lines in original
                                    *  x and y directions
                                    */

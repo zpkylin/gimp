@@ -44,20 +44,20 @@ enum
 
 
 static void   gimp_perspective_clone_options_set_property (GObject      *object,
-                                                         guint         property_id,
-                                                         const GValue *value,
-                                                         GParamSpec   *pspec);
+                                                           guint         property_id,
+                                                           const GValue *value,
+                                                           GParamSpec   *pspec);
 static void   gimp_perspective_clone_options_get_property (GObject      *object,
-                                                         guint         property_id,
-                                                         GValue       *value,
-                                                         GParamSpec   *pspec);
+                                                           guint         property_id,
+                                                           GValue       *value,
+                                                           GParamSpec   *pspec);
 
 
 G_DEFINE_TYPE (GimpPerspectiveCloneOptions, gimp_perspective_clone_options, GIMP_TYPE_PAINT_OPTIONS)
 
 
 static void
-    gimp_perspective_clone_options_class_init (GimpPerspectiveCloneOptionsClass *klass)
+gimp_perspective_clone_options_class_init (GimpPerspectiveCloneOptionsClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
@@ -92,9 +92,9 @@ gimp_perspective_clone_options_init (GimpPerspectiveCloneOptions *options)
 
 static void
 gimp_perspective_clone_options_set_property (GObject      *object,
-                                           guint         property_id,
-                                           const GValue *value,
-                                           GParamSpec   *pspec)
+                                             guint         property_id,
+                                             const GValue *value,
+                                             GParamSpec   *pspec)
 {
   GimpPerspectiveCloneOptions *options = GIMP_PERSPECTIVE_CLONE_OPTIONS (object);
 
@@ -120,9 +120,9 @@ gimp_perspective_clone_options_set_property (GObject      *object,
 
 static void
 gimp_perspective_clone_options_get_property (GObject    *object,
-                                           guint       property_id,
-                                           GValue     *value,
-                                           GParamSpec *pspec)
+                                             guint       property_id,
+                                             GValue     *value,
+                                             GParamSpec *pspec)
 {
   GimpPerspectiveCloneOptions *options = GIMP_PERSPECTIVE_CLONE_OPTIONS (object);
 

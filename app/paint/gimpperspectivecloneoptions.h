@@ -32,7 +32,7 @@
 
 
 typedef struct _GimpPerspectiveCloneOptions      GimpPerspectiveCloneOptions;
-typedef struct _GimpPaintOptionsClass          GimpPerspectiveCloneOptionsClass;
+typedef struct _GimpPaintOptionsClass            GimpPerspectiveCloneOptionsClass;
 
 struct _GimpPerspectiveCloneOptions
 {
