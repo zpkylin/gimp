@@ -151,8 +151,6 @@ gimp_perspective_clone_tool_init (GimpPerspectiveCloneTool *perspective_clone_to
   gint i;
   GimpTool *tool = GIMP_TOOL (perspective_clone_tool);
 
-  gimp_tool_control_set_tool_cursor     (tool->control,
-                                         GIMP_TOOL_CURSOR_CLONE);
   gimp_tool_control_set_action_object_2 (tool->control,
                                          "context/context-pattern-select-set");
 
@@ -196,6 +194,14 @@ gimp_perspective_clone_tool_constructor (GType                  type,
                            "notify::clone-mode",
                            G_CALLBACK (gimp_perspective_clone_tool_mode_notify),
                            perspective_clone_tool, 0);
+
+  /* set cursor depending work mode */
+  if(GIMP_PERSPECTIVE_CLONE_OPTIONS(options)->clone_mode == GIMP_MODIFY_PERSPECTIVE_PLANE)
+    gimp_tool_control_set_tool_cursor (GIMP_TOOL(perspective_clone_tool)->control,
+                                       GIMP_TOOL_CURSOR_PERSPECTIVE);
+  else
+    gimp_tool_control_set_tool_cursor (GIMP_TOOL(perspective_clone_tool)->control,
+                                       GIMP_TOOL_CURSOR_CLONE);
 
   return object;
 }
@@ -526,6 +532,8 @@ gimp_perspective_clone_tool_cursor_update (GimpTool        *tool,
       }
     }
 
+    modifier = GIMP_CURSOR_MODIFIER_NONE;
+
 //     switch (options->type)
 //     {
 //       case GIMP_TRANSFORM_TYPE_LAYER:
@@ -533,8 +541,8 @@ gimp_perspective_clone_tool_cursor_update (GimpTool        *tool,
 //         break;
 //
 //       case GIMP_TRANSFORM_TYPE_PATH:
-        if (! gimp_image_get_active_vectors (display->image))
-          modifier = GIMP_CURSOR_MODIFIER_BAD;
+//         if (! gimp_image_get_active_vectors (display->image))
+//           modifier = GIMP_CURSOR_MODIFIER_BAD;
 //         break;
 //     }
   }
@@ -810,6 +818,9 @@ gimp_perspective_clone_tool_mode_notify (GObject                  *config,
 
   if (options->clone_mode == GIMP_CLONE_PAINT)
   {
+      gimp_tool_control_set_tool_cursor     (GIMP_TOOL(perspective_clone_tool)->control,
+                                             GIMP_TOOL_CURSOR_CLONE);
+
       perspective_clone->transform = perspective_clone_tool->transform;
 
       perspective_clone->transform_inv = perspective_clone_tool->transform;
@@ -825,6 +836,11 @@ gimp_perspective_clone_tool_mode_notify (GObject                  *config,
       g_printerr("%f\t",   (perspective_clone_tool->transform).coeff[2][0]);
       g_printerr("%f\t",   (perspective_clone_tool->transform).coeff[2][1]);
       g_printerr("%f\n\n", (perspective_clone_tool->transform).coeff[2][2]);
+  }
+  else
+  {
+    gimp_tool_control_set_tool_cursor     (GIMP_TOOL(perspective_clone_tool)->control,
+                                           GIMP_TOOL_CURSOR_PERSPECTIVE);
   }
 }
 
