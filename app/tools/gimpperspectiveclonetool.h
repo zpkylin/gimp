@@ -28,11 +28,11 @@
 #define TRAN_INFO_SIZE  8
 
 #define GIMP_TYPE_PERSPECTIVE_CLONE_TOOL            (gimp_perspective_clone_tool_get_type ())
-#define GIMP_PERSPECTIVE_CLONE_TOOL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL, GimpPerspectiveCloneTool))
-#define GIMP_PERSPECTIVE_CLONE_TOOL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL, GimpPerspectiveCloneToolClass))
+#define GIMP_PERSPECTIVE_CLONE_TOOL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL,                                                          GimpPerspectiveCloneTool))
+#define GIMP_PERSPECTIVE_CLONE_TOOL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL,                                                           GimpPerspectiveCloneToolClass))
 #define GIMP_IS_PERSPECTIVE_CLONE_TOOL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL))
 #define GIMP_IS_PERSPECTIVE_CLONE_TOOL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL))
-#define GIMP_PERSPECTIVE_CLONE_TOOL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL, GimpPerspectiveCloneToolClass))
+#define GIMP_PERSPECTIVE_CLONE_TOOL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GIMP_TYPE_PERSPECTIVE_CLONE_TOOL,                                                           GimpPerspectiveCloneToolClass))
 
 
 typedef struct _GimpPerspectiveCloneTool      GimpPerspectiveCloneTool;
@@ -97,7 +97,7 @@ struct _GimpPerspectiveCloneToolClass
 
 
 void    gimp_perspective_clone_tool_register      (GimpToolRegisterCallback  callback,
-                                                gpointer                  data);
+                                                   gpointer                  data);
 
 GType   gimp_perspective_clone_tool_get_type      (void) G_GNUC_CONST;
 

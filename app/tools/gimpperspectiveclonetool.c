@@ -51,7 +51,7 @@
 #define TARGET_WIDTH  15
 #define TARGET_HEIGHT 15
 
-static GObject * gimp_perspective_clone_tool_constructor       (GType                type,
+static GObject *     gimp_perspective_clone_tool_constructor   (GType                type,
                                                                 guint                n_params,
                                                                 GObjectConstructParam *params);
 
@@ -851,6 +851,7 @@ gimp_perspective_clone_options_gui (GimpToolOptions *tool_options)
 {
   GObject   *config = G_OBJECT (tool_options);
   GtkWidget *vbox;
+  GtkWidget *paint_options;
   GtkWidget *frame;
   GtkWidget *mode;
   GtkWidget *button;
@@ -858,13 +859,17 @@ gimp_perspective_clone_options_gui (GimpToolOptions *tool_options)
   GtkWidget *table;
   GtkWidget *combo;
 
-  vbox = gimp_paint_options_gui (tool_options);
+  vbox = gtk_vbox_new (FALSE, 6);
+  paint_options = gimp_paint_options_gui (tool_options);
 
   /* radio buttons to set if you are modifying perspe plane or painting */
   mode = gimp_prop_enum_radio_frame_new (config, "clone-mode",
-                                         _("Mode"), 0, 0);
+                                        _("Mode"), 0, 0);
   gtk_box_pack_start (GTK_BOX (vbox), mode, FALSE, FALSE, 0);
   gtk_widget_show (mode);
+
+  gtk_box_pack_start (GTK_BOX (vbox), paint_options, FALSE, FALSE, 0);
+  gtk_widget_show (paint_options);
 
   frame = gimp_prop_enum_radio_frame_new (config, "clone-type",
                                           _("Source"), 0, 0);
