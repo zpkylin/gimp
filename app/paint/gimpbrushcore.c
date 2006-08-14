@@ -727,9 +727,9 @@ gimp_brush_core_set_brush (GimpBrushCore *core,
 
 void
 gimp_brush_core_paste_canvas (GimpBrushCore            *core,
-                              GimpDrawable               *drawable,
-                              gdouble                        brush_opacity,
-                              gdouble                        image_opacity,
+                              GimpDrawable             *drawable,
+                              gdouble                   brush_opacity,
+                              gdouble                   image_opacity,
                               GimpLayerModeEffects      paint_mode,
                               GimpBrushApplicationMode  brush_hardness,
                               GimpPaintApplicationMode  mode)

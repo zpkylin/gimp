@@ -62,6 +62,7 @@
 #include "gimpfreeselecttool.h"
 #include "gimpforegroundselecttool.h"
 #include "gimpfuzzyselecttool.h"
+#include "gimphealtool.h"
 #include "gimphuesaturationtool.h"
 #include "gimpinktool.h"
 #include "gimpiscissorstool.h"
@@ -132,6 +133,7 @@ gimp_tools_init (Gimp *gimp)
     gimp_smudge_tool_register,
     gimp_convolve_tool_register,
     gimp_clone_tool_register,
+    gimp_heal_tool_register,
     gimp_ink_tool_register,
     gimp_airbrush_tool_register,
     gimp_eraser_tool_register,
@@ -506,6 +508,10 @@ gimp_tools_register (GType                   tool_type,
   else if (tool_type == GIMP_TYPE_CLONE_TOOL)
     {
       paint_core_name = "gimp-clone";
+    }
+  else if (tool_type == GIMP_TYPE_HEAL_TOOL)
+    {
+      paint_core_name = "gimp-heal";
     }
   else if (tool_type == GIMP_TYPE_CONVOLVE_TOOL)
     {
