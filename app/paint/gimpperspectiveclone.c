@@ -96,18 +96,8 @@ static void   gimp_perspective_clone_line_pattern         (GimpImage        *des
                                                            gint              bytes,
                                                            gint              width);
 
-static void   gimp_perspective_clone_set_src_drawable     (GimpPerspectiveClone     *clone,
+static void   gimp_perspective_clone_set_src_drawable     (GimpPerspectiveClone    *clone,
                                                            GimpDrawable            *drawable);
-
-static void   gimp_perspective_clone_get_perspective_point(GimpPerspectiveClone     *clone,
-                                                           gdouble                 srcx_fv,
-                                                           gdouble                 srcy_fv,
-                                                           gdouble                 destx_fv,
-                                                           gdouble                 desty_fv,
-                                                           gdouble                 x,
-                                                           gdouble                 y,
-                                                           gdouble                 *newx,
-                                                           gdouble                 *newy);
 
 
 G_DEFINE_TYPE (GimpPerspectiveClone, gimp_perspective_clone, GIMP_TYPE_BRUSH_CORE)
@@ -170,14 +160,21 @@ gimp_perspective_clone_init (GimpPerspectiveClone *clone)
   clone->orig_src_x   = 0.0;
   clone->orig_src_y   = 0.0;
 
-  clone->offset_x     = 0.0;
+  clone->dest_x       = 0.0;    /* coords where the stroke starts */
+  clone->dest_y       = 0.0;
+
+  clone->src_x_fv     = 0.0;    /* source coords in front_view perspective */
+  clone->src_y_fv     = 0.0;
+
+  clone->dest_x_fv    = 0.0;    /* destination coords in front_view perspective */
+  clone->dest_y_fv    = 0.0;
+
+  clone->offset_x     = 0.0;    /* offset from the source to the stroke that's being painted */
   clone->offset_y     = 0.0;
   clone->first_stroke = TRUE;
 
-  clone->src_x_init   = 0.0;
-  clone->src_y_init   = 0.0;
-  clone->dest_x_init  = 0.0;
-  clone->dest_y_init  = 0.0;
+  gimp_matrix3_identity (&clone->transform);
+  gimp_matrix3_identity (&clone->transform_inv);
 }
 
 static void
@@ -251,6 +248,11 @@ gimp_perspective_clone_paint      (GimpPaintCore    *paint_core,
           clone->src_x = paint_core->cur_coords.x;
           clone->src_y = paint_core->cur_coords.y;
 
+          /* get source coordinates in front view perspective */
+          gimp_matrix3_transform_point(&clone->transform_inv,
+                                        clone->src_x, clone->src_y,
+                                        &clone->src_x_fv, &clone->src_y_fv);
+
           clone->first_stroke = TRUE;
         }
       else if (options->align_mode == GIMP_CLONE_ALIGN_NO)
@@ -271,11 +273,13 @@ gimp_perspective_clone_paint      (GimpPaintCore    *paint_core,
         {
           /*  If the control key is down, move the src target and return */
 
-          clone->src_x = paint_core->cur_coords.x;
+          clone->src_x = paint_core->cur_coords.x;      /* coords where the stroke starts */
           clone->src_y = paint_core->cur_coords.y;
 
-          clone->src_x_init = clone->src_x;     /* coords where the stroke starts */
-          clone->src_y_init = clone->src_y;
+          /* get source coordinates in front view perspective */
+          gimp_matrix3_transform_point(&clone->transform_inv,
+                                        clone->src_x, clone->src_y,
+                                        &clone->src_x_fv, &clone->src_y_fv);
 
           clone->first_stroke = TRUE;
         }
@@ -304,25 +308,22 @@ gimp_perspective_clone_paint      (GimpPaintCore    *paint_core,
               clone->offset_x = clone->src_x - dest_x;
               clone->offset_y = clone->src_y - dest_y;
 
-              clone->dest_x_init = dest_x;     // cooords where start the destination stroke
-              clone->dest_y_init = dest_y;
+              clone->dest_x = dest_x;       /* cooords where start the destination stroke */
+              clone->dest_y = dest_y;
+
+              /* get destination coordinates in front view perspective */
+              gimp_matrix3_transform_point(&clone->transform_inv,
+                                            clone->dest_x, clone->dest_y,
+                                            &clone->dest_x_fv, &clone->dest_y_fv);
 
               clone->first_stroke = FALSE;
             }
-
-          clone->src_x = dest_x + clone->offset_x;
-          clone->src_y = dest_y + clone->offset_y;
 
           gimp_perspective_clone_motion (paint_core, drawable, paint_options);
         }
       break;
 
     case GIMP_PAINT_STATE_FINISH:
-      if (options->align_mode == GIMP_CLONE_ALIGN_NO && ! clone->first_stroke)
-        {
-          clone->src_x = clone->orig_src_x;
-          clone->src_y = clone->orig_src_y;
-        }
       break;
 
     default:
@@ -338,34 +339,34 @@ gimp_perspective_clone_motion     (GimpPaintCore    *paint_core,
                                    GimpDrawable     *drawable,
                                    GimpPaintOptions *paint_options)
 {
-  GimpPerspectiveClone          *clone   = GIMP_PERSPECTIVE_CLONE (paint_core);
-  GimpPerspectiveCloneOptions   *options = GIMP_PERSPECTIVE_CLONE_OPTIONS (paint_options);
-  GimpContext         *context          = GIMP_CONTEXT (paint_options);
-  GimpPressureOptions *pressure_options = paint_options->pressure_options;
-  GimpImage           *image;
-  GimpImage           *src_image        = NULL;
-  GimpPickable        *src_pickable     = NULL;
-  guchar              *s;
-  guchar              *d;
-  TempBuf             *area;
-  gpointer             pr = NULL;
-  gint                 y;
-  gint                 x1d, y1d, x2d, y2d;                      /* Coordinates of the destination area to paint */
-  gdouble              x1s, y1s, x2s, y2s, x3s, y3s, x4s, y4s;  /* Coordinates of the boundary box to copy pixels to the tempbuf and after apply perspective transform */
-  gint                 itemp_x, itemp_y;
-  gint                 xmin, ymin, xmax, ymax;
-  TileManager         *src_tiles;
-  PixelRegion          srcPR, destPR, auxPR, auxPR2;
-  GimpPattern         *pattern = NULL;
-  gdouble              opacity;
-  gint                 offset_x;
-  gint                 offset_y;
+  GimpPerspectiveClone          *clone            = GIMP_PERSPECTIVE_CLONE (paint_core);
+  GimpPerspectiveCloneOptions   *options          = GIMP_PERSPECTIVE_CLONE_OPTIONS (paint_options);
+  GimpContext                   *context          = GIMP_CONTEXT (paint_options);
+  GimpPressureOptions           *pressure_options = paint_options->pressure_options;
+  GimpImage                     *image;
+  GimpImage                     *src_image        = NULL;
+  GimpPickable                  *src_pickable     = NULL;
+  guchar                        *s;
+  guchar                        *d;
+  TempBuf                       *area;
+  gpointer                      pr = NULL;
+  gint                          y;
+  gint                          x1d, y1d, x2d, y2d;                      /* Coordinates of the destination area to paint */
+  gdouble                       x1s, y1s, x2s, y2s, x3s, y3s, x4s, y4s;  /* Coordinates of the boundary box to copy pixels to the tempbuf and after apply perspective transform */
+  gint                          itemp_x, itemp_y;
+  gint                          xmin, ymin, xmax, ymax;
+  TileManager                   *src_tiles;
+  PixelRegion                   srcPR, destPR, auxPR, auxPR2;
+  GimpPattern                   *pattern = NULL;
+  gdouble                       opacity;
+  gint                          offset_x;
+  gint                          offset_y;
 
-  guchar              *src_data;
-  guchar              *dest_data;
-  gint                 i, j;
-  gdouble              temp_x, temp_y;
-  gdouble              src_x_fv, src_y_fv, dest_x_fv, dest_y_fv; /* source and destination coordinates in front view coordinates */
+  guchar                        *src_data;
+  guchar                        *dest_data;
+  gint                          i, j;
+  gdouble                       temp_x, temp_y;
+
 
   image = gimp_item_get_image (GIMP_ITEM (drawable));
 
@@ -428,22 +429,13 @@ gimp_perspective_clone_motion     (GimpPaintCore    *paint_core,
 
       TempBuf *orig, *temp_buf;
 
-      /* when the user sets the perspective, the transform matrix needs to be inverted */
-      //gimp_matrix3_invert (&clone->transform_inv);
-
-      /* convert source coordinates to front view perspective */
-      gimp_matrix3_transform_point(&clone->transform_inv, clone->src_x_init, clone->src_y_init, &src_x_fv, &src_y_fv);
-
-      /* convert destination coordinates to front view perspective */
-      gimp_matrix3_transform_point(&clone->transform_inv, clone->dest_x_init, clone->dest_y_init, &dest_x_fv, &dest_y_fv);
-
       /* Boundary box for source pixels to copy:
        * Convert all the vertex of the box to paint in destination area to its correspondent in source area bearing in mind perspective
        */
-      gimp_perspective_clone_get_perspective_point(clone, src_x_fv, src_y_fv, dest_x_fv, dest_y_fv, x1d, y1d, &x1s, &y1s);
-      gimp_perspective_clone_get_perspective_point(clone, src_x_fv, src_y_fv, dest_x_fv, dest_y_fv, x1d, y2d, &x2s, &y2s);
-      gimp_perspective_clone_get_perspective_point(clone, src_x_fv, src_y_fv, dest_x_fv, dest_y_fv, x2d, y1d, &x3s, &y3s);
-      gimp_perspective_clone_get_perspective_point(clone, src_x_fv, src_y_fv, dest_x_fv, dest_y_fv, x2d, y2d, &x4s, &y4s);
+      gimp_perspective_clone_get_source_point(clone, x1d, y1d, &x1s, &y1s);
+      gimp_perspective_clone_get_source_point(clone, x1d, y2d, &x2s, &y2s);
+      gimp_perspective_clone_get_source_point(clone, x2d, y1d, &x3s, &y3s);
+      gimp_perspective_clone_get_source_point(clone, x2d, y2d, &x4s, &y4s);
 
       xmin = floor(MIN4(x1s, x2s, x3s, x4s));
       xmax = ceil (MAX4(x1s, x2s, x3s, x4s));
@@ -452,10 +444,6 @@ gimp_perspective_clone_motion     (GimpPaintCore    *paint_core,
 
       xmax++; xmin--;
       ymax++; ymin--;
-
-      // Cordinates where the cross that indicate from where is cloning it's painted
-      clone->src_x = xmin + (xmax-xmin)/2;
-      clone->src_y = ymin + (ymax-ymin)/2;
 
       xmin = CLAMP (xmin,
                    0, tile_manager_width  (src_tiles));
@@ -516,7 +504,7 @@ gimp_perspective_clone_motion     (GimpPaintCore    *paint_core,
           {
             guchar *dest_pixel;
 
-            gimp_perspective_clone_get_perspective_point(clone, src_x_fv, src_y_fv, dest_x_fv, dest_y_fv, i, j, &temp_x, &temp_y);
+            gimp_perspective_clone_get_source_point(clone, i, j, &temp_x, &temp_y);
 
             itemp_x = (gint)temp_x;
             itemp_y = (gint)temp_y;
@@ -755,30 +743,28 @@ gimp_perspective_clone_set_src_drawable (GimpPerspectiveClone       *clone,
   g_object_notify (G_OBJECT (clone), "src-drawable");
 }
 
-static void
-gimp_perspective_clone_get_perspective_point(GimpPerspectiveClone   *clone,
-                                             gdouble                 srcx_fv,
-                                             gdouble                 srcy_fv,
-                                             gdouble                 destx_fv,
-                                             gdouble                 desty_fv,
-                                             gdouble                 x,
-                                             gdouble                 y,
-                                             gdouble                *newx,
-                                             gdouble                *newy)
+void
+gimp_perspective_clone_get_source_point(GimpPerspectiveClone   *perspective_clone,
+                                        gdouble                 x,
+                                        gdouble                 y,
+                                        gdouble                *newx,
+                                        gdouble                *newy)
 {
   gdouble       temp_x, temp_y;
   gdouble       offset_x_fv, offset_y_fv;
 
-  gimp_matrix3_transform_point(&clone->transform_inv, (gdouble)x, (gdouble)y, &temp_x, &temp_y);
+  gimp_matrix3_transform_point(&perspective_clone->transform_inv,
+                                x, y, &temp_x, &temp_y);
 
   /* Get the offset of each pixel in destination area from the destination pixel in front view perspective */
-  offset_x_fv = temp_x - destx_fv;
-  offset_y_fv = temp_y - desty_fv;
+  offset_x_fv = temp_x - perspective_clone->dest_x_fv;
+  offset_y_fv = temp_y - perspective_clone->dest_y_fv;
 
   /* Get the source pixel in front view perspective */
-  temp_x = offset_x_fv + srcx_fv;
-  temp_y = offset_y_fv + srcy_fv;
+  temp_x = offset_x_fv + perspective_clone->src_x_fv;
+  temp_y = offset_y_fv + perspective_clone->src_y_fv;
 
   /* Convert the source pixel to perspective view */
-  gimp_matrix3_transform_point(&clone->transform, (gdouble)temp_x, (gdouble)temp_y, newx, newy);
+  gimp_matrix3_transform_point(&perspective_clone->transform,
+                                temp_x, temp_y, newx, newy);
 }

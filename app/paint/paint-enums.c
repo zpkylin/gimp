@@ -65,6 +65,34 @@ gimp_clone_mode_get_type (void)
 }
 
 GType
+gimp_perspective_clone_align_mode_get_type (void)
+{
+  static const GEnumValue values[] =
+  {
+    { GIMP_PERSPECTIVE_CLONE_ALIGN_NO, "GIMP_PERSPECTIVE_CLONE_ALIGN_NO", "no" },
+    { GIMP_PERSPECTIVE_CLONE_ALIGN_YES, "GIMP_PERSPECTIVE_CLONE_ALIGN_YES", "yes" },
+    { 0, NULL, NULL }
+  };
+
+  static const GimpEnumDesc descs[] =
+  {
+    { GIMP_PERSPECTIVE_CLONE_ALIGN_NO, N_("None"), NULL },
+    { GIMP_PERSPECTIVE_CLONE_ALIGN_YES, N_("Aligned"), NULL },
+    { 0, NULL, NULL }
+  };
+
+  static GType type = 0;
+
+  if (! type)
+    {
+      type = g_enum_register_static ("GimpPerspectiveCloneAlignMode", values);
+      gimp_enum_set_value_descriptions (type, descs);
+    }
+
+  return type;
+}
+
+GType
 gimp_clone_align_mode_get_type (void)
 {
   static const GEnumValue values[] =

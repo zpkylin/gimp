@@ -57,6 +57,16 @@ typedef enum  /*< pdb-skip >*/
   GIMP_CLONE_PAINT                      /*< desc="Perspective Clone"        >*/
 } GimpCloneMode;
 
+#define GIMP_TYPE_PERSPECTIVE_CLONE_ALIGN_MODE (gimp_perspective_clone_align_mode_get_type ())
+
+GType gimp_perspective_clone_align_mode_get_type (void) G_GNUC_CONST;
+
+typedef enum /*< pdb-skip >*/
+{
+  GIMP_PERSPECTIVE_CLONE_ALIGN_NO,          /*< desc="None"        >*/
+  GIMP_PERSPECTIVE_CLONE_ALIGN_YES,         /*< desc="Aligned"     >*/
+  //GIMP_PERSPECTIVE_CLONE_ALIGN_FIXED        /*< desc="Fixed"       >*/
+} GimpPerspectiveCloneAlignMode;
 
 #define GIMP_TYPE_CLONE_ALIGN_MODE (gimp_clone_align_mode_get_type ())
 

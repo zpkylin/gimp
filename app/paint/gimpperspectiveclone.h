@@ -47,14 +47,28 @@ struct _GimpPerspectiveClone
   gdouble       orig_src_x;
   gdouble       orig_src_y;
 
-  gdouble       offset_x;
-  gdouble       offset_y;
-  gboolean      first_stroke;
-
   gdouble       src_x_init;     /* coordinate where starts copying the clone tool, when the source is set with ctrl+click */
   gdouble       src_y_init;
   gdouble       dest_x_init;    /* coordinate where starts the stroke */
   gdouble       dest_y_init;
+
+  // refactor
+
+  gdouble       dest_x;         /* coords where the stroke starts */
+  gdouble       dest_y;
+
+  gdouble       src_x_fv;       /* source coords in front_view perspective */
+  gdouble       src_y_fv;
+
+  gdouble       dest_x_fv;      /* destination coords in front_view perspective */
+  gdouble       dest_y_fv;
+
+  gdouble       cross_x;        /* coords where the tool would copy, used to draw reference cross */
+  gdouble       cross_y;
+
+  gdouble       offset_x;
+  gdouble       offset_y;
+  gboolean      first_stroke;
 
   GimpMatrix3   transform;
   GimpMatrix3   transform_inv;
@@ -71,5 +85,10 @@ void    gimp_perspective_clone_register   (Gimp                      *gimp,
 
 GType   gimp_perspective_clone_get_type   (void) G_GNUC_CONST;
 
+void   gimp_perspective_clone_get_source_point  (GimpPerspectiveClone   *clone,
+                                                        gdouble                 x,
+                                                        gdouble                 y,
+                                                        gdouble                 *newx,
+                                                        gdouble                 *newy);
 
 #endif  /*  __GIMP_CLONE_VANISHIGN_H__  */

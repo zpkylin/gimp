@@ -29,7 +29,7 @@
 
 #define PERSPECTIVE_CLONE_DEFAULT_MODE       GIMP_MODIFY_PERSPECTIVE_PLANE
 #define PERSPECTIVE_CLONE_DEFAULT_TYPE       GIMP_IMAGE_CLONE
-#define PERSPECTIVE_CLONE_DEFAULT_ALIGN_MODE GIMP_CLONE_ALIGN_NO
+#define PERSPECTIVE_CLONE_DEFAULT_ALIGN_MODE GIMP_PERSPECTIVE_CLONE_ALIGN_NO
 
 
 enum
@@ -76,7 +76,7 @@ gimp_perspective_clone_options_class_init (GimpPerspectiveCloneOptionsClass *kla
                                  GIMP_PARAM_STATIC_STRINGS);
   GIMP_CONFIG_INSTALL_PROP_ENUM (object_class, PROP_ALIGN_MODE,
                                  "align-mode", NULL,
-                                 GIMP_TYPE_CLONE_ALIGN_MODE,
+                                 GIMP_TYPE_PERSPECTIVE_CLONE_ALIGN_MODE,
                                  PERSPECTIVE_CLONE_DEFAULT_ALIGN_MODE,
                                  GIMP_PARAM_STATIC_STRINGS);
   GIMP_CONFIG_INSTALL_PROP_BOOLEAN (object_class, PROP_SAMPLE_MERGED,

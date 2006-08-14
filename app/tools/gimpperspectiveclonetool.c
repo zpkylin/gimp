@@ -354,8 +354,12 @@ gimp_perspective_clone_tool_button_press (GimpTool        *tool,
     GIMP_TOOL_CLASS (parent_class)->button_press (tool, coords, time, state,
                                                   display);
 
-    clone_tool->src_x = clone->src_x;
-    clone_tool->src_y = clone->src_y;
+    /* Set the coordinates for the reference cross */
+    gdouble nnx, nny;
+    gimp_perspective_clone_get_source_point(clone, coords->x, coords->y, &nnx, &nny);
+
+    clone_tool->src_x = nnx;
+    clone_tool->src_y = nny;
 
     gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
   }
@@ -474,8 +478,13 @@ gimp_perspective_clone_tool_motion (GimpTool        *tool,
 
     GIMP_TOOL_CLASS (parent_class)->motion (tool, coords, time, state, display);
 
-    clone_tool->src_x = clone->src_x;
-    clone_tool->src_y = clone->src_y;
+    /* Set the coordinates for the reference cross */
+    gdouble nnx, nny;
+    gimp_perspective_clone_get_source_point(clone, coords->x, coords->y, &nnx, &nny);
+
+    clone_tool->src_x = nnx;
+    clone_tool->src_y = nny;
+
 
     gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
   }
@@ -650,15 +659,14 @@ gimp_perspective_clone_tool_oper_update (GimpTool        *tool,
 
             if (! clone->first_stroke)
               {
-                if (options->align_mode == GIMP_CLONE_ALIGN_YES)
+                if (options->align_mode == GIMP_PERSPECTIVE_CLONE_ALIGN_YES)
                   {
-                    clone_tool->src_x = coords->x + clone->offset_x;
-                    clone_tool->src_y = coords->y + clone->offset_y;
-                  }
-                else if (options->align_mode == GIMP_CLONE_ALIGN_REGISTERED)
-                  {
-                    clone_tool->src_x = coords->x;
-                    clone_tool->src_y = coords->y;
+                    /* Set the coordinates for the reference cross */
+                    gdouble nnx, nny;
+                    gimp_perspective_clone_get_source_point(clone, coords->x, coords->y, &nnx, &nny);
+
+                    clone_tool->src_x = nnx;
+                    clone_tool->src_y = nny;
                   }
               }
 
@@ -739,8 +747,8 @@ gimp_perspective_clone_tool_draw (GimpDrawTool *draw_tool)
 
       gimp_draw_tool_draw_handle (draw_tool,
                                   GIMP_HANDLE_CROSS,
-                                  clone_tool->src_x + off_x,
-                                  clone_tool->src_y + off_y,
+                                  clone_tool->src_x,
+                                  clone_tool->src_y,
                                   TARGET_WIDTH, TARGET_WIDTH,
                                   GTK_ANCHOR_CENTER,
                                   FALSE);
@@ -889,10 +897,15 @@ gimp_perspective_clone_options_gui (GimpToolOptions *tool_options)
   gtk_box_pack_start (GTK_BOX (vbox), table, FALSE, FALSE, 0);
   gtk_widget_show (table);
 
-  combo = gimp_prop_enum_combo_box_new (config, "align-mode", 0, 0);
+  /*combo = gimp_prop_enum_combo_box_new (config, "align-mode", 0, 0);
   gimp_table_attach_aligned (GTK_TABLE (table), 0, 0,
                              _("Alignment:"), 0.0, 0.5,
                              combo, 1, FALSE);
-
+  */
+  frame = gimp_prop_enum_radio_frame_new (config, "align-mode",
+                                          _("Alignment"),
+                                          0, 0);
+  gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
+  gtk_widget_show (frame);
   return vbox;
 }
