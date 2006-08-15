@@ -112,9 +112,9 @@ gimp_clone_register (Gimp                      *gimp,
 static void
 gimp_clone_class_init (GimpCloneClass *klass)
 {
-  GObjectClass       *object_class     = G_OBJECT_CLASS (klass);
-  GimpPaintCoreClass *paint_core_class = GIMP_PAINT_CORE_CLASS (klass);
-  GimpBrushCoreClass *brush_core_class = GIMP_BRUSH_CORE_CLASS (klass);
+  GObjectClass       *object_class         = G_OBJECT_CLASS (klass);
+  GimpPaintCoreClass *paint_core_class     = GIMP_PAINT_CORE_CLASS (klass);
+  GimpBrushCoreClass *brush_core_class     = GIMP_BRUSH_CORE_CLASS (klass);
 
   object_class->set_property               = gimp_clone_set_property;
   object_class->get_property               = gimp_clone_get_property;
@@ -349,7 +349,7 @@ gimp_clone_motion (GimpPaintCore    *paint_core,
         return;
 
       src_pickable = GIMP_PICKABLE (clone->src_drawable);
-      src_image   = gimp_pickable_get_image (src_pickable);
+      src_image    = gimp_pickable_get_image (src_pickable);
 
       if (options->sample_merged)
         {

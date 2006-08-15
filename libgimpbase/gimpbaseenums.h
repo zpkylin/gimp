@@ -199,7 +199,6 @@ typedef enum
   GIMP_GRID_SOLID           /*< desc="Solid"                      >*/
 } GimpGridStyle;
 
-
 #define GIMP_TYPE_ICON_TYPE (gimp_icon_type_get_type ())
 
 GType gimp_icon_type_get_type (void) G_GNUC_CONST;
