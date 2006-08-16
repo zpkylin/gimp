@@ -25,6 +25,13 @@
 #include "paint-types.h"
 #include "gimphealoptions.h"
 
+enum
+{
+  PROP_0,
+  PROP_ALIGN_MODE,
+  PROP_SAMPLE_MERGED
+};
+
 static void   gimp_heal_options_set_property (GObject      *object,
                                               guint         property_id,
                                               const GValue *value,
@@ -43,6 +50,18 @@ gimp_heal_options_class_init (GimpHealOptionsClass *klass)
 
   object_class->set_property = gimp_heal_options_set_property;
   object_class->get_property = gimp_heal_options_get_property;
+
+  GIMP_CONFIG_INSTALL_PROP_ENUM (object_class, PROP_ALIGN_MODE,
+                                 "align-mode", NULL,
+                                 GIMP_TYPE_HEAL_ALIGN_MODE,
+                                 GIMP_HEAL_ALIGN_NO,
+                                 GIMP_PARAM_STATIC_STRINGS);
+
+  GIMP_CONFIG_INSTALL_PROP_BOOLEAN (object_class, PROP_SAMPLE_MERGED,
+                                    "sample-merged", NULL,
+                                    FALSE,
+                                    GIMP_PARAM_STATIC_STRINGS);
+
 }
 
 static void
@@ -52,10 +71,24 @@ gimp_heal_options_init (GimpHealOptions *options)
 
 static void
 gimp_heal_options_set_property (GObject      *object,
-                                 guint         property_id,
-                                 const GValue *value,
-                                 GParamSpec   *pspec)
+                                guint         property_id,
+                                const GValue *value,
+                                GParamSpec   *pspec)
 {
+  GimpHealOptions *options = GIMP_HEAL_OPTIONS (object);
+
+  switch (property_id)
+    {
+    case PROP_ALIGN_MODE:
+      options->align_mode = g_value_get_enum (value);
+      break;
+    case PROP_SAMPLE_MERGED:
+      options->sample_merged = g_value_get_boolean (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+    }
 }
 
 static void
@@ -64,4 +97,18 @@ gimp_heal_options_get_property (GObject    *object,
                                  GValue     *value,
                                  GParamSpec *pspec)
 {
+  GimpHealOptions *options = GIMP_HEAL_OPTIONS (object);
+
+  switch (property_id)
+    {
+    case PROP_ALIGN_MODE:
+      g_value_set_enum (value, options->align_mode);
+      break;
+    case PROP_SAMPLE_MERGED:
+      g_value_set_boolean (value, options->sample_merged);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+    }
 }

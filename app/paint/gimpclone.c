@@ -396,7 +396,7 @@ gimp_clone_motion (GimpPaintCore    *paint_core,
        *  Otherwise, we need a call to get_orig_image to make sure
        *  we get a copy of the unblemished (offset) image
        */
-      if ((  options->sample_merged && (src_image          != image)) ||
+      if ((  options->sample_merged && (src_image           != image)) ||
           (! options->sample_merged && (clone->src_drawable != drawable)))
         {
           pixel_region_init (&srcPR, src_tiles,

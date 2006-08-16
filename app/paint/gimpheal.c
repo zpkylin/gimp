@@ -44,6 +44,23 @@
 
 #include "gimp-intl.h"
 
+/* TODO: 
+ *
+ * Implement sample-merged support.  In the gimp_heal_motion function it is
+ * implemented exactly as in the clone tool, but the result is not displayed
+ * correctly.  Currently the choice of sample-merged is disabled in
+ * app/tools/gimphealtool.c
+ *
+ * Get it working for alternate image layers.  Is this desirable anyways?
+ * sample-merged should be enough.
+ *
+ * I had the code working for healing from a pattern, but the results look
+ * terrible and I can't see a use for it right now.
+ *
+ * The support for registered alignment has been removed because it doesn't make
+ * sense for healing.
+ */
+
 enum
 {
   PROP_0,
@@ -261,6 +278,12 @@ gimp_heal_paint (GimpPaintCore    *paint_core,
   g_object_notify (G_OBJECT (heal), "src-y");
 }
 
+/*
+ * Substitute any zeros in the input PixelRegion for ones.  This is needed by 
+ * the algorithm to avoid division by zero, and to get a more realistic image 
+ * since multiplying by zero is often incorrect (i.e., healing from a dark to 
+ * a light region will have incorrect spots of zero)
+ */
 static void
 gimp_heal_substitute_0_for_1 (PixelRegion *pr)
 {
@@ -293,6 +316,9 @@ gimp_heal_substitute_0_for_1 (PixelRegion *pr)
     }
 }
 
+/*
+ * Divide topPR by bottomPR and store the result as a double
+ */
 static void
 gimp_heal_divide (PixelRegion *topPR,
                   PixelRegion *bottomPR,
@@ -333,6 +359,9 @@ gimp_heal_divide (PixelRegion *topPR,
     }
 }
 
+/* 
+ * multiply first by secondPR and store the result as a PixelRegion 
+ */
 static void
 gimp_heal_multiply (gdouble     *first,
                     PixelRegion *secondPR,
@@ -373,7 +402,7 @@ gimp_heal_multiply (gdouble     *first,
     }
 }
 
-/**
+/*
  * Perform one iteration of the laplace solver for matrix.  Store the result in
  * solution and return the cummulative error of the solution.
  */
@@ -385,7 +414,6 @@ gimp_heal_laplace_iteration (gdouble *matrix,
                              gdouble *solution)
 {
   gint     rowstride  = width * depth;
-  gboolean done       = TRUE;
   gint     i, j, k;
   gdouble  err        = 0.0;
   gdouble  tmp, diff;
@@ -425,8 +453,8 @@ gimp_heal_laplace_iteration (gdouble *matrix,
   return sqrt (err);
 }
 
-/**
- * Solve the laplace equation for matrix.
+/*
+ * Solve the laplace equation for matrix and store the result in solution.
  */
 void
 gimp_heal_laplace_loop (gdouble *matrix,
@@ -460,7 +488,9 @@ gimp_heal_laplace_loop (gdouble *matrix,
     }
 }
 
-/* Algorithm Design:
+/* 
+ * Algorithm Design:
+ *
  * T. Georgiev, "Image Reconstruction Invariant to Relighting", EUROGRAPHICS
  * 2005, http://www.tgeorgiev.net/
  */
@@ -496,22 +526,37 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
                   GimpPaintOptions  *paint_options)
 {
   GimpHeal            *heal             = GIMP_HEAL (paint_core);
+  GimpHealOptions     *options          = GIMP_HEAL_OPTIONS (paint_options);
   GimpContext         *context          = GIMP_CONTEXT (paint_options);
   GimpPressureOptions *pressure_options = paint_options->pressure_options;
   GimpImage           *image;
+  GimpImage           *src_image        = NULL;
+  GimpPickable        *src_pickable     = NULL;
+  TileManager         *src_tiles;
   TempBuf             *area;
   TempBuf             *temp;
-  TileManager         *src_tiles; 
   gdouble              opacity;
   PixelRegion          tempPR;
   PixelRegion          srcPR;
   PixelRegion          destPR;
+  gint                 offset_x;
+  gint                 offset_y;
+
+  /* FIXME: Why doesn't the sample merged option work?  It is set up exactly as
+   * in the clone tool, but nothing gets displayed properly.
+   *
+   * Currently sample merged is disabled in gimphealtool.c so that it doesn't
+   * show the option in the toolbox.
+   *
+   * If you want to try and get it working, enable it there.
+   */
 
   image = gimp_item_get_image (GIMP_ITEM (drawable));
 	
-  if (GIMP_IMAGE_TYPE_IS_INDEXED (image))
+  /* display a warning about indexed images and quit */
+  if (GIMP_IMAGE_TYPE_IS_INDEXED (drawable->type))
     {
-      g_warning ("gimpheal: indexed images are not supported by the healing brush.\n");
+      g_message (_("Indexed images are not currently supported."));
       return;
     }
 
@@ -520,33 +565,72 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   if (opacity == 0.0)
     return;
 
-  if (!heal->src_drawable)
+  if (! heal->src_drawable)
     return;
+  
+  /* prepare the regions to get data from */
+  src_pickable = GIMP_PICKABLE (heal->src_drawable);
+  src_image    = gimp_pickable_get_image (src_pickable);
 
+  /* make local copies */
+  offset_x = heal->offset_x;
+  offset_y = heal->offset_y;
+
+  /* adjust offsets and pickable if we are merging layers */
+  if (options->sample_merged)
+    {
+      gint off_x, off_y;
+
+      src_pickable = GIMP_PICKABLE (src_image->projection);
+
+      gimp_item_offsets (GIMP_ITEM (heal->src_drawable), &off_x, &off_y);
+
+      offset_x += off_x;
+      offset_y += off_y;
+    }
+
+  /* get the canvas area */
   area = gimp_paint_core_get_paint_area (paint_core, drawable, paint_options);
   if (!area)
     return;
+
+  /* clear the area where we want to paint */
+  temp_buf_data_clear (area);
+
+  /* get the source tiles */
+  src_tiles = gimp_pickable_get_tiles (src_pickable);
 
   /* FIXME: the area under the cursor and the source area should be x% larger
    * than the brush size so that we have seamless blending.  Otherwise the brush
    * must be a lot bigger than the area to heal in order to get good results.
    * Having the user pick such a large brush is perhaps counter-intutitive? */
-   
+
   /* Get the area underneath the cursor */
   {
-    GimpItem *item = GIMP_ITEM (drawable);
     TempBuf  *orig;
     gint      x1, x2, y1, y2;
 
-    x1 = CLAMP (area->x, 0, gimp_item_width  (item));
-    y1 = CLAMP (area->y, 0, gimp_item_height (item));
-    x2 = CLAMP (area->x + area->width, 0, gimp_item_width   (item));
-    y2 = CLAMP (area->y + area->height, 0, gimp_item_height (item));
+    x1 = CLAMP (area->x, 
+                0, tile_manager_width  (src_tiles));
+    y1 = CLAMP (area->y, 
+                0, tile_manager_height (src_tiles));
+    x2 = CLAMP (area->x + area->width, 
+                0, tile_manager_width  (src_tiles));
+    y2 = CLAMP (area->y + area->height, 
+                0, tile_manager_height (src_tiles));
 
     if (! (x2 - x1) || (! (y2 - y1)))
       return;
 
-    orig = gimp_paint_core_get_orig_image (paint_core, drawable, x1, y1, x2, y2);
+    /*  get the original image data at the cursor location */
+    if (options->sample_merged)
+      orig = gimp_paint_core_get_orig_proj (paint_core,
+                                            src_pickable,
+                                            x1, y1, x2, y2);
+    else
+      orig = gimp_paint_core_get_orig_image (paint_core,
+                                             GIMP_DRAWABLE (src_pickable),
+                                             x1, y1, x2, y2);
 
     pixel_region_init_temp_buf (&srcPR, orig, 0, 0, x2 - x1, y2 - y1);
   }
@@ -559,39 +643,44 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
 
   /* now tempPR holds the data under the cursor */
 
-  temp_buf_data_clear (area);
-
   /* get a copy of the location we will sample from */
   {
-    GimpItem *item = GIMP_ITEM (drawable);
     TempBuf  *orig;
     gint      x1, x2, y1, y2;
 
-    x1 = CLAMP (area->x + heal->offset_x, 0, gimp_item_width (item));
-    y1 = CLAMP (area->y + heal->offset_y, 0, gimp_item_height (item));
-    x2 = CLAMP (area->x + heal->offset_x + area->width, 0, gimp_item_width (item));
-    y2 = CLAMP (area->y + heal->offset_y + area->height, 0, gimp_item_height (item));
+    x1 = CLAMP (area->x + offset_x, 
+                0, tile_manager_width  (src_tiles));
+    y1 = CLAMP (area->y + offset_y, 
+                0, tile_manager_height (src_tiles));
+    x2 = CLAMP (area->x + offset_x + area->width, 
+                0, tile_manager_width  (src_tiles));
+    y2 = CLAMP (area->y + offset_y + area->height, 
+                0, tile_manager_height (src_tiles));
 
     if (! (x2 - x1) || (! (y2 - y1)))
       return;
 
-    if (heal->src_drawable != drawable)
-      {
-        g_warning ("gimpheal: does not support healing between images.\n");
-        return;
-      }
+    /* get the original image data at the sample location */
+    if (options->sample_merged) 
+      orig = gimp_paint_core_get_orig_proj (paint_core,
+                                            src_pickable,
+                                            x1, y1, x2, y2);
     else
-      {
-      orig = gimp_paint_core_get_orig_image (paint_core, drawable, x1, y1, x2, y2);
+      orig = gimp_paint_core_get_orig_image (paint_core, 
+                                             GIMP_DRAWABLE (src_pickable), 
+                                             x1, y1, x2, y2);
 
-      pixel_region_init_temp_buf (&srcPR, orig, 0, 0, x2 - x1, y2 - y1);
-      }
+    pixel_region_init_temp_buf (&srcPR, orig, 0, 0, x2 - x1, y2 - y1);
+  
+    /* set the proper offset */
+    offset_x = x1 - (area->x + offset_x);
+    offset_y = y1 - (area->y + offset_y);
   }
 
   /* now srcPR holds the source area to sample from */
 
   /* get the destination to paint to */
-  pixel_region_init_temp_buf (&destPR, area, 0, 0, srcPR.w, srcPR.h);
+  pixel_region_init_temp_buf (&destPR, area, offset_x, offset_y, srcPR.w, srcPR.h);
 
   /* FIXME: Can we ensure that this is true in the code above?  
    * Is it already guaranteed to be true before we get here? */
@@ -599,7 +688,7 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   if ((srcPR.w     != tempPR.w    ) || (srcPR.w     != destPR.w    ) ||
       (srcPR.h     != tempPR.h    ) || (srcPR.h     != destPR.h    )) 
     {
-      g_warning ("gimpheal: source and destination are not same size.");
+      g_message (_("Source and destination regions are not the same size."));
       return;
     }
 
@@ -616,9 +705,11 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   else 
     copy_region (&tempPR, &destPR);
 
+  /* check the brush pressure */
   if (pressure_options->opacity)
     opacity *= PRESSURE_SCALE * paint_core->cur_coords.pressure;
 
+  /* replace the canvas with our healed data */
   gimp_brush_core_replace_canvas (GIMP_BRUSH_CORE (paint_core),
                                   drawable,
                                   MIN (opacity, GIMP_OPACITY_OPAQUE),

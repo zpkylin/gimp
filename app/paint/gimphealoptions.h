@@ -36,7 +36,10 @@ typedef struct _GimpPaintOptionsClass   GimpHealOptionsClass;
 
 struct _GimpHealOptions
 {
-  GimpPaintOptions paint_options;
+  GimpPaintOptions     paint_options;
+
+  GimpHealAlignMode    align_mode;
+  gboolean             sample_merged;
 };
   
 
