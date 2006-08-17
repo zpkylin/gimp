@@ -585,9 +585,9 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   src_tiles = gimp_pickable_get_tiles (src_pickable);
 
   /* FIXME: the area under the cursor and the source area should be x% larger
-   * than the brush size so that we have seamless blending.  Otherwise the brush
-   * must be a lot bigger than the area to heal in order to get good results.
-   * Having the user pick such a large brush is perhaps counter-intutitive? */
+   * than the brush size.  Otherwise the brush must be a lot bigger than the
+   * area to heal to get good results.  Having the user pick such a large brush
+   * is perhaps counter-intutitive? */
 
   /* Get the area underneath the cursor */
   {
