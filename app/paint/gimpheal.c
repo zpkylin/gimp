@@ -44,15 +44,7 @@
 
 #include "gimp-intl.h"
 
-/* TODO: 
- *
- * Implement sample-merged support.  In the gimp_heal_motion function it is
- * implemented exactly as in the clone tool, but the result is not displayed
- * correctly.  Currently the choice of sample-merged is disabled in
- * app/tools/gimphealtool.c
- *
- * Get it working for alternate image layers.  Is this desirable anyways?
- * sample-merged should be enough.
+/* NOTES: 
  *
  * I had the code working for healing from a pattern, but the results look
  * terrible and I can't see a use for it right now.
@@ -464,7 +456,7 @@ gimp_heal_laplace_loop (gdouble *matrix,
                         gdouble *solution)
 {
 #define EPSILON   0.0001
-#define MAX_ITER  1000 
+#define MAX_ITER  500 
 
   gint num_iter = 0;
   gdouble err;
@@ -542,18 +534,10 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   gint                 offset_x;
   gint                 offset_y;
 
-  /* FIXME: Why doesn't the sample merged option work?  It is set up exactly as
-   * in the clone tool, but nothing gets displayed properly.
-   *
-   * Currently sample merged is disabled in gimphealtool.c so that it doesn't
-   * show the option in the toolbox.
-   *
-   * If you want to try and get it working, enable it there.
-   */
-
+  /* get the image */
   image = gimp_item_get_image (GIMP_ITEM (drawable));
 	
-  /* display a warning about indexed images and quit */
+  /* display a warning about indexed images and return */
   if (GIMP_IMAGE_TYPE_IS_INDEXED (drawable->type))
     {
       g_message (_("Indexed images are not currently supported."));
@@ -699,8 +683,9 @@ gimp_heal_motion (GimpPaintCore     *paint_core,
   pixel_region_init_data (&tempPR, tempPR.data, tempPR.bytes, tempPR.rowstride,
                           0, 0, tempPR.w, tempPR.h);
 
-  /* add an alpha region to the area if necessary */
-  if (! gimp_drawable_has_alpha (drawable)) 
+  /* add an alpha region to the area if necessary.
+   * sample_merged doesn't need an alpha because its always 4 bpp */
+  if ((! gimp_drawable_has_alpha (drawable)) && (! options->sample_merged))
     add_alpha_region (&tempPR, &destPR);
   else 
     copy_region (&tempPR, &destPR);
