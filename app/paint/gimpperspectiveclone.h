@@ -47,13 +47,6 @@ struct _GimpPerspectiveClone
   gdouble       orig_src_x;
   gdouble       orig_src_y;
 
-  gdouble       src_x_init;     /* coordinate where starts copying the clone tool, when the source is set with ctrl+click */
-  gdouble       src_y_init;
-  gdouble       dest_x_init;    /* coordinate where starts the stroke */
-  gdouble       dest_y_init;
-
-  // refactor
-
   gdouble       dest_x;         /* coords where the stroke starts */
   gdouble       dest_y;
 
@@ -62,9 +55,6 @@ struct _GimpPerspectiveClone
 
   gdouble       dest_x_fv;      /* destination coords in front_view perspective */
   gdouble       dest_y_fv;
-
-  gdouble       cross_x;        /* coords where the tool would copy, used to draw reference cross */
-  gdouble       cross_y;
 
   gdouble       offset_x;
   gdouble       offset_y;
