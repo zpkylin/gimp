@@ -347,6 +347,8 @@ STOCK_TOOL_IMAGES = \
 	tools/stock-tool-text-22.png			\
 	tools/stock-tool-threshold-16.png		\
 	tools/stock-tool-threshold-22.png		\
+	tools/stock-tool-warp-16.png		\
+	tools/stock-tool-warp-22.png		\
 	tools/stock-tool-zoom-16.png			\
 	tools/stock-tool-zoom-22.png
 
