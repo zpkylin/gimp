@@ -422,7 +422,7 @@ gimp_warp_tool_create_render_node (GimpWarpTool *wt)
                                NULL);
 
   render = gegl_node_new_child (node,
-                                "operation", "gegl:map-absolute",
+                                "operation", "gegl:map-relative",
                                 NULL);
 
   gegl_node_connect_to (input, "output",
