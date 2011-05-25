@@ -31,7 +31,7 @@
 #define GIMP_IS_WARP_TOOL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), GIMP_TYPE_WARP_TOOL))
 #define GIMP_WARP_TOOL_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GIMP_TYPE_WARP_TOOL, GimpWarpToolClass))
 
-//#define GIMP_WARP_TOOL_GET_OPTIONS(t)  (GIMP_WARP_OPTIONS (gimp_tool_get_options (GIMP_TOOL (t))))
+#define GIMP_WARP_TOOL_GET_OPTIONS(t)  (GIMP_WARP_OPTIONS (gimp_tool_get_options (GIMP_TOOL (t))))
 
 
 typedef struct _GimpWarpTool      GimpWarpTool;
