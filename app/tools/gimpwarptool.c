@@ -334,6 +334,9 @@ gimp_warp_tool_oper_update (GimpTool         *tool,
 
   gimp_draw_tool_pause (draw_tool);
 
+  wt->cursor_x        = coords->x;
+  wt->cursor_y        = coords->y;
+
   gimp_draw_tool_resume (draw_tool);
 }
 
@@ -403,6 +406,15 @@ static void
 gimp_warp_tool_draw (GimpDrawTool *draw_tool)
 {
   GimpWarpTool    *wt        = GIMP_WARP_TOOL (draw_tool);
+  GimpWarpOptions *options   = GIMP_WARP_TOOL_GET_OPTIONS (wt);
+
+  gimp_draw_tool_add_handle (draw_tool,
+                             GIMP_HANDLE_CIRCLE,
+                             wt->cursor_x,
+                             wt->cursor_y,
+                             options->effect_size,
+                             options->effect_size,
+                             GIMP_HANDLE_ANCHOR_CENTER);
 }
 
 static void
