@@ -139,14 +139,14 @@ gimp_warp_options_gui (GimpToolOptions *tool_options)
   GtkWidget *size;
 
   strength = gimp_prop_spin_scale_new (config, "effect-strength",
-                                        _("Effect strength"),
+                                        _("Strength"),
                                         0.01, 1.0, 2);
   gimp_spin_scale_set_scale_limits (GIMP_SPIN_SCALE (strength), 0.0, 10.0);
   gtk_box_pack_start (GTK_BOX (vbox), strength, FALSE, FALSE, 0);
   gtk_widget_show (strength);
 
   size = gimp_prop_spin_scale_new (config, "effect-size",
-                                        _("Effect size"),
+                                        _("Size"),
                                         0.01, 1.0, 2);
   gimp_spin_scale_set_scale_limits (GIMP_SPIN_SCALE (size), 1.0, 1000.0);
   gtk_box_pack_start (GTK_BOX (vbox),  size, FALSE, FALSE, 0);
