@@ -39,6 +39,7 @@
 #include "gimpoperationshapeburst.h"
 #include "gimpoperationshrink.h"
 #include "gimpoperationthresholdalpha.h"
+#include "gimpoperationwarp.h"
 
 #include "gimpoperationbrightnesscontrast.h"
 #include "gimpoperationcolorbalance.h"
