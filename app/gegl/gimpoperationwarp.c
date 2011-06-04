@@ -49,8 +49,6 @@ static gboolean     gimp_operation_warp_process                 (GeglOperation  
                                                                  GeglBuffer          *in_buf,
                                                                  GeglBuffer          *out_buf,
                                                                  const GeglRectangle *roi);
-GeglRectangle       gimp_operation_warp_get_bounding_box        (GeglOperation       *operation);
-
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -74,7 +72,6 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
   operation_class->description             = "GIMP warp";
 
   operation_class->prepare                 = gimp_operation_warp_prepare;
-  operation_class->get_bounding_box        = gimp_operation_warp_get_bounding_box;
 
   filter_class->process                    = gimp_operation_warp_process;
 }
@@ -142,13 +139,4 @@ gimp_operation_warp_process (GeglOperation       *operation,
   GimpOperationWarp *ow    = GIMP_OPERATION_WARP (operation);
 
   return TRUE;
-}
-
-GeglRectangle
-gimp_operation_warp_get_bounding_box (GeglOperation *operation)
-{
-  GeglRectangle result = *gegl_operation_source_get_bounding_box (operation,
-                                                                  "input");
-
-  return result;
 }
