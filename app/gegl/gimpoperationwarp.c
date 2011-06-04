@@ -92,7 +92,6 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
                                    "stroke", _("Stroke"),
                                    GEGL_TYPE_PATH,
                                    GIMP_PARAM_STATIC_STRINGS);
-
 }
 
 static void
@@ -171,8 +170,8 @@ gimp_operation_warp_set_property (GObject      *object,
 static void
 gimp_operation_warp_prepare (GeglOperation *operation)
 {
-  gegl_operation_set_format (operation, "input", babl_format ("RGBA float"));
-  gegl_operation_set_format (operation, "output", babl_format ("RGBA float"));
+  gegl_operation_set_format (operation, "input", babl_format_n (babl_type ("float"), 2));
+  gegl_operation_set_format (operation, "output", babl_format_n (babl_type ("float"), 2));
 }
 
 static gboolean
