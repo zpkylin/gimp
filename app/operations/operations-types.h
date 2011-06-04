@@ -28,6 +28,7 @@
 
 typedef struct _GimpOperationPointFilter        GimpOperationPointFilter;
 typedef struct _GimpOperationPointLayerMode     GimpOperationPointLayerMode;
+typedef struct _GimpOperationWarp               GimpOperationWarp;
 
 
 /*  operation config objects  */
