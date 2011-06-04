@@ -22,33 +22,36 @@
 #include <gegl.h>
 #include <gegl-buffer-iterator.h>
 
-#include "libgimpmath/gimpmath.h"
+#include "libgimpconfig/gimpconfig.h"
 
 #include "gimp-gegl-types.h"
 
 #include "gimpoperationwarp.h"
 
+#include "gimp-intl.h"
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_STRENGTH,
+  PROP_SIZE,
+  PROP_STROKE
 };
 
-
-static void         gimp_operation_warp_finalize                (GObject             *object);
-static void         gimp_operation_warp_get_property            (GObject             *object,
-                                                                 guint                property_id,
-                                                                 GValue              *value,
-                                                                 GParamSpec          *pspec);
-static void         gimp_operation_warp_set_property            (GObject             *object,
-                                                                 guint                property_id,
-                                                                 const GValue        *value,
-                                                                 GParamSpec          *pspec);
-static void         gimp_operation_warp_prepare                 (GeglOperation       *operation);
-static gboolean     gimp_operation_warp_process                 (GeglOperation       *operation,
-                                                                 GeglBuffer          *in_buf,
-                                                                 GeglBuffer          *out_buf,
-                                                                 const GeglRectangle *roi);
+static void         gimp_operation_warp_finalize        (GObject             *object);
+static void         gimp_operation_warp_get_property    (GObject             *object,
+                                                         guint                property_id,
+                                                         GValue              *value,
+                                                         GParamSpec          *pspec);
+static void         gimp_operation_warp_set_property    (GObject             *object,
+                                                         guint                property_id,
+                                                         const GValue        *value,
+                                                         GParamSpec          *pspec);
+static void         gimp_operation_warp_prepare         (GeglOperation       *operation);
+static gboolean     gimp_operation_warp_process         (GeglOperation       *operation,
+                                                         GeglBuffer          *in_buf,
+                                                         GeglBuffer          *out_buf,
+                                                         const GeglRectangle *roi);
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -74,6 +77,22 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
   operation_class->prepare                 = gimp_operation_warp_prepare;
 
   filter_class->process                    = gimp_operation_warp_process;
+
+  GIMP_CONFIG_INSTALL_PROP_DOUBLE (object_class, PROP_STRENGTH,
+                                   "strength", _("Effect Strength"),
+                                   0.0, 100.0, 1.0,
+                                   GIMP_PARAM_STATIC_STRINGS);
+
+  GIMP_CONFIG_INSTALL_PROP_DOUBLE (object_class, PROP_SIZE,
+                                   "size", _("Effect Size"),
+                                   1.0, 10000.0, 40.0,
+                                   GIMP_PARAM_STATIC_STRINGS);
+
+  GIMP_CONFIG_INSTALL_PROP_OBJECT (object_class, PROP_STROKE,
+                                   "stroke", _("Stroke"),
+                                   GEGL_TYPE_PATH,
+                                   GIMP_PARAM_STATIC_STRINGS);
+
 }
 
 static void
@@ -85,6 +104,12 @@ static void
 gimp_operation_warp_finalize (GObject *object)
 {
   GimpOperationWarp *self = GIMP_OPERATION_WARP (object);
+
+  if (self->stroke)
+    {
+      g_object_unref (self->stroke);
+      self->stroke = NULL;
+    }
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
@@ -99,10 +124,19 @@ gimp_operation_warp_get_property (GObject    *object,
 
   switch (property_id)
     {
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    case PROP_STRENGTH:
+      g_value_set_double (value, self->strength);
       break;
+    case PROP_SIZE:
+      g_value_set_double (value, self->size);
+      break;
+    case PROP_STROKE:
+      g_value_set_object (value, self->stroke);
+      break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
     }
 }
 
@@ -116,6 +150,17 @@ gimp_operation_warp_set_property (GObject      *object,
 
   switch (property_id)
     {
+    case PROP_STRENGTH:
+      self->strength = g_value_get_double (value);
+      break;
+    case PROP_SIZE:
+      self->size = g_value_get_double (value);
+      break;
+    case PROP_STROKE:
+      if (self->stroke)
+        g_object_unref (self->stroke);
+      self->stroke = g_value_dup_object (value);
+      break;
 
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -137,6 +182,17 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              const GeglRectangle *roi)
 {
   GimpOperationWarp *ow    = GIMP_OPERATION_WARP (operation);
+
+  if (in_buf)
+    {
+      out_buf = gegl_buffer_dup (in_buf);
+    }
+  else
+    {
+      gegl_buffer_clear (out_buf, roi);
+    }
+
+
 
   return TRUE;
 }

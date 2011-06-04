@@ -24,7 +24,6 @@
 #include <gegl-plugin.h>
 #include <operation/gegl-operation-filter.h>
 
-
 #define GIMP_TYPE_OPERATION_WARP            (gimp_operation_warp_get_type ())
 #define GIMP_OPERATION_WARP(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GIMP_TYPE_OPERATION_WARP, GimpOperationWarp))
 #define GIMP_OPERATION_WARP_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  GIMP_TYPE_OPERATION_WARP, GimpOperationWarpClass))
@@ -38,6 +37,10 @@ typedef struct _GimpOperationWarpClass GimpOperationWarpClass;
 struct _GimpOperationWarp
 {
   GeglOperationFilter  parent_instance;
+
+  gdouble              strength;
+  gdouble              size;
+  GeglPath            *stroke;
 };
 
 struct _GimpOperationWarpClass
