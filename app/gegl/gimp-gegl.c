@@ -43,6 +43,7 @@
 #include "gimpoperationthreshold.h"
 #include "gimpoperationtilesink.h"
 #include "gimpoperationtilesource.h"
+#include "gimpoperationwarp.h"
 
 #include "gimpoperationpointlayermode.h"
 #include "gimpoperationdissolvemode.h"
@@ -107,6 +108,7 @@ gimp_gegl_init (Gimp *gimp)
   g_type_class_ref (GIMP_TYPE_OPERATION_LEVELS);
   g_type_class_ref (GIMP_TYPE_OPERATION_POSTERIZE);
   g_type_class_ref (GIMP_TYPE_OPERATION_THRESHOLD);
+  g_type_class_ref (GIMP_TYPE_OPERATION_WARP);
 
   g_type_class_ref (GIMP_TYPE_OPERATION_POINT_LAYER_MODE);
   g_type_class_ref (GIMP_TYPE_OPERATION_DISSOLVE_MODE);
