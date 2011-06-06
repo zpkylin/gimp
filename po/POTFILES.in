@@ -236,6 +236,7 @@ app/operations/gimpcurvesconfig.c
 app/operations/gimplevelsconfig.c
 app/operations/gimpoperationcagecoefcalc.c
 app/operations/gimpoperationcagetransform.c
+app/operations/gimpoperationwarp.c
 
 app/gui/gui.c
 app/gui/gui-message.c
@@ -396,6 +397,8 @@ app/tools/gimptransformtool.c
 app/tools/gimpunifiedtransformtool.c
 app/tools/gimpvectoroptions.c
 app/tools/gimpvectortool.c
+app/tools/gimpwarpoptions.c
+app/tools/gimpwarptool.c
 app/tools/tools-enums.c
 
 app/vectors/gimpvectors.c
