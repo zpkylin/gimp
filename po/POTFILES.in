@@ -235,6 +235,7 @@ app/file/file-utils.c
 
 app/gegl/gimp-gegl-enums.c
 app/gegl/gimpcurvesconfig.c
+app/gegl/gimpoperationwarp.c
 app/gegl/gimplevelsconfig.c
 app/gegl/gimpoperationcagecoefcalc.c
 app/gegl/gimpoperationcagetransform.c
@@ -393,6 +394,7 @@ app/tools/gimptransformoptions.c
 app/tools/gimptransformtool.c
 app/tools/gimpvectoroptions.c
 app/tools/gimpvectortool.c
+app/tools/gimpwarptool.c
 app/tools/tools-enums.c
 
 app/vectors/gimpvectors.c
