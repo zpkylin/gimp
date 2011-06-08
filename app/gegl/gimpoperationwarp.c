@@ -182,6 +182,7 @@ gimp_operation_warp_process (GeglOperation       *operation,
 {
   GimpOperationWarp *ow    = GIMP_OPERATION_WARP (operation);
 
+/*
   if (in_buf)
     {
       out_buf = gegl_buffer_dup (in_buf);
@@ -190,8 +191,7 @@ gimp_operation_warp_process (GeglOperation       *operation,
     {
       gegl_buffer_clear (out_buf, roi);
     }
-
-
+*/
 
   return TRUE;
 }
