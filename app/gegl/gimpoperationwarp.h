@@ -41,6 +41,8 @@ struct _GimpOperationWarp
   gdouble              strength;
   gdouble              size;
   GeglPath            *stroke;
+
+  GeglBuffer          *buffer; /* used to pass the temporary buffer to the function called by gegl_path_foreach */
 };
 
 struct _GimpOperationWarpClass

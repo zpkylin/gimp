@@ -52,6 +52,9 @@ static gboolean     gimp_operation_warp_process         (GeglOperation       *op
                                                          GeglBuffer          *in_buf,
                                                          GeglBuffer          *out_buf,
                                                          const GeglRectangle *roi);
+void                gimp_operation_warp_affect          (const GeglPathItem  *knot,
+                                                         gpointer             data);
+
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -181,20 +184,35 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              const GeglRectangle *roi)
 {
   GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
-  GeglBuffer          *buffer;
+
+  ow->buffer = gegl_buffer_dup (in_buf);
+
+  gegl_path_foreach(ow->stroke, gimp_operation_warp_affect, ow);
+
+  gegl_buffer_copy (ow->buffer, roi, out_buf, roi);
+  gegl_buffer_set_extent (out_buf, gegl_buffer_get_extent (in_buf));
+  gegl_buffer_destroy (ow->buffer);
+
+  return TRUE;
+}
+
+void
+gimp_operation_warp_affect (const GeglPathItem *knot,
+                            gpointer            data)
+{
+  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (data);
+
   GeglBufferIterator  *it;
   Babl                *format;
   gint                 x, y;
-  GeglRectangle        area = {100,
-                               100,
-                               200,
-                               200};
+  GeglRectangle        area = {knot->point->x - 20,
+                               knot->point->y - 20,
+                               ow->size,
+                               ow->size};
 
   format = babl_format_n (babl_type ("float"), 2);
 
-  buffer = gegl_buffer_dup (in_buf);
-
-  it = gegl_buffer_iterator_new (buffer, &area, format, GEGL_BUFFER_READWRITE);
+  it = gegl_buffer_iterator_new (ow->buffer, &area, format, GEGL_BUFFER_READWRITE);
 
   while (gegl_buffer_iterator_next (it))
     {
@@ -221,10 +239,4 @@ gimp_operation_warp_process (GeglOperation       *operation,
             }
         }
     }
-
-  gegl_buffer_copy (buffer, roi, out_buf, roi);
-  gegl_buffer_set_extent (out_buf, gegl_buffer_get_extent (in_buf));
-  gegl_buffer_destroy (buffer);
-
-  return TRUE;
 }
