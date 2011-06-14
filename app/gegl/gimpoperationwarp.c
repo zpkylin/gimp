@@ -180,18 +180,51 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              GeglBuffer          *out_buf,
                              const GeglRectangle *roi)
 {
-  GimpOperationWarp *ow    = GIMP_OPERATION_WARP (operation);
+  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
+  GeglBuffer          *buffer;
+  GeglBufferIterator  *it;
+  Babl                *format;
+  gint                 x, y;
+  GeglRectangle        area = {100,
+                               100,
+                               200,
+                               200};
 
-/*
-  if (in_buf)
+  format = babl_format_n (babl_type ("float"), 2);
+
+  buffer = gegl_buffer_dup (in_buf);
+
+  it = gegl_buffer_iterator_new (buffer, &area, format, GEGL_BUFFER_READWRITE);
+
+  while (gegl_buffer_iterator_next (it))
     {
-      out_buf = gegl_buffer_dup (in_buf);
+      /* iterate inside the roi */
+      gint    n_pixels = it->length;
+      gfloat *coords   = it->data[0];
+
+      x = it->roi->x; /* initial x         */
+      y = it->roi->y; /* and y coordinates */
+
+      while (n_pixels--)
+        {
+          coords[0] += 2;
+          coords[1] += 2;
+
+          coords += 2;
+
+          /* update x and y coordinates */
+          x++;
+          if (x >= (it->roi->x + it->roi->width))
+            {
+              x = it->roi->x;
+              y++;
+            }
+        }
     }
-  else
-    {
-      gegl_buffer_clear (out_buf, roi);
-    }
-*/
+
+  gegl_buffer_copy (buffer, roi, out_buf, roi);
+  gegl_buffer_set_extent (out_buf, gegl_buffer_get_extent (in_buf));
+  gegl_buffer_destroy (buffer);
 
   return TRUE;
 }
