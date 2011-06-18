@@ -23,6 +23,7 @@
 #include <gegl-buffer-iterator.h>
 
 #include "libgimpconfig/gimpconfig.h"
+#include "libgimpmath/gimpmath.h"
 
 #include "gimp-gegl-types.h"
 
@@ -52,9 +53,11 @@ static gboolean     gimp_operation_warp_process         (GeglOperation       *op
                                                          GeglBuffer          *in_buf,
                                                          GeglBuffer          *out_buf,
                                                          const GeglRectangle *roi);
-void                gimp_operation_warp_affect          (const GeglPathItem  *knot,
+static void         gimp_operation_warp_affect          (const GeglPathItem  *knot,
                                                          gpointer             data);
-
+static gdouble      gimp_operation_warp_get_influence   (GimpOperationWarp   *ow,
+                                                         gfloat               x,
+                                                         gfloat               y);
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -208,9 +211,10 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
 
   GeglBufferIterator  *it;
   Babl                *format;
+  gfloat               influence;
   gint                 x, y;
-  GeglRectangle        area = {knot->point->x - 20,
-                               knot->point->y - 20,
+  GeglRectangle        area = {knot->point->x - ow->size / 2.0,
+                               knot->point->y - ow->size / 2.0,
                                ow->size,
                                ow->size};
 
@@ -236,8 +240,12 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
 
       while (n_pixels--)
         {
-          coords[0] += (ow->last_point.x - knot->point->x);
-          coords[1] += (ow->last_point.y - knot->point->y);
+          influence = gimp_operation_warp_get_influence (ow,
+                                                         x - knot->point->x,
+                                                         y - knot->point->y);
+
+          coords[0] += influence * (ow->last_point.x - knot->point->x);
+          coords[1] += influence * (ow->last_point.y - knot->point->y);
 
           coords += 2;
 
@@ -252,4 +260,14 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
     }
 
   ow->last_point = *(knot->point);
+}
+
+static gdouble
+gimp_operation_warp_get_influence (GimpOperationWarp *ow,
+                                   gfloat             x,
+                                   gfloat             y)
+{
+  gfloat radius = sqrt(x*x+y*y);
+
+  return (radius < ow->size / 2.0) ? ow->strength : 0.0;
 }
