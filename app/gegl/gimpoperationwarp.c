@@ -173,8 +173,12 @@ gimp_operation_warp_set_property (GObject      *object,
 static void
 gimp_operation_warp_prepare (GeglOperation *operation)
 {
+  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
+
   gegl_operation_set_format (operation, "input", babl_format_n (babl_type ("float"), 2));
   gegl_operation_set_format (operation, "output", babl_format_n (babl_type ("float"), 2));
+
+  ow->last_point_set = FALSE;
 }
 
 static gboolean
@@ -210,6 +214,13 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
                                ow->size,
                                ow->size};
 
+  if (!ow->last_point_set)
+    {
+      ow->last_point = *(knot->point);
+      ow->last_point_set = TRUE;
+      return;
+    }
+
   format = babl_format_n (babl_type ("float"), 2);
 
   it = gegl_buffer_iterator_new (ow->buffer, &area, format, GEGL_BUFFER_READWRITE);
@@ -225,8 +236,8 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
 
       while (n_pixels--)
         {
-          coords[0] += 2;
-          coords[1] += 2;
+          coords[0] += (ow->last_point.x - knot->point->x);
+          coords[1] += (ow->last_point.y - knot->point->y);
 
           coords += 2;
 
@@ -239,4 +250,6 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
             }
         }
     }
+
+  ow->last_point = *(knot->point);
 }
