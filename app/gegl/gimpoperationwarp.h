@@ -42,6 +42,9 @@ struct _GimpOperationWarp
   gdouble              size;
   GeglPath            *stroke;
 
+  Point                last_point;
+  gboolean             last_point_set;
+
   GeglBuffer          *buffer; /* used to pass the temporary buffer to the function called by gegl_path_foreach */
 };
 
