@@ -53,11 +53,12 @@ static gboolean     gimp_operation_warp_process         (GeglOperation       *op
                                                          GeglBuffer          *in_buf,
                                                          GeglBuffer          *out_buf,
                                                          const GeglRectangle *roi);
-static void         gimp_operation_warp_affect          (const GeglPathItem  *knot,
-                                                         gpointer             data);
+static void         gimp_operation_warp_affect          (GimpOperationWarp   *ow,
+                                                         gdouble              x,
+                                                         gdouble              y);
 static gdouble      gimp_operation_warp_get_influence   (GimpOperationWarp   *ow,
-                                                         gfloat               x,
-                                                         gfloat               y);
+                                                         gdouble              x,
+                                                         gdouble              y);
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -103,6 +104,7 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
 static void
 gimp_operation_warp_init (GimpOperationWarp *self)
 {
+  self->last_point_set = FALSE;
 }
 
 static void
@@ -180,8 +182,6 @@ gimp_operation_warp_prepare (GeglOperation *operation)
 
   gegl_operation_set_format (operation, "input", babl_format_n (babl_type ("float"), 2));
   gegl_operation_set_format (operation, "output", babl_format_n (babl_type ("float"), 2));
-
-  ow->last_point_set = FALSE;
 }
 
 static gboolean
@@ -191,36 +191,55 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              const GeglRectangle *roi)
 {
   GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
+  gulong               length;
+  gdouble             *x, *y;
+  gulong               i;
 
   ow->buffer = gegl_buffer_dup (in_buf);
 
-  gegl_path_foreach(ow->stroke, gimp_operation_warp_affect, ow);
+  length = (gulong) gegl_path_get_length (ow->stroke);
+
+  x = g_slice_alloc (length * sizeof(gdouble));
+  y = g_slice_alloc (length * sizeof(gdouble));
+
+  gegl_path_calc_values (ow->stroke, length, x, y);
+
+  for (i = 0; i < length; i++)
+    {
+      gimp_operation_warp_affect (ow, x[i], y[i]);
+    }
+
+  g_slice_free1 (length * sizeof(gdouble), x);
+  g_slice_free1 (length * sizeof(gdouble), y);
 
   gegl_buffer_copy (ow->buffer, roi, out_buf, roi);
   gegl_buffer_set_extent (out_buf, gegl_buffer_get_extent (in_buf));
   gegl_buffer_destroy (ow->buffer);
 
+  /* prepare for the recomputing of the op */
+  ow->last_point_set = FALSE;
+
   return TRUE;
 }
 
-void
-gimp_operation_warp_affect (const GeglPathItem *knot,
-                            gpointer            data)
+static void
+gimp_operation_warp_affect (GimpOperationWarp *ow,
+                            gdouble            x,
+                            gdouble            y)
 {
-  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (data);
-
   GeglBufferIterator  *it;
   Babl                *format;
-  gfloat               influence;
-  gint                 x, y;
-  GeglRectangle        area = {knot->point->x - ow->size / 2.0,
-                               knot->point->y - ow->size / 2.0,
+  gdouble              influence;
+  gint                 x_iter, y_iter;
+  GeglRectangle        area = {x - ow->size / 2.0,
+                               y - ow->size / 2.0,
                                ow->size,
                                ow->size};
 
   if (!ow->last_point_set)
     {
-      ow->last_point = *(knot->point);
+      ow->last_x = x;
+      ow->last_y = y;
       ow->last_point_set = TRUE;
       return;
     }
@@ -235,37 +254,38 @@ gimp_operation_warp_affect (const GeglPathItem *knot,
       gint    n_pixels = it->length;
       gfloat *coords   = it->data[0];
 
-      x = it->roi->x; /* initial x         */
-      y = it->roi->y; /* and y coordinates */
+      x_iter = it->roi->x; /* initial x         */
+      y_iter = it->roi->y; /* and y coordinates */
 
       while (n_pixels--)
         {
           influence = gimp_operation_warp_get_influence (ow,
-                                                         x - knot->point->x,
-                                                         y - knot->point->y);
+                                                         x_iter - x,
+                                                         y_iter - y);
 
-          coords[0] += influence * (ow->last_point.x - knot->point->x);
-          coords[1] += influence * (ow->last_point.y - knot->point->y);
+          coords[0] += influence * (ow->last_x - x);
+          coords[1] += influence * (ow->last_y - y);
 
           coords += 2;
 
           /* update x and y coordinates */
-          x++;
-          if (x >= (it->roi->x + it->roi->width))
+          x_iter++;
+          if (x_iter >= (it->roi->x + it->roi->width))
             {
-              x = it->roi->x;
-              y++;
+              x_iter = it->roi->x;
+              y_iter++;
             }
         }
     }
 
-  ow->last_point = *(knot->point);
+  ow->last_x = x;
+  ow->last_y = y;
 }
 
 static gdouble
 gimp_operation_warp_get_influence (GimpOperationWarp *ow,
-                                   gfloat             x,
-                                   gfloat             y)
+                                   gdouble            x,
+                                   gdouble            y)
 {
   gfloat radius = sqrt(x*x+y*y);
 
