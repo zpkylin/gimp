@@ -38,6 +38,33 @@ gimp_cage_mode_get_type (void)
   return type;
 }
 
+GType
+gimp_warp_behavior_get_type (void)
+{
+  static const GEnumValue values[] =
+  {
+    { GIMP_WARP_BEHAVIOR_MOVE, "GIMP_WARP_BEHAVIOR_MOVE", "move" },
+    { 0, NULL, NULL }
+  };
+
+  static const GimpEnumDesc descs[] =
+  {
+    { GIMP_WARP_BEHAVIOR_MOVE, NC_("warp-behavior", "Move pixels"), NULL },
+    { 0, NULL, NULL }
+  };
+
+  static GType type = 0;
+
+  if (G_UNLIKELY (! type))
+    {
+      type = g_enum_register_static ("GimpWarpBehavior", values);
+      gimp_type_set_translation_context (type, "warp-behavior");
+      gimp_enum_set_value_descriptions (type, descs);
+    }
+
+  return type;
+}
+
 
 /* Generated data ends here */
 

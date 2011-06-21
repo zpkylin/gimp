@@ -31,5 +31,13 @@ typedef enum
   GIMP_CAGE_MODE_DEFORM       /*< desc="Deform the cage\nto deform the image" >*/
 } GimpCageMode;
 
+#define GIMP_TYPE_WARP_BEHAVIOR (gimp_warp_behavior_get_type ())
+
+GType gimp_warp_behavior_get_type (void) G_GNUC_CONST;
+
+typedef enum
+{
+  GIMP_WARP_BEHAVIOR_MOVE,        /*< desc="Move pixels"                         >*/
+} GimpWarpBehavior;
 
 #endif /* __GIMP_GEGL_ENUMS_H__ */
