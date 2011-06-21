@@ -36,7 +36,8 @@ enum
   PROP_0,
   PROP_STRENGTH,
   PROP_SIZE,
-  PROP_STROKE
+  PROP_STROKE,
+  PROP_BEHAVIOR
 };
 
 static void         gimp_operation_warp_finalize        (GObject             *object);
@@ -53,7 +54,7 @@ static gboolean     gimp_operation_warp_process         (GeglOperation       *op
                                                          GeglBuffer          *in_buf,
                                                          GeglBuffer          *out_buf,
                                                          const GeglRectangle *roi);
-static void         gimp_operation_warp_affect          (GimpOperationWarp   *ow,
+static void         gimp_operation_warp_stamp           (GimpOperationWarp   *ow,
                                                          gdouble              x,
                                                          gdouble              y);
 static gdouble      gimp_operation_warp_get_influence   (GimpOperationWarp   *ow,
@@ -99,6 +100,13 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
                                    "stroke", _("Stroke"),
                                    GEGL_TYPE_PATH,
                                    GIMP_PARAM_STATIC_STRINGS);
+
+  GIMP_CONFIG_INSTALL_PROP_ENUM (object_class, PROP_BEHAVIOR,
+                                 "behavior",
+                                 N_("Behavior"),
+                                 GIMP_TYPE_WARP_BEHAVIOR,
+                                 GIMP_WARP_BEHAVIOR_MOVE,
+                                 GIMP_PARAM_STATIC_STRINGS);
 }
 
 static void
@@ -140,6 +148,9 @@ gimp_operation_warp_get_property (GObject    *object,
     case PROP_STROKE:
       g_value_set_object (value, self->stroke);
       break;
+    case PROP_BEHAVIOR:
+      g_value_set_enum (value, self->behavior);
+      break;
 
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -168,6 +179,9 @@ gimp_operation_warp_set_property (GObject      *object,
         g_object_unref (self->stroke);
       self->stroke = g_value_dup_object (value);
       break;
+    case PROP_BEHAVIOR:
+      self->behavior = g_value_get_enum (value);
+      break;
 
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -178,8 +192,6 @@ gimp_operation_warp_set_property (GObject      *object,
 static void
 gimp_operation_warp_prepare (GeglOperation *operation)
 {
-  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
-
   gegl_operation_set_format (operation, "input", babl_format_n (babl_type ("float"), 2));
   gegl_operation_set_format (operation, "output", babl_format_n (babl_type ("float"), 2));
 }
@@ -197,6 +209,7 @@ gimp_operation_warp_process (GeglOperation       *operation,
 
   ow->buffer = gegl_buffer_dup (in_buf);
 
+  /* Compute the stamps location */
   length = (gulong) gegl_path_get_length (ow->stroke);
 
   x = g_slice_alloc (length * sizeof(gdouble));
@@ -204,14 +217,16 @@ gimp_operation_warp_process (GeglOperation       *operation,
 
   gegl_path_calc_values (ow->stroke, length, x, y);
 
+  /* Apply stamps */
   for (i = 0; i < length; i++)
     {
-      gimp_operation_warp_affect (ow, x[i], y[i]);
+      gimp_operation_warp_stamp (ow, x[i], y[i]);
     }
 
   g_slice_free1 (length * sizeof(gdouble), x);
   g_slice_free1 (length * sizeof(gdouble), y);
 
+  /* Affect the output buffer */
   gegl_buffer_copy (ow->buffer, roi, out_buf, roi);
   gegl_buffer_set_extent (out_buf, gegl_buffer_get_extent (in_buf));
   gegl_buffer_destroy (ow->buffer);
@@ -223,9 +238,9 @@ gimp_operation_warp_process (GeglOperation       *operation,
 }
 
 static void
-gimp_operation_warp_affect (GimpOperationWarp *ow,
-                            gdouble            x,
-                            gdouble            y)
+gimp_operation_warp_stamp (GimpOperationWarp *ow,
+                           gdouble            x,
+                           gdouble            y)
 {
   GeglBufferIterator  *it;
   Babl                *format;
@@ -236,6 +251,7 @@ gimp_operation_warp_affect (GimpOperationWarp *ow,
                                ow->size,
                                ow->size};
 
+  /* first point of the stroke */
   if (!ow->last_point_set)
     {
       ow->last_x = x;
@@ -250,7 +266,7 @@ gimp_operation_warp_affect (GimpOperationWarp *ow,
 
   while (gegl_buffer_iterator_next (it))
     {
-      /* iterate inside the roi */
+      /* iterate inside the stamp roi */
       gint    n_pixels = it->length;
       gfloat *coords   = it->data[0];
 
@@ -263,8 +279,13 @@ gimp_operation_warp_affect (GimpOperationWarp *ow,
                                                          x_iter - x,
                                                          y_iter - y);
 
-          coords[0] += influence * (ow->last_x - x);
-          coords[1] += influence * (ow->last_y - y);
+          switch (ow->behavior)
+            {
+              case GIMP_WARP_BEHAVIOR_MOVE:
+                coords[0] += influence * (ow->last_x - x);
+                coords[1] += influence * (ow->last_y - y);
+                break;
+            }
 
           coords += 2;
 
@@ -278,6 +299,7 @@ gimp_operation_warp_affect (GimpOperationWarp *ow,
         }
     }
 
+  /* Memorize the stamp location for movement dependant behavior like move */
   ow->last_x = x;
   ow->last_y = y;
 }

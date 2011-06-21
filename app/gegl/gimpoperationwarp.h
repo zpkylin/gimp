@@ -38,15 +38,19 @@ struct _GimpOperationWarp
 {
   GeglOperationFilter  parent_instance;
 
+  /* Properties of the operation */
   gdouble              strength;
   gdouble              size;
   GeglPath            *stroke;
+  GimpWarpBehavior     behavior;
 
+  /* last stamp location for movement dependant behavior like move */
   gdouble              last_x;
   gdouble              last_y;
   gboolean             last_point_set;
 
-  GeglBuffer          *buffer; /* used to pass the temporary buffer to the function called by gegl_path_foreach */
+  /* used to pass the temporary buffer to the function called by gegl_path_foreach */
+  GeglBuffer          *buffer;
 };
 
 struct _GimpOperationWarpClass
