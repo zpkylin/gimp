@@ -44,12 +44,16 @@ gimp_warp_behavior_get_type (void)
   static const GEnumValue values[] =
   {
     { GIMP_WARP_BEHAVIOR_MOVE, "GIMP_WARP_BEHAVIOR_MOVE", "move" },
+    { GIMP_WARP_BEHAVIOR_GROW, "GIMP_WARP_BEHAVIOR_GROW", "grow" },
+    { GIMP_WARP_BEHAVIOR_SHRINK, "GIMP_WARP_BEHAVIOR_SHRINK", "shrink" },
     { 0, NULL, NULL }
   };
 
   static const GimpEnumDesc descs[] =
   {
     { GIMP_WARP_BEHAVIOR_MOVE, NC_("warp-behavior", "Move pixels"), NULL },
+    { GIMP_WARP_BEHAVIOR_GROW, NC_("warp-behavior", "Grow area"), NULL },
+    { GIMP_WARP_BEHAVIOR_SHRINK, NC_("warp-behavior", "Shrink area"), NULL },
     { 0, NULL, NULL }
   };
 
