@@ -210,7 +210,7 @@ gimp_operation_warp_process (GeglOperation       *operation,
   ow->buffer = gegl_buffer_dup (in_buf);
 
   /* Compute the stamps location */
-  length = (gulong) gegl_path_get_length (ow->stroke);
+  length = (gulong) gegl_path_get_length (ow->stroke) + 1;
 
   x = g_slice_alloc (length * sizeof(gdouble));
   y = g_slice_alloc (length * sizeof(gdouble));
@@ -284,6 +284,14 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
               case GIMP_WARP_BEHAVIOR_MOVE:
                 coords[0] += influence * (ow->last_x - x);
                 coords[1] += influence * (ow->last_y - y);
+                break;
+              case GIMP_WARP_BEHAVIOR_GROW:
+                coords[0] -= influence * (x_iter - x) / ow->size;
+                coords[1] -= influence * (y_iter - y) / ow->size;
+                break;
+              case GIMP_WARP_BEHAVIOR_SHRINK:
+                coords[0] += influence * (x_iter - x) / ow->size;
+                coords[1] += influence * (y_iter - y) / ow->size;
                 break;
             }
 

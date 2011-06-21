@@ -38,6 +38,8 @@ GType gimp_warp_behavior_get_type (void) G_GNUC_CONST;
 typedef enum
 {
   GIMP_WARP_BEHAVIOR_MOVE,        /*< desc="Move pixels"                         >*/
+  GIMP_WARP_BEHAVIOR_GROW,        /*< desc="Grow area"                           >*/
+  GIMP_WARP_BEHAVIOR_SHRINK       /*< desc="Shrink area"                         >*/
 } GimpWarpBehavior;
 
 #endif /* __GIMP_GEGL_ENUMS_H__ */
