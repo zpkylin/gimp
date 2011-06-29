@@ -78,6 +78,7 @@
 #include "gimprectangleselecttool.h"
 #include "gimprotatetool.h"
 #include "gimpscaletool.h"
+#include "gimpseamlessclonetool.h"
 #include "gimpsheartool.h"
 #include "gimpsmudgetool.h"
 #include "gimptexttool.h"
@@ -145,6 +146,7 @@ gimp_tools_init (Gimp *gimp)
     gimp_blend_tool_register,
     gimp_bucket_fill_tool_register,
     gimp_text_tool_register,
+    gimp_seamless_clone_tool_register,
 
     /*  transform tools  */
 
