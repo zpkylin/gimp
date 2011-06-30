@@ -38,32 +38,42 @@
 typedef struct _GimpSeamlessCloneTool      GimpSeamlessCloneTool;
 typedef struct _GimpSeamlessCloneToolClass GimpSeamlessCloneToolClass;
 
+/**
+ *
+ */
 struct _GimpSeamlessCloneTool
 {
   GimpDrawTool    parent_instance;
 
-  /* GimpSeamlessCloneConfig *config; */
+  guint           state;
 
-  gint            movement_start_x; /* Hold the initial x position */
-  gint            movement_start_y; /* Hold the initial y position */
+  gdouble         movement_start_x; /* Hold the initial x position */
+  gdouble         movement_start_y; /* Hold the initial y position */
   
-  gint            cursor_x; /* Hold the cursor x position */
-  gint            cursor_y; /* Hold the cursor y position */
+  gdouble         cursor_x; /* Hold the cursor x position */
+  gdouble         cursor_y; /* Hold the cursor y position */
 
-  gint            paste_x; /* Hold the paste x position */
-  gint            paste_y; /* Hold the paste y position */
-
+  GeglRectangle   paste_rect;
   GeglBuffer     *paste_buf;
-  GeglNode       *render_node; /* Gegl node graph to render the clone */
 
-  GimpImageMap   *image_map; /* For preview */
+  GeglNode       *render_node; /* A GEGL graph for rendering the clone operation */
+  GeglNode       *paste_node;
+  GeglNode       *translate_op;
+
+  GimpImageMap   *image_map;   /* Used for preview of the resulting drawable */
 };
+
+#define gimp_seamless_clone_coords_in_paste(sct,c)                    \
+                                                                      \
+ (((sct)->paste_rect.x <= (c)->x)                                     \
+  && ((sct)->paste_rect.x + (sct)->paste_rect.width <= (c)->x)        \
+  && ((sct)->paste_rect.y <= (c)->y)                                  \
+  && ((sct)->paste_rect.y + (sct)->paste_rect.height <= (c)->y))
 
 struct _GimpSeamlessCloneToolClass
 {
   GimpDrawToolClass parent_class;
 };
-
 
 void    gimp_seamless_clone_tool_register (GimpToolRegisterCallback  callback,
                                            gpointer                  data);
