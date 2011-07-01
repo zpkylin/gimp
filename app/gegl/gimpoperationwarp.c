@@ -300,6 +300,14 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
                 coords[0] += influence * (x_iter - x) / ow->size;
                 coords[1] += influence * (y_iter - y) / ow->size;
                 break;
+              case GIMP_WARP_BEHAVIOR_SWIRL_CW:
+                coords[0] += influence * (y_iter - y) / ow->size;
+                coords[1] -= influence * (x_iter - x) / ow->size;
+                break;
+              case GIMP_WARP_BEHAVIOR_SWIRL_CCW:
+                coords[0] -= influence * (y_iter - y) / ow->size;
+                coords[1] += influence * (x_iter - x) / ow->size;
+                break;
             }
 
           coords += 2;
