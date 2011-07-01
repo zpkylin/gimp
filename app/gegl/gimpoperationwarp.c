@@ -66,6 +66,8 @@ G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
 
 #define parent_class gimp_operation_warp_parent_class
 
+#define STROKE_RATE 10
+#define POW2(a) ((a)*(a))
 
 static void
 gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
@@ -203,28 +205,33 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              const GeglRectangle *roi)
 {
   GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
-  gulong               length;
-  gdouble             *x, *y;
+  gdouble              distance;
+  Point                prev, next, lerp;
   gulong               i;
+  GeglPathList        *event;
 
   ow->buffer = gegl_buffer_dup (in_buf);
 
-  /* Compute the stamps location */
-  length = (gulong) gegl_path_get_length (ow->stroke) + 1;
+  event = gegl_path_get_path (ow->stroke);
 
-  x = g_slice_alloc (length * sizeof(gdouble));
-  y = g_slice_alloc (length * sizeof(gdouble));
+  prev = *(event->d.point);
 
-  gegl_path_calc_values (ow->stroke, length, x, y);
-
-  /* Apply stamps */
-  for (i = 0; i < length; i++)
+  while (event->next)
     {
-      gimp_operation_warp_stamp (ow, x[i], y[i]);
-    }
+      event = event->next;
+      next = *(event->d.point);
 
-  g_slice_free1 (length * sizeof(gdouble), x);
-  g_slice_free1 (length * sizeof(gdouble), y);
+      /* we are doing a sort of interpolation 3d throught x,y and time */
+      distance = sqrt (POW2(point_dist (&next, &prev)) + POW2(STROKE_RATE));
+
+      for (i = 0; i <= distance; i++)
+        {
+          point_lerp (&lerp, &prev, &next, i / distance);
+          gimp_operation_warp_stamp (ow, lerp.x, lerp.y);
+        }
+
+      prev = next;
+    }
 
   /* Affect the output buffer */
   gegl_buffer_copy (ow->buffer, roi, out_buf, roi);
