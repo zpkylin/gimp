@@ -108,6 +108,8 @@ static gboolean        gimp_image_map_get_pixel_at   (GimpPickable        *picka
 static void            gimp_image_map_update_undo_tiles
                                                      (GimpImageMap        *image_map,
                                                       const GeglRectangle *rect);
+static void            gimp_image_map_create_gegl_graph
+                                                     (GimpImageMap        *image_map);
 static gboolean        gimp_image_map_do             (GimpImageMap        *image_map);
 static void            gimp_image_map_data_written   (GObject             *operation,
                                                       const GeglRectangle *extent,
@@ -377,83 +379,7 @@ gimp_image_map_apply (GimpImageMap        *image_map,
     {
       if (! image_map->gegl)
         {
-          image_map->gegl = gegl_node_new ();
-
-          g_object_set (image_map->gegl,
-                        "dont-cache", TRUE,
-                        NULL);
-
-          image_map->input =
-            gegl_node_new_child (image_map->gegl,
-                                 "operation", "gimp:tilemanager-source",
-                                 NULL);
-
-          image_map->translate =
-            gegl_node_new_child (image_map->gegl,
-                                 "operation", "gegl:translate",
-                                 NULL);
-
-          gegl_node_add_child (image_map->gegl, image_map->operation);
-
-          image_map->output =
-            gegl_node_new_child (image_map->gegl,
-                                 "operation", "gimp:tilemanager-sink",
-                                 NULL);
-
-          {
-            GObject *sink_operation;
-
-            g_object_get (image_map->output,
-                          "gegl-operation", &sink_operation,
-                          NULL);
-
-            g_signal_connect (sink_operation, "data-written",
-                              G_CALLBACK (gimp_image_map_data_written),
-                              image_map);
-
-            g_object_unref (sink_operation);
-          }
-
-          if (gegl_node_has_pad (image_map->operation, "input") &&
-              gegl_node_has_pad (image_map->operation, "output"))
-            {
-              /*  if there are input and output pads we probably have a
-               *  filter OP, connect it on both ends.
-               */
-              gegl_node_link_many (image_map->input,
-                                   image_map->translate,
-                                   image_map->operation,
-                                   image_map->output,
-                                   NULL);
-            }
-          else if (gegl_node_has_pad (image_map->operation, "output"))
-            {
-              /*  if there is only an output pad we probably have a
-               *  source OP, blend its result on top of the original
-               *  pixels.
-               */
-              GeglNode *over = gegl_node_new_child (image_map->gegl,
-                                                    "operation", "gegl:over",
-                                                    NULL);
-
-              gegl_node_link_many (image_map->input,
-                                   image_map->translate,
-                                   over,
-                                   image_map->output,
-                                   NULL);
-
-              gegl_node_connect_to (image_map->operation, "output",
-                                    over, "aux");
-            }
-          else
-            {
-              /* otherwise we just construct a silly nop pipleline
-               */
-              gegl_node_link_many (image_map->input,
-                                   image_map->translate,
-                                   image_map->output,
-                                   NULL);
-            }
+          gimp_image_map_create_gegl_graph (image_map);
         }
 
       gegl_node_set (image_map->input,
@@ -670,6 +596,88 @@ gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
       /*  Set the offsets  */
       image_map->undo_offset_x = rect->x;
       image_map->undo_offset_y = rect->y;
+    }
+}
+
+static void
+gimp_image_map_create_gegl_graph (GimpImageMap *image_map)
+{
+  image_map->gegl = gegl_node_new ();
+
+  g_object_set (image_map->gegl,
+                "dont-cache", TRUE,
+                NULL);
+
+  image_map->input =
+    gegl_node_new_child (image_map->gegl,
+                         "operation", "gimp:tilemanager-source",
+                         NULL);
+
+  image_map->translate =
+    gegl_node_new_child (image_map->gegl,
+                         "operation", "gegl:translate",
+                         NULL);
+
+  gegl_node_add_child (image_map->gegl, image_map->operation);
+
+  image_map->output =
+    gegl_node_new_child (image_map->gegl,
+                         "operation", "gimp:tilemanager-sink",
+                         NULL);
+
+  {
+    GObject *sink_operation;
+
+    g_object_get (image_map->output,
+                  "gegl-operation", &sink_operation,
+                  NULL);
+
+    g_signal_connect (sink_operation, "data-written",
+                      G_CALLBACK (gimp_image_map_data_written),
+                      image_map);
+
+    g_object_unref (sink_operation);
+  }
+
+  if (gegl_node_has_pad (image_map->operation, "input") &&
+      gegl_node_has_pad (image_map->operation, "output"))
+    {
+      /*  if there are input and output pads we probably have a
+       *  filter OP, connect it on both ends.
+       */
+      gegl_node_link_many (image_map->input,
+                           image_map->translate,
+                           image_map->operation,
+                           image_map->output,
+                           NULL);
+    }
+  else if (gegl_node_has_pad (image_map->operation, "output"))
+    {
+      /*  if there is only an output pad we probably have a
+       *  source OP, blend its result on top of the original
+       *  pixels.
+       */
+      GeglNode *over = gegl_node_new_child (image_map->gegl,
+                                            "operation", "gegl:over",
+                                            NULL);
+
+      gegl_node_link_many (image_map->input,
+                           image_map->translate,
+                           over,
+                           image_map->output,
+                           NULL);
+
+      gegl_node_connect_to (image_map->operation, "output",
+                            over, "aux");
+    }
+  else
+    {
+      /* otherwise we just construct a silly nop pipleline
+       */
+      gegl_node_link_many (image_map->input,
+                           image_map->translate,
+                           image_map->output,
+                           NULL);
     }
 }
 
