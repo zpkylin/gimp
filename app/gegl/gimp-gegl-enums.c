@@ -48,6 +48,8 @@ gimp_warp_behavior_get_type (void)
     { GIMP_WARP_BEHAVIOR_SHRINK, "GIMP_WARP_BEHAVIOR_SHRINK", "shrink" },
     { GIMP_WARP_BEHAVIOR_SWIRL_CW, "GIMP_WARP_BEHAVIOR_SWIRL_CW", "swirl-cw" },
     { GIMP_WARP_BEHAVIOR_SWIRL_CCW, "GIMP_WARP_BEHAVIOR_SWIRL_CCW", "swirl-ccw" },
+    { GIMP_WARP_BEHAVIOR_ERASE, "GIMP_WARP_BEHAVIOR_ERASE", "erase" },
+    { GIMP_WARP_BEHAVIOR_SMOOTH, "GIMP_WARP_BEHAVIOR_SMOOTH", "smooth" },
     { 0, NULL, NULL }
   };
 
@@ -58,6 +60,8 @@ gimp_warp_behavior_get_type (void)
     { GIMP_WARP_BEHAVIOR_SHRINK, NC_("warp-behavior", "Shrink area"), NULL },
     { GIMP_WARP_BEHAVIOR_SWIRL_CW, NC_("warp-behavior", "Swirl clockwise"), NULL },
     { GIMP_WARP_BEHAVIOR_SWIRL_CCW, NC_("warp-behavior", "Swirl counter-clockwise"), NULL },
+    { GIMP_WARP_BEHAVIOR_ERASE, NC_("warp-behavior", "Erase warping"), NULL },
+    { GIMP_WARP_BEHAVIOR_SMOOTH, NC_("warp-behavior", "Smooth warping"), NULL },
     { 0, NULL, NULL }
   };
 

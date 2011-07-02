@@ -252,6 +252,7 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
   GeglBufferIterator  *it;
   Babl                *format;
   gdouble              influence;
+  gdouble              x_mean, y_mean;
   gint                 x_iter, y_iter;
   GeglRectangle        area = {x - ow->size / 2.0,
                                y - ow->size / 2.0,
@@ -266,6 +267,32 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
       ow->last_point_set = TRUE;
       return;
     }
+
+  /* If needed, compute the mean deformation */
+  if (ow->behavior == GIMP_WARP_BEHAVIOR_SMOOTH)
+    {
+      gint pixel_count = 0;
+      x_mean = y_mean = 0.0;
+
+      it = gegl_buffer_iterator_new (ow->buffer, &area, format, GEGL_BUFFER_READ);
+
+      while (gegl_buffer_iterator_next (it))
+        {
+          gint    n_pixels    = it->length;
+          gfloat *coords      = it->data[0];
+
+          while (n_pixels--)
+            {
+              x_mean += coords[0];
+              y_mean += coords[1];
+              coords += 2;
+            }
+          pixel_count += it->roi->width * it->roi->height;
+        }
+      x_mean /= pixel_count;
+      y_mean /= pixel_count;
+    }
+
 
   format = babl_format_n (babl_type ("float"), 2);
 
@@ -307,6 +334,14 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
               case GIMP_WARP_BEHAVIOR_SWIRL_CCW:
                 coords[0] -= influence * (y_iter - y) / ow->size;
                 coords[1] += influence * (x_iter - x) / ow->size;
+                break;
+              case GIMP_WARP_BEHAVIOR_ERASE:
+                coords[0] *= 1.0 - MIN (influence, 1.0);
+                coords[1] *= 1.0 - MIN (influence, 1.0);
+                break;
+              case GIMP_WARP_BEHAVIOR_SMOOTH:
+                coords[0] -= influence * (coords[0] - x_mean);
+                coords[1] -= influence * (coords[1] - y_mean);
                 break;
             }
 
