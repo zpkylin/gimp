@@ -350,6 +350,17 @@ gimp_image_map_new (GimpDrawable          *drawable,
   return image_map;
 }
 
+/**
+ * gimp_image_map_apply:
+ * @image_map: a #GimpImageMap
+ * @visible: the visible area
+ *
+ * Compute and display the operation over the selection area.
+ * Succesive call to gimp_image_map_apply can be done to update the preview.
+ *
+ * TODO: currently, the @visible area is not used. It should be used to compute
+ * this area in priority.
+ */
 void
 gimp_image_map_apply (GimpImageMap        *image_map,
                       const GeglRectangle *visible)
@@ -433,6 +444,12 @@ gimp_image_map_apply (GimpImageMap        *image_map,
   image_map->idle_id = g_idle_add ((GSourceFunc) gimp_image_map_do, image_map);
 }
 
+/**
+ * gimp_image_map_commit:
+ * @image_map: a #GimpImageMap
+ *
+ * Commit the operation to the drawable.
+ */
 void
 gimp_image_map_commit (GimpImageMap *image_map)
 {
