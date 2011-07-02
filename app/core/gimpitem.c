@@ -2118,9 +2118,20 @@ gimp_item_mask_bounds (GimpItem *item,
   if (x2) *x2 = tmp_x2;
   if (y2) *y2 = tmp_y2;
 
-  return retval;;
+  return retval;
 }
 
+/**
+ * gimp_item_mask_intersect:
+ * @item: a #GimpItem
+ * @x: return value for x
+ * @y: return value for y
+ * @width: return value for the width
+ * @height: return value for the height
+ *
+ * Intersect the area of the @item and his selection mask.
+ * The computed area is the bounding box of he selection within the item.
+ */
 gboolean
 gimp_item_mask_intersect (GimpItem *item,
                           gint     *x,
