@@ -36,6 +36,7 @@ enum
   PROP_0,
   PROP_STRENGTH,
   PROP_SIZE,
+  PROP_HARDNESS,
   PROP_STROKE,
   PROP_BEHAVIOR
 };
@@ -60,6 +61,8 @@ static void         gimp_operation_warp_stamp           (GimpOperationWarp   *ow
 static gdouble      gimp_operation_warp_get_influence   (GimpOperationWarp   *ow,
                                                          gdouble              x,
                                                          gdouble              y);
+static void         gimp_operation_warp_calc_lut        (GimpOperationWarp   *ow);
+static gdouble      gauss                               (gdouble              f);
 
 G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
                       GEGL_TYPE_OPERATION_FILTER)
@@ -98,6 +101,11 @@ gimp_operation_warp_class_init (GimpOperationWarpClass *klass)
                                    1.0, 10000.0, 40.0,
                                    GIMP_PARAM_STATIC_STRINGS);
 
+  GIMP_CONFIG_INSTALL_PROP_DOUBLE (object_class, PROP_HARDNESS,
+                                   "hardness", _("Effect Harness"),
+                                   0.0, 1.0, 0.5,
+                                   GIMP_PARAM_STATIC_STRINGS);
+
   GIMP_CONFIG_INSTALL_PROP_OBJECT (object_class, PROP_STROKE,
                                    "stroke", _("Stroke"),
                                    GEGL_TYPE_PATH,
@@ -128,6 +136,12 @@ gimp_operation_warp_finalize (GObject *object)
       self->stroke = NULL;
     }
 
+  if (self->lookup)
+    {
+      g_free (self->lookup);
+      self->lookup = NULL;
+    }
+
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
@@ -146,6 +160,9 @@ gimp_operation_warp_get_property (GObject    *object,
       break;
     case PROP_SIZE:
       g_value_set_double (value, self->size);
+      break;
+    case PROP_HARDNESS:
+      g_value_set_double (value, self->hardness);
       break;
     case PROP_STROKE:
       g_value_set_object (value, self->stroke);
@@ -175,6 +192,9 @@ gimp_operation_warp_set_property (GObject      *object,
       break;
     case PROP_SIZE:
       self->size = g_value_get_double (value);
+      break;
+    case PROP_HARDNESS:
+      self->hardness = g_value_get_double (value);
       break;
     case PROP_STROKE:
       if (self->stroke)
@@ -367,7 +387,58 @@ gimp_operation_warp_get_influence (GimpOperationWarp *ow,
                                    gdouble            x,
                                    gdouble            y)
 {
-  gfloat radius = sqrt(x*x+y*y);
+  gfloat radius;
 
-  return (radius < ow->size / 2.0) ? ow->strength : 0.0;
+  if (!ow->lookup)
+    {
+      gimp_operation_warp_calc_lut (ow);
+    }
+
+  radius = sqrt(x*x+y*y);
+
+  if (radius < 0.5 * ow->size + 1)
+    return ow->strength * ow->lookup[(gint) RINT (radius)];
+  else
+    return 0.0;
+}
+
+/* set up lookup table */
+static void
+gimp_operation_warp_calc_lut (GimpOperationWarp  *ow)
+{
+  gint     length;
+  gint     x;
+  gdouble  exponent;
+
+  length = ceil (0.5 * ow->size + 1.0);
+
+  ow->lookup = g_malloc (length * sizeof (gfloat));
+
+  if ((1.0 - ow->hardness) < 0.0000004)
+    exponent = 1000000.0;
+  else
+    exponent = 0.4 / (1.0 - ow->hardness);
+
+  for (x = 0; x < length; x++)
+    {
+      ow->lookup[x] = gauss (pow (2.0 * x / ow->size, exponent));
+    }
+}
+
+static gdouble
+gauss (gdouble f)
+{
+  /* This is not a real gauss function. */
+  /* Approximation is valid if -1 < f < 1 */
+  if (f < -0.5)
+    {
+      f = -1.0 - f;
+      return (2.0 * f*f);
+    }
+
+  if (f < 0.5)
+    return (1.0 - 2.0 * f*f);
+
+  f = 1.0 - f;
+  return (2.0 * f*f);
 }

@@ -41,6 +41,7 @@ struct _GimpOperationWarp
   /* Properties of the operation */
   gdouble              strength;
   gdouble              size;
+  gdouble              hardness;
   GeglPath            *stroke;
   GimpWarpBehavior     behavior;
 
@@ -51,6 +52,8 @@ struct _GimpOperationWarp
 
   /* used to pass the temporary buffer to the function called by gegl_path_foreach */
   GeglBuffer          *buffer;
+
+  gfloat              *lookup;
 };
 
 struct _GimpOperationWarpClass
