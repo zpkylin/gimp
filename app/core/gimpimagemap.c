@@ -320,6 +320,17 @@ gimp_image_map_get_pixel_at (GimpPickable *pickable,
     }
 }
 
+/**
+ * gimp_image_map_new:
+ * @drawable: the drawable to operate on.
+ * @undo_desc: undo description for the operation.
+ * @operation: #GeglNode holding the #GeglOperation to preview or NULL if legacy function used.
+ * @apply_func: Legacy function to operate on tiles or NULL if gegl is used.
+ * @apply_data: data transmitted to @apply_func or NULL if gegl is used.
+ *
+ * Return a newly created #GimpImageMap.
+ * GimpImageMap can be used with Gegl
+ */
 GimpImageMap *
 gimp_image_map_new (GimpDrawable          *drawable,
                     const gchar           *undo_desc,
@@ -486,6 +497,13 @@ gimp_image_map_commit (GimpImageMap *image_map)
     }
 }
 
+/**
+ * gimp_image_map_clear:
+ * @image_map: a #GimpImageMap
+ *
+ * Erase the preview.
+ * image_map is still valid after this call.
+ */
 void
 gimp_image_map_clear (GimpImageMap *image_map)
 {
@@ -533,6 +551,13 @@ gimp_image_map_clear (GimpImageMap *image_map)
     }
 }
 
+/**
+ * gimp_image_map_abort:
+ * @image_map: a #GimpImageMap
+ *
+ * Abort current preview and free undo buffer.
+ * image_map is no longer valid after this call and can be freed.
+ */
 void
 gimp_image_map_abort (GimpImageMap *image_map)
 {
