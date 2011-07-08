@@ -255,7 +255,10 @@ gimp_operation_warp_process (GeglOperation       *operation,
                              const GeglRectangle *roi)
 {
   GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (operation);
-  gdouble              distance;
+  gdouble              dist;
+  gdouble              stamps;
+  gdouble              spacing = MAX (ow->size * 0.01, 0.5); /*1% spacing for starters*/
+
   Point                prev, next, lerp;
   gulong               i;
   GeglPathList        *event;
@@ -270,19 +273,31 @@ gimp_operation_warp_process (GeglOperation       *operation,
 
   while (event->next)
     {
+
       event = event->next;
       next = *(event->d.point);
+      dist = point_dist (&next, &prev);
+      stamps = dist / spacing;
 
       /* we are doing a sort of interpolation 3d throught x,y and time */
-      distance = sqrt (POW2(point_dist (&next, &prev)) + POW2(STROKE_RATE));
+      /*distance = sqrt (POW2() + POW2(STROKE_RATE)); Weird stuff... */
 
-      for (i = 0; i <= distance; i++)
-        {
-          point_lerp (&lerp, &prev, &next, i / distance);
-          gimp_operation_warp_stamp (ow, lerp.x, lerp.y);
-        }
+      if (stamps < 1)
+       {
+        gimp_operation_warp_stamp (ow, next.x, next.y);
+        prev = next;
+       }
+      else
+       {
+        for (i = 0; i < stamps; i++)
+          {
+            point_lerp (&lerp, &prev, &next, (i * spacing) / dist);
+            gimp_operation_warp_stamp (ow, lerp.x, lerp.y);
+          }
+         prev = lerp;
+       }
 
-      prev = next;
+      
     }
 
   /* Affect the output buffer */
