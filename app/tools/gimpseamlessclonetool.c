@@ -90,6 +90,11 @@ gimp_seamless_clone_tool_initialize (GimpTool              *tool,
                                      GError               **error);
 
 static void
+gimp_seamless_clone_tool_control (GimpTool       *tool,
+                                  GimpToolAction  action,
+                                  GimpDisplay    *display);
+
+static void
 gimp_seamless_clone_tool_update_image_map_easy (GimpSeamlessCloneTool *sct);
 
 static void
@@ -172,6 +177,7 @@ gimp_seamless_clone_tool_class_init (GimpSeamlessCloneToolClass *klass)
 
   tool_class->initialize = gimp_seamless_clone_tool_initialize;
 
+  tool_class->control         = gimp_seamless_clone_tool_control;
   tool_class->options_notify  = gimp_seamless_clone_tool_options_notify;
   tool_class->button_press    = gimp_seamless_clone_tool_button_press;
   tool_class->button_release  = gimp_seamless_clone_tool_button_release;
@@ -207,6 +213,56 @@ gimp_seamless_clone_tool_init (GimpSeamlessCloneTool *self)
   self->render_node     = NULL;
   self->image_map       = NULL;
   self->translate_op    = NULL;
+}
+
+static void
+gimp_seamless_clone_tool_control (GimpTool       *tool,
+                                  GimpToolAction  action,
+                                  GimpDisplay    *display)
+{
+  GimpSeamlessCloneTool *sct = GIMP_SEAMLESS_CLONE_TOOL (tool);
+
+  DBG_CALL_NAME();
+
+  switch (action)
+    {
+    case GIMP_TOOL_ACTION_PAUSE:
+    case GIMP_TOOL_ACTION_RESUME:
+      break;
+
+    case GIMP_TOOL_ACTION_HALT:
+      if (sct->paste_buf)
+        {
+          gegl_buffer_destroy (sct->paste_buf);
+          sct->paste_buf = NULL;
+        }
+
+      if (sct->render_node)
+        {
+          g_object_unref (sct->render_node);
+          sct->render_node  = NULL;
+          sct->translate_op = NULL;
+        }
+
+      if (sct->image_map)
+        {
+          gimp_tool_control_set_preserve (tool->control, TRUE);
+
+          gimp_image_map_abort (sct->image_map);
+          g_object_unref (sct->image_map);
+          sct->image_map = NULL;
+
+          gimp_tool_control_set_preserve (tool->control, FALSE);
+
+          gimp_image_flush (gimp_display_get_image (tool->display));
+        }
+
+      tool->display = NULL;
+
+      break;
+    }
+
+  GIMP_TOOL_CLASS (parent_class)->control (tool, action, display);
 }
 
 /**
