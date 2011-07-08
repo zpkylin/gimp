@@ -304,7 +304,8 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
   GeglBufferIterator  *it;
   Babl                *format;
   gdouble              influence;
-  gdouble              x_mean, y_mean;
+  gdouble              x_mean = 0.0;
+  gdouble              y_mean = 0.0;
   gint                 x_iter, y_iter;
   GeglRectangle        area = {x - ow->size / 2.0,
                                y - ow->size / 2.0,
@@ -320,11 +321,12 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
       return;
     }
 
+  format = babl_format_n (babl_type ("float"), 2);
+
   /* If needed, compute the mean deformation */
   if (ow->behavior == GIMP_WARP_BEHAVIOR_SMOOTH)
     {
       gint pixel_count = 0;
-      x_mean = y_mean = 0.0;
 
       it = gegl_buffer_iterator_new (ow->buffer, &area, format, GEGL_BUFFER_READ);
 
@@ -344,9 +346,6 @@ gimp_operation_warp_stamp (GimpOperationWarp *ow,
       x_mean /= pixel_count;
       y_mean /= pixel_count;
     }
-
-
-  format = babl_format_n (babl_type ("float"), 2);
 
   it = gegl_buffer_iterator_new (ow->buffer, &area, format, GEGL_BUFFER_READWRITE);
 
