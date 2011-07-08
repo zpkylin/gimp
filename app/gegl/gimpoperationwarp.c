@@ -31,6 +31,8 @@
 
 #include "gimp-intl.h"
 
+#include <stdio.h> /* for debug */
+
 enum
 {
   PROP_0,
@@ -51,6 +53,9 @@ static void         gimp_operation_warp_set_property    (GObject             *ob
                                                          const GValue        *value,
                                                          GParamSpec          *pspec);
 static void         gimp_operation_warp_prepare         (GeglOperation       *operation);
+static void         gimp_operation_warp_stroke_changed  (GeglPath            *path,
+                                                         const GeglRectangle *roi,
+                                                         gpointer             userdata);
 static gboolean     gimp_operation_warp_process         (GeglOperation       *operation,
                                                          GeglBuffer          *in_buf,
                                                          GeglBuffer          *out_buf,
@@ -123,6 +128,7 @@ static void
 gimp_operation_warp_init (GimpOperationWarp *self)
 {
   self->last_point_set = FALSE;
+  self->path_changed_handler = 0;
 }
 
 static void
@@ -198,8 +204,15 @@ gimp_operation_warp_set_property (GObject      *object,
       break;
     case PROP_STROKE:
       if (self->stroke)
-        g_object_unref (self->stroke);
+        {
+          g_signal_handler_disconnect (self->stroke, self->path_changed_handler);
+          g_object_unref (self->stroke);
+        }
       self->stroke = g_value_dup_object (value);
+      self->path_changed_handler = g_signal_connect (self->stroke,
+                                                     "changed",
+                                                     G_CALLBACK(gimp_operation_warp_stroke_changed),
+                                                     self);
       break;
     case PROP_BEHAVIOR:
       self->behavior = g_value_get_enum (value);
@@ -218,6 +231,23 @@ gimp_operation_warp_prepare (GeglOperation *operation)
   gegl_operation_set_format (operation, "output", babl_format_n (babl_type ("float"), 2));
 }
 
+static void
+gimp_operation_warp_stroke_changed (GeglPath            *path,
+                                    const GeglRectangle *roi,
+                                    gpointer             userdata)
+{
+  GeglRectangle rect = *roi;
+  GimpOperationWarp   *ow    = GIMP_OPERATION_WARP (userdata);
+  /* invalidate the incoming rectangle */
+
+  rect.x -= ow->size/2;
+  rect.y -= ow->size/2;
+  rect.width += ow->size;
+  rect.height += ow->size;
+
+  gegl_operation_invalidate (userdata, &rect, FALSE);
+}
+
 static gboolean
 gimp_operation_warp_process (GeglOperation       *operation,
                              GeglBuffer          *in_buf,
@@ -229,6 +259,8 @@ gimp_operation_warp_process (GeglOperation       *operation,
   Point                prev, next, lerp;
   gulong               i;
   GeglPathList        *event;
+
+  printf("Process\n");
 
   ow->buffer = gegl_buffer_dup (in_buf);
 

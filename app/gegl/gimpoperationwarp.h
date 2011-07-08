@@ -54,6 +54,7 @@ struct _GimpOperationWarp
   GeglBuffer          *buffer;
 
   gfloat              *lookup;
+  guint                path_changed_handler;
 };
 
 struct _GimpOperationWarpClass
