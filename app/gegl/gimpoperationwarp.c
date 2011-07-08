@@ -74,7 +74,6 @@ G_DEFINE_TYPE (GimpOperationWarp, gimp_operation_warp,
 
 #define parent_class gimp_operation_warp_parent_class
 
-#define STROKE_RATE 10
 #define POW2(a) ((a)*(a))
 
 static void
@@ -263,7 +262,7 @@ gimp_operation_warp_process (GeglOperation       *operation,
   gulong               i;
   GeglPathList        *event;
 
-  printf("Process\n");
+  printf("Process %p\n", ow);
 
   ow->buffer = gegl_buffer_dup (in_buf);
 
@@ -273,14 +272,10 @@ gimp_operation_warp_process (GeglOperation       *operation,
 
   while (event->next)
     {
-
       event = event->next;
       next = *(event->d.point);
       dist = point_dist (&next, &prev);
       stamps = dist / spacing;
-
-      /* we are doing a sort of interpolation 3d throught x,y and time */
-      /*distance = sqrt (POW2() + POW2(STROKE_RATE)); Weird stuff... */
 
       if (stamps < 1)
        {
@@ -296,8 +291,6 @@ gimp_operation_warp_process (GeglOperation       *operation,
           }
          prev = lerp;
        }
-
-      
     }
 
   /* Affect the output buffer */
