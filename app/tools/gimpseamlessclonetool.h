@@ -53,7 +53,11 @@ struct _GimpSeamlessCloneTool
   gdouble         cursor_x; /* Hold the cursor x position */
   gdouble         cursor_y; /* Hold the cursor y position */
 
-  GeglRectangle   paste_rect;
+  gint            paste_x;
+  gint            paste_y;
+  gint            paste_w;
+  gint            paste_h;
+
   GeglBuffer     *paste_buf;
 
   GeglNode       *render_node; /* A GEGL graph for rendering the clone operation */
@@ -63,12 +67,12 @@ struct _GimpSeamlessCloneTool
   GimpImageMap   *image_map;   /* Used for preview of the resulting drawable */
 };
 
-#define gimp_seamless_clone_coords_in_paste(sct,c)                    \
-                                                                      \
- (((sct)->paste_rect.x <= (c)->x)                                     \
-  && ((sct)->paste_rect.x + (sct)->paste_rect.width <= (c)->x)        \
-  && ((sct)->paste_rect.y <= (c)->y)                                  \
-  && ((sct)->paste_rect.y + (sct)->paste_rect.height <= (c)->y))
+#define gimp_seamless_clone_coords_in_paste(sct,c)   \
+                                                     \
+ (((sct)->paste_x <= (c)->x)                         \
+  && ((sct)->paste_x + (sct)->paste_w <= (c)->x)     \
+  && ((sct)->paste_y <= (c)->y)                      \
+  && ((sct)->paste_y + (sct)->paste_h <= (c)->y))
 
 struct _GimpSeamlessCloneToolClass
 {

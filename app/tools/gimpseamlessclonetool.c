@@ -350,12 +350,15 @@ gimp_seamless_clone_tool_button_press (GimpTool            *tool,
           GimpDrawable *drawable = gimp_image_get_active_drawable (image);
 
           gimp_seamless_clone_tool_create_image_map (sct, drawable);
+          gimp_seamless_clone_tool_image_map_update (sct);
         }
 
-      sct->paste_rect.x = (gint) 10;
-      sct->paste_rect.y = (gint) 10;
+      sct->paste_x = (gint) 10;
+      sct->paste_y = (gint) 10;
 
+#if SEAMLESS_CLONE_LIVE_PREVIEW
       gimp_seamless_clone_tool_image_map_update (sct);
+#endif
     }
   //if (gimp_seamless_clone_coords_in_paste (sct,coords))
     {
@@ -386,25 +389,18 @@ gimp_seamless_clone_tool_motion (GimpTool         *tool,
   sct->cursor_x = coords->x;
   sct->cursor_y = coords->y;
 
+  if (sct->translate_op)
+    gegl_node_set (sct->translate_op,
+                   "x", (gdouble)(sct->paste_x + (gint)(coords->x - sct->movement_start_x)),
+                   "y", (gdouble)(sct->paste_y + (gint)(coords->y - sct->movement_start_y)),
+                   NULL);
+
   /* TODO:
    * We do want live preview of our tool, during move operations. However, the
    * preview should not be added before we make it quick enough - otherwise it
    * would be painfully slow.
    */
 #if SEAMLESS_CLONE_LIVE_PREVIEW
-  /* Now, the paste should be positioned at
-   * sct->paste_x + sct->cursor_x - sct->movement_start_x
-   * sct->paste_y + sct->cursor_y - sct->movement_start_y
-   * also, we shouldn't call the easy version
-   */
-  sct->paste_rect.x += (gint) (coords->x - sct->movement_start_x);
-  sct->paste_rect.y += (gint) (coords->y - sct->movement_start_y);
-  sct->movement_start_x = (gint) coords->x;
-  sct->movement_start_y = (gint) coords->y;
-
-  if (sct->translate_op)
-    gegl_node_set (sct->translate_op, "x", (gdouble)sct->paste_rect.x, "y", (gdouble)sct->paste_rect.y, NULL);
-
   gimp_seamless_clone_tool_update_image_map_easy (sct);
 #endif
 
@@ -430,22 +426,21 @@ gimp_seamless_clone_tool_button_release (GimpTool              *tool,
       /* Now deactivate the control to stop receiving motion events */
       gimp_tool_control_halt (tool->control);
 
+      /* Commit the changes only if the release wasn't of cancel type */
       if (release_type != GIMP_BUTTON_RELEASE_CANCEL)
         {
-          sct->paste_rect.x += (gint) (coords->x - sct->movement_start_x);
-          sct->paste_rect.y += (gint) (coords->y - sct->movement_start_y);
-
-#if SEAMLESS_CLONE_LIVE_PREVIEW
-#else
-          if (sct->translate_op)
-            gegl_node_set (sct->translate_op, "x", (gdouble)sct->paste_rect.x, "y", (gdouble)sct->paste_rect.y, NULL);
-#endif
-          
+          sct->paste_x += (gint) (coords->x - sct->movement_start_x);
+          sct->paste_y += (gint) (coords->y - sct->movement_start_y);
         }
 
-      gimp_seamless_clone_tool_update_image_map_easy (sct);
+      /* Now display back according to the potentially updated result, and not
+       * according to the current mouse position */
+      if (sct->translate_op)
+         gegl_node_set (sct->translate_op, "x", (gdouble)sct->paste_x, "y", (gdouble)sct->paste_y, NULL);
 
       sct->state = SEAMLESS_CLONE_STATE_READY;
+
+      gimp_seamless_clone_tool_update_image_map_easy (sct);
     }
 
   gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
@@ -461,6 +456,7 @@ gimp_seamless_clone_tool_cursor_update (GimpTool         *tool,
 
   DBG_CALL_NAME();
 
+  /* TODO: Needs fixing during motion */
   if (gimp_seamless_clone_coords_in_paste (sct,coords))
     gimp_tool_control_set_cursor_modifier (tool->control, GIMP_CURSOR_MODIFIER_NONE);
   else
@@ -483,7 +479,10 @@ gimp_seamless_clone_tool_draw (GimpDrawTool *draw_tool)
   gimp_draw_tool_push_group (draw_tool, stroke_group);
 
   /* Draw the corner of the paste */
-  gimp_draw_tool_add_crosshair (draw_tool, sct->paste_rect.x, sct->paste_rect.y);
+  if (sct->state == SEAMLESS_CLONE_STATE_MOTION)
+    gimp_draw_tool_add_crosshair (draw_tool,
+        (gdouble)(sct->paste_x + (gint)(sct->cursor_x - sct->movement_start_x)),
+        (gdouble)(sct->paste_y + (gint)(sct->cursor_y - sct->movement_start_y)));
 
   gimp_draw_tool_pop_group (draw_tool);
 }
@@ -502,6 +501,7 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
   GimpContext    *context = & gimp_tool_get_options (GIMP_TOOL (sct)) -> parent_instance;
   GimpBuffer     *gimpbuf = context->gimp->global_buffer;
   TileManager    *tiles;
+  GeglRectangle   tempR;
 
   DBG_CALL_NAME();
 
@@ -543,17 +543,22 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
   gegl_processor_destroy (processor);
 
   sct->paste_buf = buffer;
-  sct->paste_rect = * gegl_buffer_get_extent (buffer);
+  tempR = * gegl_buffer_get_extent (buffer);
+  sct->paste_w = tempR.width;
+  sct->paste_h = tempR.height;
 
   tile_manager_unref (tiles);
 }
 
 /* The final graph would be
  *
- *      input   paste
- *      /  \     /
- *     /    \   /
- *    /     diff        input = the layer into we paste
+ *     input    paste (at (0,0))
+ *       |        |
+ *       |        |
+ *      / \    translate
+ *     /   \     /
+ *    /     \   /
+ *   /      diff        input = the layer into we paste
  *   |        |         paste = the pattern we want to seamlessly paste
  *   |   interpolate    diff = paste - input
  *    \     /
@@ -561,7 +566,6 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
  *      add
  *       |
  *     output
- *
  *
  * However, untill we have proper interpolation and meshing, we will replace it
  * by a no-op (nop).
@@ -687,7 +691,7 @@ gimp_seamless_clone_tool_image_map_update (GimpSeamlessCloneTool *ct)
   /* TODO: get rid of this HACK */
   // ct->paste_rect.x = ct->paste_rect.y = 0;
   //gegl_buffer_set_extent (ct->paste_buf, &ct->paste_rect);
-  gegl_rectangle_dump (&ct->paste_rect);
+  g_debug ("PasteX,PasteY = %d, %d\n", ct->paste_x, ct->paste_y);
   gegl_rectangle_dump (gegl_buffer_get_extent (ct->paste_buf));
   //gegl_node_set (ct->paste_node, "buffer", ct->paste_buf, NULL);
 
