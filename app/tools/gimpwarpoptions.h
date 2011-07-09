@@ -22,7 +22,7 @@
 
 
 #include "core/gimptooloptions.h"
-
+#include <gegl.h>
 
 #define GIMP_TYPE_WARP_OPTIONS            (gimp_warp_options_get_type ())
 #define GIMP_WARP_OPTIONS(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GIMP_TYPE_WARP_OPTIONS, GimpWarpOptions))
@@ -42,7 +42,7 @@ struct _GimpWarpOptions
   gdouble          effect_strength;
   gdouble          effect_size;
   gdouble          effect_hardness;
-  GimpWarpBehavior behavior;
+  GeglWarpBehavior behavior;
 };
 
 struct _GimpWarpOptionsClass

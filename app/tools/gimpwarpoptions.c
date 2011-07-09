@@ -88,8 +88,8 @@ gimp_warp_options_class_init (GimpWarpOptionsClass *klass)
   GIMP_CONFIG_INSTALL_PROP_ENUM (object_class, PROP_BEHAVIOR,
                                  "behavior",
                                  N_("Behavior"),
-                                 GIMP_TYPE_WARP_BEHAVIOR,
-                                 GIMP_WARP_BEHAVIOR_MOVE,
+                                 GEGL_TYPE_WARP_BEHAVIOR,
+                                 GEGL_WARP_BEHAVIOR_MOVE,
                                  GIMP_PARAM_STATIC_STRINGS);
 }
 
