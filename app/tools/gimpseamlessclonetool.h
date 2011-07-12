@@ -70,9 +70,9 @@ struct _GimpSeamlessCloneTool
 #define gimp_seamless_clone_coords_in_paste(sct,c)   \
                                                      \
  (((sct)->paste_x <= (c)->x)                         \
-  && ((sct)->paste_x + (sct)->paste_w <= (c)->x)     \
+  && ((sct)->paste_x + (sct)->paste_w > (c)->x)      \
   && ((sct)->paste_y <= (c)->y)                      \
-  && ((sct)->paste_y + (sct)->paste_h <= (c)->y))
+  && ((sct)->paste_y + (sct)->paste_h > (c)->y))
 
 struct _GimpSeamlessCloneToolClass
 {

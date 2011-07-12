@@ -342,6 +342,12 @@ gimp_seamless_clone_tool_button_press (GimpTool            *tool,
       if (! sct->render_node)
         {
           gimp_seamless_clone_tool_create_render_node (sct);
+
+          /* Center the paste on the cursor */
+          sct->paste_x = (gint) (coords->x - sct->paste_w / 2);
+          sct->paste_y = (gint) (coords->y - sct->paste_h / 2);
+          if (sct->translate_op)
+             gegl_node_set (sct->translate_op, "x", (gdouble)sct->paste_x, "y", (gdouble)sct->paste_y, NULL);
         }
 
       if (! sct->image_map)
@@ -353,15 +359,16 @@ gimp_seamless_clone_tool_button_press (GimpTool            *tool,
           gimp_seamless_clone_tool_image_map_update (sct);
         }
 
-      sct->paste_x = (gint) 10;
-      sct->paste_y = (gint) 10;
-
 #if SEAMLESS_CLONE_LIVE_PREVIEW
       gimp_seamless_clone_tool_image_map_update (sct);
 #endif
     }
-  //if (gimp_seamless_clone_coords_in_paste (sct,coords))
+  printf ("Click at %f,%f\n", coords->x, coords->y);
+  printf ("Paste is at %d,%d and it's %dx%d\n", sct->paste_x, sct->paste_y, sct->paste_w, sct->paste_h);
+
+  if (gimp_seamless_clone_coords_in_paste (sct,coords))
     {
+      printf ("The click was in the paste\n");
       sct->movement_start_x = coords->x;
       sct->movement_start_y = coords->y;
 
@@ -371,6 +378,8 @@ gimp_seamless_clone_tool_button_press (GimpTool            *tool,
        * activate the tool control */
       gimp_tool_control_activate (tool->control);
     }
+  else
+    printf ("The click was NOT in the paste!\n");
 }
 
 static void
@@ -457,10 +466,10 @@ gimp_seamless_clone_tool_cursor_update (GimpTool         *tool,
   DBG_CALL_NAME();
 
   /* TODO: Needs fixing during motion */
-  if (gimp_seamless_clone_coords_in_paste (sct,coords))
-    gimp_tool_control_set_cursor_modifier (tool->control, GIMP_CURSOR_MODIFIER_NONE);
-  else
+  if (sct->state == SEAMLESS_CLONE_STATE_MOTION || gimp_seamless_clone_coords_in_paste (sct,coords))
     gimp_tool_control_set_cursor_modifier (tool->control, GIMP_CURSOR_MODIFIER_MOVE);
+  else
+    gimp_tool_control_set_cursor_modifier (tool->control, GIMP_CURSOR_MODIFIER_NONE);
 
   GIMP_TOOL_CLASS (parent_class)->cursor_update (tool, coords, state, display);
 }
