@@ -65,6 +65,8 @@ struct _GimpSeamlessCloneTool
   GeglNode       *translate_op;
 
   GimpImageMap   *image_map;   /* Used for preview of the resulting drawable */
+
+  GPtrArray      *outline;
 };
 
 #define gimp_seamless_clone_coords_in_paste(sct,c)   \

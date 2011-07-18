@@ -213,6 +213,7 @@ gimp_seamless_clone_tool_init (GimpSeamlessCloneTool *self)
   self->render_node     = NULL;
   self->image_map       = NULL;
   self->translate_op    = NULL;
+  self->outline         = NULL;
 }
 
 static void
@@ -242,6 +243,13 @@ gimp_seamless_clone_tool_control (GimpTool       *tool,
           g_object_unref (sct->render_node);
           sct->render_node  = NULL;
           sct->translate_op = NULL;
+        }
+
+      if (sct->outline)
+        {
+          /* The array was created with a free func, so no need to free */
+          g_ptr_array_free (sct->outline, TRUE);
+          sct->outline  = NULL;
         }
 
       if (sct->image_map)
@@ -328,6 +336,17 @@ gimp_seamless_clone_tool_options_notify (GimpTool         *tool,
 }
 
 static void
+gimp_seamless_clone_tool_start (GimpSeamlessCloneTool *sct,
+                                GimpDisplay           *display)
+{
+  DBG_CALL_NAME();
+  GIMP_TOOL(sct)->display = display;
+  gimp_draw_tool_start (GIMP_DRAW_TOOL (sct), display);
+  // TODO free and update stuff
+
+
+}
+static void
 gimp_seamless_clone_tool_button_press (GimpTool            *tool,
                                        const GimpCoords    *coords,
                                        guint32              time,
@@ -337,8 +356,16 @@ gimp_seamless_clone_tool_button_press (GimpTool            *tool,
 {
   GimpSeamlessCloneTool *sct = GIMP_SEAMLESS_CLONE_TOOL (tool);
 
+  DBG_CALL_NAME();
+
+  if (tool->display != display)
+    {
+       gimp_seamless_clone_tool_start (sct, display);
+    }
+
   if (sct->state == SEAMLESS_CLONE_STATE_NOTHING)
     {
+      gimp_draw_tool_start (GIMP_DRAW_TOOL (sct), display);
       if (! sct->render_node)
         {
           gimp_seamless_clone_tool_create_render_node (sct);
@@ -474,11 +501,15 @@ gimp_seamless_clone_tool_cursor_update (GimpTool         *tool,
   GIMP_TOOL_CLASS (parent_class)->cursor_update (tool, coords, state, display);
 }
 
+typedef struct {
+  gint x, y;
+} SPoint;
+
 static void
 gimp_seamless_clone_tool_draw (GimpDrawTool *draw_tool)
 {
   GimpSeamlessCloneTool    *sct        = GIMP_SEAMLESS_CLONE_TOOL (draw_tool);
-
+  gint i;
   GimpCanvasGroup          *stroke_group;
 
   DBG_CALL_NAME();
@@ -487,23 +518,36 @@ gimp_seamless_clone_tool_draw (GimpDrawTool *draw_tool)
 
   gimp_draw_tool_push_group (draw_tool, stroke_group);
 
+  if (sct->outline)
+    {
+      printf ("Outline exists!\n");
+      if (sct->state != SEAMLESS_CLONE_STATE_MOTION)
+        for (i = 0; i < sct->outline->len; i++)
+        {
+           SPoint *n1 = (SPoint*)g_ptr_array_index (sct->outline, i);
+           SPoint *n2 = (SPoint*)g_ptr_array_index (sct->outline, (i+1) % sct->outline->len);
+           gimp_draw_tool_add_line (draw_tool, n1->x+sct->paste_x, n1->y+sct->paste_y, n2->x+sct->paste_x, n2->y+sct->paste_y);
+        }
+    }
+
   /* Draw the corner of the paste */
   if (sct->state == SEAMLESS_CLONE_STATE_MOTION)
     gimp_draw_tool_add_crosshair (draw_tool,
-        (gdouble)(sct->paste_x + (gint)(sct->cursor_x - sct->movement_start_x)),
-        (gdouble)(sct->paste_y + (gint)(sct->cursor_y - sct->movement_start_y)));
+        (gdouble)(sct->paste_x + (gint)(sct->cursor_x - sct->movement_start_x + sct->paste_w / 2)),
+        (gdouble)(sct->paste_y + (gint)(sct->cursor_y - sct->movement_start_y + sct->paste_h / 2)));
 
   gimp_draw_tool_pop_group (draw_tool);
 }
 
-/* TODO - extract this logic for general gimp->gegl buffer conversion */
+/* TODO - extract this logic for general gimp->gegl buffer conversion.
+ * Note this also computes and saves the outline of the buffer */
 static void
 gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
 {
   GimpProgress   *progress;
   GeglNode       *gegl;
   GeglNode       *input;
-  GeglNode       *output;
+  GeglNode       *output, *outline;
   GeglProcessor  *processor;
   GeglBuffer     *buffer;
   gdouble         value;
@@ -535,8 +579,19 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
                                 "buffer",    &buffer,
                                 NULL);
 
+  sct->outline = g_ptr_array_new_with_free_func (g_free);
+  outline = gegl_node_new_child (gegl,
+                                 "operation", "gimp:find-outline",
+                                 "points",    sct->outline,
+                                 "width",     gimp_buffer_get_width (gimpbuf),
+                                 "height",    gimp_buffer_get_height (gimpbuf),
+                                 NULL);
+
   gegl_node_connect_to (input, "output",
                         output, "input");
+
+  gegl_node_connect_to (input, "output",
+                        outline, "input");
 
   processor = gegl_node_new_processor (output, NULL);
 
@@ -550,6 +605,21 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
     gimp_progress_end (progress);
 
   gegl_processor_destroy (processor);
+
+
+  processor = gegl_node_new_processor (outline, NULL);
+
+  while (gegl_processor_work (processor, &value))
+    {
+      if (progress)
+        gimp_progress_set_value (progress, value);
+    }
+
+  if (progress)
+    gimp_progress_end (progress);
+
+  gegl_processor_destroy (processor);
+
 
   sct->paste_buf = buffer;
   tempR = * gegl_buffer_get_extent (buffer);

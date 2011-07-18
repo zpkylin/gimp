@@ -37,6 +37,7 @@
 #include "gimpoperationcolorize.h"
 #include "gimpoperationcurves.h"
 #include "gimpoperationdesaturate.h"
+#include "gimpoperationfindoutline.h"
 #include "gimpoperationhuesaturation.h"
 #include "gimpoperationlevels.h"
 #include "gimpoperationposterize.h"
@@ -103,6 +104,7 @@ gimp_gegl_init (Gimp *gimp)
   g_type_class_ref (GIMP_TYPE_OPERATION_COLORIZE);
   g_type_class_ref (GIMP_TYPE_OPERATION_CURVES);
   g_type_class_ref (GIMP_TYPE_OPERATION_DESATURATE);
+  g_type_class_ref (GIMP_TYPE_OPERATION_FIND_OUTLINE);
   g_type_class_ref (GIMP_TYPE_OPERATION_HUE_SATURATION);
   g_type_class_ref (GIMP_TYPE_OPERATION_LEVELS);
   g_type_class_ref (GIMP_TYPE_OPERATION_POSTERIZE);

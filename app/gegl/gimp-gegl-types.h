@@ -37,6 +37,7 @@ typedef struct _GimpOperationCageCoefCalc     GimpOperationCageCoefCalc;
 typedef struct _GimpOperationCageTransform    GimpOperationCageTransform;
 typedef struct _GimpOperationCurves           GimpOperationCurves;
 typedef struct _GimpOperationDesaturate       GimpOperationDesaturate;
+typedef struct _GimpOperationFindOutline      GimpOperationFindOutline;
 typedef struct _GimpOperationHueSaturation    GimpOperationHueSaturation;
 typedef struct _GimpOperationLevels           GimpOperationLevels;
 typedef struct _GimpOperationPosterize        GimpOperationPosterize;
