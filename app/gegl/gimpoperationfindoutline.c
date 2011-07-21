@@ -90,10 +90,10 @@ gimp_operation_find_outline_class_init (GimpOperationFindOutlineClass *klass)
                                                          G_PARAM_READWRITE));
 
   g_object_class_install_property (object_class, PROP_THRESHOLD,
-                                   g_param_spec_double ("threshold",
+                                   g_param_spec_float ("threshold",
                                                          "Threshold",
                                                          "The threshold for determining the difference between black and white (white >= thres)",
-                                                         -G_MAXDOUBLE, G_MAXDOUBLE, 0.5,
+                                                         -G_MAXFLOAT, G_MAXFLOAT, 0.5f,
                                                          G_PARAM_READWRITE));
 
   /* Workaround around wrong ROI calculation in GEGL for Sink ops when needs_full is set */
@@ -145,7 +145,7 @@ gimp_operation_find_outline_get_property (GObject    *object,
       g_value_set_pointer (value, self->ptList);
       break;
     case PROP_THRESHOLD:
-      g_value_set_double (value, self->threshold);
+      g_value_set_float (value, self->threshold);
       break;
     case PROP_X:
       g_value_set_int (value, self->x);
@@ -180,7 +180,7 @@ gimp_operation_find_outline_set_property (GObject      *object,
       self->ptList = g_value_get_pointer (value);
       break;
     case PROP_THRESHOLD:
-      self->threshold = g_value_get_double (value);
+      self->threshold = g_value_get_float (value);
       break;
     case PROP_X:
       self->x = g_value_get_int (value);
@@ -241,6 +241,7 @@ typedef enum {
 #define isEast(s) (((s) == D_NE) || ((s) == D_E) || ((s) == D_SE))
 #define isWest(s) (((s) == D_NW) || ((s) == D_W) || ((s) == D_SW))
 
+#define BABL_FORMAT
 typedef struct {
   gint x, y;
 } SPoint;
@@ -278,7 +279,7 @@ gimp_operation_find_outline_is_inside (OutlineProcPrivate *OPP, SPoint *pt)
          && in_range (pt->y, OPP->ymin, OPP->ymax);
 }
 
-#define get_value(OPP,x,y)  (((OPP)->im)[((y)-(OPP)->ymin)*(OPP)->rowstride+(x)-(OPP)->xmin])
+#define get_value(OPP,x,y)  (((OPP)->im)[(((y)-(OPP)->ymin)*(OPP)->rowstride+(x)-(OPP)->xmin)*4+3])
 #define get_valuePT(OPP,pt) get_value(OPP,(pt)->x,(pt)->y)
 
 static inline gboolean
@@ -394,26 +395,12 @@ gimp_operation_find_outline_process (GeglOperation       *operation,
   OPP->ymax = self->y + self->height - 1;
 
   OPP->threshold = self->threshold;
-  OPP->im = g_new (gdouble,(rect.width) * rect.height);
+  OPP->im = g_new (gfloat,4 * (rect.width) * rect.height);
   OPP->rowstride = rect.width;
 
-  gegl_buffer_get (input, 1.0, &rect, babl_format("Y double"), OPP->im, GEGL_AUTO_ROWSTRIDE);
+  gegl_buffer_get (input, 1.0, &rect, babl_format("RGBA float"), OPP->im, GEGL_AUTO_ROWSTRIDE);
 
   gimp_operation_find_outline_find_outline_ccw (OPP, self->ptList);
-
-//  gint x, y;
-//  /* First of all try to find a white pixel */
-//  for (y = OPP->ymin; y < OPP->ymax; y++)
-//  {
-//    for (x = OPP->xmin; x < OPP->xmax; x++)
-//    {
-//      if (get_value (OPP, x, y) >= OPP->threshold)
-//        printf ("1");
-//      else
-//        printf ("0");
-//    }
-//    printf("\n");
-//  }
 
   g_free (OPP->im);
   OPP->im = NULL;
@@ -426,5 +413,5 @@ gimp_operation_find_outline_prepare (GeglOperation *operation)
 {
   printf ("Preparing!\n");
 
-  gegl_operation_set_format (operation, "input", babl_format("Y double"));
+  gegl_operation_set_format (operation, "input", babl_format("RGBA float"));
 }

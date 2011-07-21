@@ -40,8 +40,8 @@ typedef struct
   gint    xmin, xmax;
   gint    ymin, ymax;
   gint    rowstride;
-  gdouble  threshold;
-  gdouble *im;
+  float   threshold;
+  float   *im;
 } OutlineProcPrivate;
 
 struct _GimpOperationFindOutline
@@ -50,7 +50,7 @@ struct _GimpOperationFindOutline
 
   GPtrArray             *ptList;
   gint                   x, y, width, height;
-  gdouble                threshold;
+  float                  threshold;
 
   /* Remains from old versions. Merge with properties above one day */
   OutlineProcPrivate    *opp;

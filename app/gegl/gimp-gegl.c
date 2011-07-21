@@ -41,6 +41,7 @@
 #include "gimpoperationhuesaturation.h"
 #include "gimpoperationlevels.h"
 #include "gimpoperationposterize.h"
+#include "gimpoperationseamlessclone.h"
 #include "gimpoperationthreshold.h"
 #include "gimpoperationtilesink.h"
 #include "gimpoperationtilesource.h"
@@ -108,6 +109,7 @@ gimp_gegl_init (Gimp *gimp)
   g_type_class_ref (GIMP_TYPE_OPERATION_HUE_SATURATION);
   g_type_class_ref (GIMP_TYPE_OPERATION_LEVELS);
   g_type_class_ref (GIMP_TYPE_OPERATION_POSTERIZE);
+  g_type_class_ref (GIMP_TYPE_OPERATION_SEAMLESS_CLONE);
   g_type_class_ref (GIMP_TYPE_OPERATION_THRESHOLD);
 
   g_type_class_ref (GIMP_TYPE_OPERATION_POINT_LAYER_MODE);

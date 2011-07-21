@@ -73,8 +73,26 @@ libappgegl_a_sources = \
 	gimpoperationlevels.h		\
 	gimpoperationposterize.c	\
 	gimpoperationposterize.h	\
+	gimpoperationseamlessclone.c	\
+	gimpoperationseamlessclone.h	\
 	gimpoperationthreshold.c	\
 	gimpoperationthreshold.h	\
+	\
+	poly2tri-c/poly2tri.h		\
+	poly2tri-c/common/cutils.h	\
+	poly2tri-c/common/poly2tri-private.h	\
+	poly2tri-c/common/shapes.c	\
+	poly2tri-c/common/shapes.h	\
+	poly2tri-c/common/utils.c	\
+	poly2tri-c/common/utils.h	\
+	poly2tri-c/sweep/advancing_front.c	\
+	poly2tri-c/sweep/advancing_front.h	\
+	poly2tri-c/sweep/cdt.c		\
+	poly2tri-c/sweep/cdt.h		\
+	poly2tri-c/sweep/sweep.c	\
+	poly2tri-c/sweep/sweep.h	\
+	poly2tri-c/sweep/sweep_context.c	\
+	poly2tri-c/sweep/sweep_context.h	\
 	\
 	gimpoperationpointlayermode.c	\
 	gimpoperationpointlayermode.h	\

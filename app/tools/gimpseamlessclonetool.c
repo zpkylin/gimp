@@ -61,7 +61,8 @@
 
 #include "gimp-intl.h"
 
-#define DBG_CALL_NAME() g_print ("@@@ %s @@@\n", __func__)
+#define DBG_CALL_NAME() g_print ("@@@ start %s @@@\n", __func__)
+#define DBG_CALL_NAME_E() g_print ("@@@ finish %s @@@\n", __func__)
 #define SEAMLESS_CLONE_LIVE_PREVIEW TRUE
 
 enum
@@ -210,10 +211,12 @@ gimp_seamless_clone_tool_init (GimpSeamlessCloneTool *self)
   self->state           = SEAMLESS_CLONE_STATE_NOTHING;
 
   self->paste_buf       = NULL;
+  self->paste_node      = NULL;
   self->render_node     = NULL;
   self->image_map       = NULL;
   self->translate_op    = NULL;
   self->outline         = NULL;
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -271,6 +274,7 @@ gimp_seamless_clone_tool_control (GimpTool       *tool,
     }
 
   GIMP_TOOL_CLASS (parent_class)->control (tool, action, display);
+  DBG_CALL_NAME_E();
 }
 
 /**
@@ -299,6 +303,7 @@ gimp_seamless_clone_tool_update_image_map_easy (GimpSeamlessCloneTool *sct)
     }
 
   gimp_seamless_clone_tool_image_map_update (sct);
+  DBG_CALL_NAME_E();
 }
 
 /* When one of the tool options was modified, we wish to take the following
@@ -333,6 +338,8 @@ gimp_seamless_clone_tool_options_notify (GimpTool         *tool,
 
   /* Allow drawing to continue */
   gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
+
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -344,7 +351,7 @@ gimp_seamless_clone_tool_start (GimpSeamlessCloneTool *sct,
   gimp_draw_tool_start (GIMP_DRAW_TOOL (sct), display);
   // TODO free and update stuff
 
-
+  DBG_CALL_NAME_E();
 }
 static void
 gimp_seamless_clone_tool_button_press (GimpTool            *tool,
@@ -441,6 +448,7 @@ gimp_seamless_clone_tool_motion (GimpTool         *tool,
 #endif
 
   gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
+  DBG_CALL_NAME_E();
 }
 
 void
@@ -480,6 +488,7 @@ gimp_seamless_clone_tool_button_release (GimpTool              *tool,
     }
 
   gimp_draw_tool_resume (GIMP_DRAW_TOOL (tool));
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -499,6 +508,7 @@ gimp_seamless_clone_tool_cursor_update (GimpTool         *tool,
     gimp_tool_control_set_cursor_modifier (tool->control, GIMP_CURSOR_MODIFIER_NONE);
 
   GIMP_TOOL_CLASS (parent_class)->cursor_update (tool, coords, state, display);
+  DBG_CALL_NAME_E();
 }
 
 typedef struct {
@@ -537,6 +547,7 @@ gimp_seamless_clone_tool_draw (GimpDrawTool *draw_tool)
         (gdouble)(sct->paste_y + (gint)(sct->cursor_y - sct->movement_start_y + sct->paste_h / 2)));
 
   gimp_draw_tool_pop_group (draw_tool);
+  DBG_CALL_NAME_E();
 }
 
 /* TODO - extract this logic for general gimp->gegl buffer conversion.
@@ -585,6 +596,7 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
                                  "points",    sct->outline,
                                  "width",     gimp_buffer_get_width (gimpbuf),
                                  "height",    gimp_buffer_get_height (gimpbuf),
+                                 "threshold", 0.5f,
                                  NULL);
 
   gegl_node_connect_to (input, "output",
@@ -627,6 +639,7 @@ gimp_buffer_to_gegl_buffer_with_progress (GimpSeamlessCloneTool *sct)
   sct->paste_h = tempR.height;
 
   tile_manager_unref (tiles);
+  DBG_CALL_NAME_E();
 }
 
 /* The final graph would be
@@ -674,7 +687,8 @@ gimp_seamless_clone_tool_create_render_node (GimpSeamlessCloneTool *sct)
                               NULL);
 
   interpolate = gegl_node_new_child (node,
-                                     "operation", "gegl:nop",
+                                     "operation", "gimp:seamless-clone",
+                                     "points", sct->outline,
                                      NULL);
 
   sct->translate_op = gegl_node_new_child (node,
@@ -683,13 +697,13 @@ gimp_seamless_clone_tool_create_render_node (GimpSeamlessCloneTool *sct)
                                            "filter", "nearest", NULL);
 
   add = gegl_node_new_child (node,
-                              "operation", "gegl:add",
-                              NULL);
+                             "operation", "gegl:add",
+                             NULL);
 
   paste = gegl_node_new_child (node,
-                              "operation", "gegl:buffer-source",
-                              "buffer", sct->paste_buf,
-                              NULL);
+                               "operation", "gegl:buffer-source",
+                               "buffer", sct->paste_buf,
+                               NULL);
 
   sct->paste_node = paste;
 
@@ -705,8 +719,8 @@ gimp_seamless_clone_tool_create_render_node (GimpSeamlessCloneTool *sct)
   gegl_node_connect_to (input, "output",
                         diff, "aux");
 
-  gegl_node_connect_to (diff, "output",
-                        interpolate, "input");
+//  gegl_node_connect_to (diff, "output",
+//                        interpolate, "input");
 
   gegl_node_connect_to (interpolate, "output",
                         add, "aux");
@@ -715,6 +729,7 @@ gimp_seamless_clone_tool_create_render_node (GimpSeamlessCloneTool *sct)
                         output, "input");
 
   sct->render_node = node;
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -722,6 +737,7 @@ gimp_seamless_clone_tool_render_node_update (GimpSeamlessCloneTool *sct)
 {
   DBG_CALL_NAME();
   /* For now, do nothing */
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -741,6 +757,7 @@ gimp_seamless_clone_tool_create_image_map (GimpSeamlessCloneTool *sct,
   g_signal_connect (sct->image_map, "flush",
                     G_CALLBACK (gimp_seamless_clone_tool_image_map_flush),
                     sct);
+  DBG_CALL_NAME_E();
 }
 
 static void
@@ -752,6 +769,7 @@ gimp_seamless_clone_tool_image_map_flush (GimpImageMap *image_map,
   DBG_CALL_NAME();
   gimp_projection_flush_now (gimp_image_get_projection (image));
   gimp_display_flush_now (tool->display);
+  DBG_CALL_NAME();
 }
 
 static void
@@ -792,4 +810,5 @@ gimp_seamless_clone_tool_image_map_update (GimpSeamlessCloneTool *ct)
   visible.y -= off_y;
 
   gimp_image_map_apply (ct->image_map, &visible);
+  DBG_CALL_NAME_E();
 }
