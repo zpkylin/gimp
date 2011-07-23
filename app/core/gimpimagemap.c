@@ -120,6 +120,10 @@ static gboolean        gimp_image_map_get_pixel_at   (GimpPickable        *picka
                                                       gint                 y,
                                                       guchar              *pixel);
 
+static void            _gimp_image_map_apply         (GimpImageMap        *image_map,
+                                                      const GeglRectangle *full_region,
+                                                      const GeglRectangle *to_render);
+
 static void            gimp_image_map_update_undo_tiles
                                                      (GimpImageMap        *image_map,
                                                       const GeglRectangle *rect);
@@ -431,7 +435,7 @@ gimp_image_map_new (GimpDrawable          *drawable,
  * @visible: the visible area
  *
  * Compute and display the operation over the selection area.
- * Succesive call to gimp_image_map_apply can be done to update the preview.
+ * Succesive call to gimp_image_map_apply* can be done to update the preview.
  *
  * TODO: currently, the @visible area is not used. It should be used to compute
  * this area in priority.
@@ -444,8 +448,34 @@ gimp_image_map_apply (GimpImageMap        *image_map,
 
   g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
-  /*  If we're still working, remove the timer  */
-  gimp_image_map_cancel_any_idle_jobs (image_map);
+  /*  Make sure the drawable is still valid  */
+  if (! gimp_item_is_attached (GIMP_ITEM (image_map->drawable)))
+    return;
+
+  /*  The application should occur only within selection bounds  */
+  if (! gimp_item_mask_intersect (GIMP_ITEM (image_map->drawable),
+                                  &rect.x, &rect.y,
+                                  &rect.width, &rect.height))
+    return;
+
+  _gimp_image_map_apply (image_map, &rect, &rect);
+}
+
+/**
+ * gimp_image_map_apply_region:
+ * @image_map: a #GimpImageMap
+ * @region: the region to compute
+ *
+ * Compute and display the operation for the given area.
+ * Succesive call to gimp_image_map_apply* can be done to update the preview.
+ */
+void
+gimp_image_map_apply_region (GimpImageMap        *image_map,
+                             const GeglRectangle *region)
+{
+  GeglRectangle rect;
+
+  g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
   /*  Make sure the drawable is still valid  */
   if (! gimp_item_is_attached (GIMP_ITEM (image_map->drawable)))
@@ -457,66 +487,7 @@ gimp_image_map_apply (GimpImageMap        *image_map,
                                   &rect.width, &rect.height))
     return;
 
-  /*  If undo tiles don't exist, or change size, (re)allocate  */
-  gimp_image_map_update_undo_tiles (image_map,
-                                    &rect);
-
-  if (image_map->operation)
-    {
-      if (! image_map->gegl)
-        {
-          gimp_image_map_create_gegl_graph (image_map);
-        }
-
-      gegl_node_set (image_map->input,
-                     "tile-manager", image_map->undo_tiles,
-                     "linear",       TRUE,
-                     NULL);
-
-      gegl_node_set (image_map->translate,
-                     "x", (gdouble) rect.x,
-                     "y", (gdouble) rect.y,
-                     NULL);
-
-      gegl_node_set (image_map->output,
-                     "tile-manager", gimp_drawable_get_shadow_tiles (image_map->drawable),
-                     "linear",       TRUE,
-                     NULL);
-
-      image_map->processor = gegl_node_new_processor (image_map->output,
-                                                      &rect);
-    }
-  else
-    {
-      /*  Configure the src from the drawable data  */
-      pixel_region_init (&image_map->srcPR,
-                         image_map->undo_tiles,
-                         0, 0,
-                         rect.width, rect.height,
-                         FALSE);
-
-      /*  Configure the dest as the shadow buffer  */
-      pixel_region_init (&image_map->destPR,
-                         gimp_drawable_get_shadow_tiles (image_map->drawable),
-                         rect.x, rect.y,
-                         rect.width, rect.height,
-                         TRUE);
-
-      /*  Apply the image transformation to the pixels  */
-      image_map->PRI = pixel_regions_register (2,
-                                               &image_map->srcPR,
-                                               &image_map->destPR);
-    }
-
-  if (image_map->timer)
-    {
-      image_map->pixel_count = 0;
-      g_timer_start (image_map->timer);
-      g_timer_stop (image_map->timer);
-    }
-
-  /*  Start the intermittant work procedure  */
-  image_map->idle_id = g_idle_add ((GSourceFunc) gimp_image_map_do, image_map);
+  _gimp_image_map_apply (image_map, &rect, region);
 }
 
 /**
@@ -637,6 +608,86 @@ gimp_image_map_abort (GimpImageMap *image_map)
 
 
 /*  private functions  */
+
+/**
+ * _gimp_image_map_apply:
+ * @image_map: a #GimpImageMap
+ * @full_region: the full region of the drawable to preview
+ * @to_render: the area to where to render the preview
+ *
+ * Internal function to render a preview.
+ */
+static void
+_gimp_image_map_apply (GimpImageMap        *image_map,
+                       const GeglRectangle *full_region,
+                       const GeglRectangle *to_render)
+{
+  g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
+
+  /*  If we're still working, remove the timer  */
+  gimp_image_map_cancel_any_idle_jobs (image_map);
+
+  /*  If undo tiles don't exist, or change size, (re)allocate  */
+  gimp_image_map_update_undo_tiles (image_map,
+                                    full_region);
+
+  if (image_map->operation)
+    {
+      if (! image_map->gegl)
+        {
+          gimp_image_map_create_gegl_graph (image_map);
+        }
+
+      gegl_node_set (image_map->input,
+                     "tile-manager", image_map->undo_tiles,
+                     "linear",       TRUE,
+                     NULL);
+
+      gegl_node_set (image_map->translate,
+                     "x", (gdouble) full_region->x,
+                     "y", (gdouble) full_region->y,
+                     NULL);
+
+      gegl_node_set (image_map->output,
+                     "tile-manager", gimp_drawable_get_shadow_tiles (image_map->drawable),
+                     "linear",       TRUE,
+                     NULL);
+
+      image_map->processor = gegl_node_new_processor (image_map->output,
+                                                      to_render);
+    }
+  else
+    {
+      /*  Configure the src from the drawable data  */
+      pixel_region_init (&image_map->srcPR,
+                         image_map->undo_tiles,
+                         0, 0,
+                         to_render->width, to_render->height,
+                         FALSE);
+
+      /*  Configure the dest as the shadow buffer  */
+      pixel_region_init (&image_map->destPR,
+                         gimp_drawable_get_shadow_tiles (image_map->drawable),
+                         to_render->x, to_render->y,
+                         to_render->width, to_render->height,
+                         TRUE);
+
+      /*  Apply the image transformation to the pixels  */
+      image_map->PRI = pixel_regions_register (2,
+                                               &image_map->srcPR,
+                                               &image_map->destPR);
+    }
+
+  if (image_map->timer)
+    {
+      image_map->pixel_count = 0;
+      g_timer_start (image_map->timer);
+      g_timer_stop (image_map->timer);
+    }
+
+  /*  Start the intermittant work procedure  */
+  image_map->idle_id = g_idle_add ((GSourceFunc) gimp_image_map_do, image_map);
+}
 
 static void
 gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
