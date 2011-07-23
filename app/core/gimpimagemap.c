@@ -59,6 +59,11 @@ enum
   LAST_SIGNAL
 };
 
+enum
+{
+  PROP_0,
+  PROP_GEGL_CACHING
+};
 
 struct _GimpImageMap
 {
@@ -83,6 +88,7 @@ struct _GimpImageMap
   GeglNode              *operation;
   GeglNode              *output;
   GeglProcessor         *processor;
+  gboolean               gegl_caching;
 
   guint                  idle_id;
 
@@ -91,10 +97,19 @@ struct _GimpImageMap
 };
 
 
-static void   gimp_image_map_pickable_iface_init (GimpPickableInterface *iface);
+static void            gimp_image_map_pickable_iface_init
+                                                     (GimpPickableInterface *iface);
 
 static void            gimp_image_map_dispose        (GObject             *object);
 static void            gimp_image_map_finalize       (GObject             *object);
+static void            gimp_image_map_set_property   (GObject             *object,
+                                                      guint                property_id,
+                                                      const GValue        *value,
+                                                      GParamSpec          *pspec);
+static void            gimp_image_map_get_property   (GObject             *object,
+                                                      guint                property_id,
+                                                      GValue              *value,
+                                                      GParamSpec          *pspec);
 
 static GimpImage     * gimp_image_map_get_image      (GimpPickable        *pickable);
 static GimpImageType   gimp_image_map_get_image_type (GimpPickable        *pickable);
@@ -143,8 +158,17 @@ gimp_image_map_class_init (GimpImageMapClass *klass)
                   gimp_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  object_class->dispose  = gimp_image_map_dispose;
-  object_class->finalize = gimp_image_map_finalize;
+  object_class->dispose      = gimp_image_map_dispose;
+  object_class->finalize     = gimp_image_map_finalize;
+  object_class->set_property = gimp_image_map_set_property;
+  object_class->get_property = gimp_image_map_get_property;
+
+  g_object_class_install_property (object_class, PROP_GEGL_CACHING,
+                                   g_param_spec_boolean ("gegl-caching",
+                                                         "Use caching while rendering the Gegl graph", NULL,
+                                                         FALSE,
+                                                         GIMP_PARAM_READWRITE |
+                                                         G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -180,6 +204,8 @@ gimp_image_map_init (GimpImageMap *image_map)
 
   if (image_map->timer)
     g_timer_stop (image_map->timer);
+
+  image_map->gegl_caching  = FALSE;
 }
 
 static void
@@ -242,6 +268,44 @@ gimp_image_map_finalize (GObject *object)
     }
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
+}
+
+static void
+gimp_image_map_set_property (GObject      *object,
+                             guint         property_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
+{
+  GimpImageMap *image_map = GIMP_IMAGE_MAP (object);
+
+  switch (property_id)
+    {
+    case PROP_GEGL_CACHING:
+      image_map->gegl_caching = g_value_get_boolean (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+    }
+}
+
+static void
+gimp_image_map_get_property (GObject    *object,
+                             guint       property_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
+{
+  GimpImageMap *image_map = GIMP_IMAGE_MAP (object);
+
+  switch (property_id)
+    {
+    case PROP_GEGL_CACHING:
+        g_value_set_boolean (value, image_map->gegl_caching);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+    }
 }
 
 static GimpImage *
@@ -646,9 +710,12 @@ gimp_image_map_create_gegl_graph (GimpImageMap *image_map)
 {
   image_map->gegl = gegl_node_new ();
 
-  g_object_set (image_map->gegl,
-                "dont-cache", TRUE,
-                NULL);
+  if (!image_map->gegl_caching)
+    {
+      g_object_set (image_map->gegl,
+                    "dont-cache", TRUE,
+                    NULL);
+    }
 
   image_map->input =
     gegl_node_new_child (image_map->gegl,
