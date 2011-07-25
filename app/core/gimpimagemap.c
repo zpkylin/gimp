@@ -120,7 +120,7 @@ static gboolean        gimp_image_map_get_pixel_at   (GimpPickable        *picka
                                                       gint                 y,
                                                       guchar              *pixel);
 
-static void            _gimp_image_map_apply         (GimpImageMap        *image_map,
+static void            gimp_image_map_apply_real     (GimpImageMap        *image_map,
                                                       const GeglRectangle *full_region,
                                                       const GeglRectangle *to_render);
 
@@ -458,7 +458,7 @@ gimp_image_map_apply (GimpImageMap        *image_map,
                                   &rect.width, &rect.height))
     return;
 
-  _gimp_image_map_apply (image_map, &rect, &rect);
+  gimp_image_map_apply_real (image_map, &rect, &rect);
 }
 
 /**
@@ -487,7 +487,7 @@ gimp_image_map_apply_region (GimpImageMap        *image_map,
                                   &rect.width, &rect.height))
     return;
 
-  _gimp_image_map_apply (image_map, &rect, region);
+  gimp_image_map_apply_real (image_map, &rect, region);
 }
 
 /**
@@ -618,9 +618,9 @@ gimp_image_map_abort (GimpImageMap *image_map)
  * Internal function to render a preview.
  */
 static void
-_gimp_image_map_apply (GimpImageMap        *image_map,
-                       const GeglRectangle *full_region,
-                       const GeglRectangle *to_render)
+gimp_image_map_apply_real (GimpImageMap        *image_map,
+                           const GeglRectangle *full_region,
+                           const GeglRectangle *to_render)
 {
   g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
