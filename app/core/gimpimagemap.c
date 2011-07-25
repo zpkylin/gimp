@@ -124,7 +124,7 @@ static void            gimp_image_map_apply_real     (GimpImageMap        *image
                                                       const GeglRectangle *full_region,
                                                       const GeglRectangle *to_render);
 
-static void            gimp_image_map_update_undo_tiles
+static gboolean        gimp_image_map_update_undo_tiles
                                                      (GimpImageMap        *image_map,
                                                       const GeglRectangle *rect);
 static void            gimp_image_map_create_gegl_graph
@@ -622,14 +622,15 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
                            const GeglRectangle *full_region,
                            const GeglRectangle *to_render)
 {
+  gboolean reallocate;
   g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
   /*  If we're still working, remove the timer  */
   gimp_image_map_cancel_any_idle_jobs (image_map);
 
   /*  If undo tiles don't exist, or change size, (re)allocate  */
-  gimp_image_map_update_undo_tiles (image_map,
-                                    full_region);
+  reallocate = gimp_image_map_update_undo_tiles (image_map,
+                                                full_region);
 
   if (image_map->operation)
     {
@@ -638,20 +639,23 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
           gimp_image_map_create_gegl_graph (image_map);
         }
 
-      gegl_node_set (image_map->input,
-                     "tile-manager", image_map->undo_tiles,
-                     "linear",       TRUE,
-                     NULL);
+      if (reallocate)
+        {
+          gegl_node_set (image_map->input,
+                         "tile-manager", image_map->undo_tiles,
+                         "linear",       TRUE,
+                         NULL);
 
-      gegl_node_set (image_map->translate,
-                     "x", (gdouble) full_region->x,
-                     "y", (gdouble) full_region->y,
-                     NULL);
+          gegl_node_set (image_map->translate,
+                         "x", (gdouble) full_region->x,
+                         "y", (gdouble) full_region->y,
+                         NULL);
 
-      gegl_node_set (image_map->output,
-                     "tile-manager", gimp_drawable_get_shadow_tiles (image_map->drawable),
-                     "linear",       TRUE,
-                     NULL);
+          gegl_node_set (image_map->output,
+                         "tile-manager", gimp_drawable_get_shadow_tiles (image_map->drawable),
+                         "linear",       TRUE,
+                         NULL);
+        }
 
       image_map->processor = gegl_node_new_processor (image_map->output,
                                                       to_render);
@@ -689,7 +693,7 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
   image_map->idle_id = g_idle_add ((GSourceFunc) gimp_image_map_do, image_map);
 }
 
-static void
+static gboolean
 gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
                                   const GeglRectangle *rect)
 {
@@ -697,6 +701,7 @@ gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
   gint undo_offset_y;
   gint undo_width;
   gint undo_height;
+  gboolean reallocate = FALSE;
 
   if (image_map->undo_tiles)
     {
@@ -726,6 +731,8 @@ gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
           undo_width  != rect->width ||
           undo_height != rect->height)
         {
+          reallocate = TRUE;
+
           /*  Destroy old tiles  */
           if (image_map->undo_tiles)
             tile_manager_unref (image_map->undo_tiles);
@@ -754,6 +761,8 @@ gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
       image_map->undo_offset_x = rect->x;
       image_map->undo_offset_y = rect->y;
     }
+
+  return reallocate;
 }
 
 static void
