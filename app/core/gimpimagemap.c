@@ -630,7 +630,7 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
 
   /*  If undo tiles don't exist, or change size, (re)allocate  */
   reallocate = gimp_image_map_update_undo_tiles (image_map,
-                                                full_region);
+                                                 full_region);
 
   if (image_map->operation)
     {
@@ -646,16 +646,16 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
                          "linear",       TRUE,
                          NULL);
 
-          gegl_node_set (image_map->translate,
-                         "x", (gdouble) full_region->x,
-                         "y", (gdouble) full_region->y,
-                         NULL);
-
           gegl_node_set (image_map->output,
                          "tile-manager", gimp_drawable_get_shadow_tiles (image_map->drawable),
                          "linear",       TRUE,
                          NULL);
         }
+
+      gegl_node_set (image_map->translate,
+                     "x", (gdouble) full_region->x,
+                     "y", (gdouble) full_region->y,
+                     NULL);
 
       image_map->processor = gegl_node_new_processor (image_map->output,
                                                       to_render);
@@ -718,7 +718,7 @@ gimp_image_map_update_undo_tiles (GimpImageMap        *image_map,
       undo_height   = 0;
     }
 
-  if (! image_map->undo_tiles     ||
+  if (! image_map->undo_tiles      ||
       undo_offset_x != rect->x     ||
       undo_offset_y != rect->y     ||
       undo_width    != rect->width ||
