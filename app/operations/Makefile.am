@@ -66,8 +66,6 @@ libappoperations_a_sources = \
 	gimpoperationshrink.h			\
 	gimpoperationthresholdalpha.c		\
 	gimpoperationthresholdalpha.h		\
-	gimpoperationwarp.c			\
-	gimpoperationwarp.h			\
 	\
 	gimpoperationpointfilter.c		\
 	gimpoperationpointfilter.h		\
