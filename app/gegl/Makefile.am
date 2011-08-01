@@ -73,8 +73,6 @@ libappgegl_a_sources = \
 	gimpoperationposterize.h	\
 	gimpoperationthreshold.c	\
 	gimpoperationthreshold.h	\
-	gimpoperationwarp.c			\
-	gimpoperationwarp.h			\
 	\
 	gimpoperationpointlayermode.c	\
 	gimpoperationpointlayermode.h	\
