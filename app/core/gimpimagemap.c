@@ -35,6 +35,7 @@
 
 #include <glib-object.h>
 #include <gegl.h>
+#include "gegl-utils.h"
 
 #include "core-types.h"
 
@@ -89,6 +90,7 @@ struct _GimpImageMap
   GeglNode              *output;
   GeglProcessor         *processor;
   gboolean               gegl_caching;
+  GeglRectangle          queue;
 
   guint                  idle_id;
 
@@ -210,6 +212,8 @@ gimp_image_map_init (GimpImageMap *image_map)
     g_timer_stop (image_map->timer);
 
   image_map->gegl_caching  = FALSE;
+
+  gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
 }
 
 static void
@@ -625,8 +629,14 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
   gboolean reallocate;
   g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
-  /*  If we're still working, remove the timer  */
-  gimp_image_map_cancel_any_idle_jobs (image_map);
+  /*  If we're still working, queue the region to render and return.  */
+  if (image_map->idle_id)
+    {
+      gegl_rectangle_bounding_box (&image_map->queue, &image_map->queue, to_render);
+      return;
+    }
+
+  gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
 
   /*  If undo tiles don't exist, or change size, (re)allocate  */
   reallocate = gimp_image_map_update_undo_tiles (image_map,
@@ -890,6 +900,11 @@ gimp_image_map_do (GimpImageMap *image_map)
 
           g_signal_emit (image_map, image_map_signals[FLUSH], 0);
 
+          if (!gegl_rectangle_is_empty (&image_map->queue))
+            {
+              gimp_image_map_apply_region (image_map, &image_map->queue);
+            }
+
           return FALSE;
         }
     }
@@ -962,6 +977,11 @@ gimp_image_map_do (GimpImageMap *image_map)
               image_map->idle_id = 0;
 
               g_signal_emit (image_map, image_map_signals[FLUSH], 0);
+
+              if (!gegl_rectangle_is_empty (&image_map->queue))
+                {
+                  gimp_image_map_apply_region (image_map, &image_map->queue);
+                }
 
               return FALSE;
             }
