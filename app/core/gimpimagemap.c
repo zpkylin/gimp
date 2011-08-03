@@ -633,14 +633,23 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
   if (!gegl_rectangle_intersect (NULL, full_region, to_render))
     return;
 
-  /*  If we're still working, queue the region to render and return.  */
-  if (image_map->idle_id)
+  if (!image_map->operation)
     {
-      gegl_rectangle_bounding_box (&image_map->queue, &image_map->queue, to_render);
-      return;
+      /* If we're still working, remove the timer */
+      gimp_image_map_cancel_any_idle_jobs (image_map);
     }
+  else
+  {
+    /* If we're still working, queue the region to render and return. */
+    /* Only for the Gegl way, to avoid regression */
+    if (image_map->idle_id)
+      {
+        gegl_rectangle_bounding_box (&image_map->queue, &image_map->queue, to_render);
+        return;
+      }
 
-  gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
+    gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
+  }
 
   /*  If undo tiles don't exist, or change size, (re)allocate  */
   reallocate = gimp_image_map_update_undo_tiles (image_map,
@@ -981,11 +990,6 @@ gimp_image_map_do (GimpImageMap *image_map)
               image_map->idle_id = 0;
 
               g_signal_emit (image_map, image_map_signals[FLUSH], 0);
-
-              if (!gegl_rectangle_is_empty (&image_map->queue))
-                {
-                  gimp_image_map_apply_region (image_map, &image_map->queue);
-                }
 
               return FALSE;
             }
