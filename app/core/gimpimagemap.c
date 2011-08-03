@@ -629,6 +629,10 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
   gboolean reallocate;
   g_return_if_fail (GIMP_IS_IMAGE_MAP (image_map));
 
+  /* if nothing to render, just return */
+  if (!gegl_rectangle_intersect (NULL, full_region, to_render))
+    return;
+
   /*  If we're still working, queue the region to render and return.  */
   if (image_map->idle_id)
     {
