@@ -90,7 +90,9 @@ struct _GimpImageMap
   GeglNode              *output;
   GeglProcessor         *processor;
   gboolean               gegl_caching;
+
   GeglRectangle          queue;
+  GMutex                *queue_mutex;
 
   guint                  idle_id;
 
@@ -214,6 +216,7 @@ gimp_image_map_init (GimpImageMap *image_map)
   image_map->gegl_caching  = FALSE;
 
   gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
+  image_map->queue_mutex = g_mutex_new ();
 }
 
 static void
@@ -644,11 +647,15 @@ gimp_image_map_apply_real (GimpImageMap        *image_map,
     /* Only for the Gegl way, to avoid regression */
     if (image_map->idle_id)
       {
+        g_mutex_lock (image_map->queue_mutex);
         gegl_rectangle_bounding_box (&image_map->queue, &image_map->queue, to_render);
+        g_mutex_unlock (image_map->queue_mutex);
         return;
       }
 
+    g_mutex_lock (image_map->queue_mutex);
     gegl_rectangle_set (&image_map->queue, 0, 0, 0, 0);
+    g_mutex_unlock (image_map->queue_mutex);
   }
 
   /*  If undo tiles don't exist, or change size, (re)allocate  */
@@ -913,10 +920,18 @@ gimp_image_map_do (GimpImageMap *image_map)
 
           g_signal_emit (image_map, image_map_signals[FLUSH], 0);
 
-          if (!gegl_rectangle_is_empty (&image_map->queue))
-            {
-              gimp_image_map_apply_region (image_map, &image_map->queue);
-            }
+          {
+            gboolean empty;
+
+            g_mutex_lock (image_map->queue_mutex);
+            empty = gegl_rectangle_is_empty (&image_map->queue);
+            g_mutex_unlock (image_map->queue_mutex);
+
+            if (!empty)
+              {
+                gimp_image_map_apply_region (image_map, &image_map->queue);
+              }
+          }
 
           return FALSE;
         }
