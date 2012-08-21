@@ -20,6 +20,8 @@
 
 void unified_transform_tool_flip_horiz_callback   (GtkAction *action,
                                                    gpointer   data);
+void unified_transform_tool_flip_vert_callback    (GtkAction *action,
+                                                   gpointer   data);
 void unified_transform_tool_summon_pivot_callback (GtkAction *action,
                                                    gpointer   data);
 

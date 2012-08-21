@@ -54,7 +54,7 @@ void    gimp_unified_transform_tool_register (GimpToolRegisterCallback  callback
 
 GType   gimp_unified_transform_tool_get_type (void) G_GNUC_CONST;
 
-void gimp_unified_transform_tool_flip_horiz   (GimpTransformTool *tr_tool);
+void gimp_unified_transform_tool_flip         (GimpTransformTool *tr_tool, gboolean vertical);
 void gimp_unified_transform_tool_summon_pivot (GimpTransformTool *tr_tool);
 
 

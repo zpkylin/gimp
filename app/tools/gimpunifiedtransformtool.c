@@ -1185,9 +1185,20 @@ gimp_unified_transform_tool_get_popup (GimpTool         *tool,
   return ut_tool->ui_manager;
 }
 
-void gimp_unified_transform_tool_flip_horiz (GimpTransformTool *tr_tool)
+void gimp_unified_transform_tool_flip (GimpTransformTool *tr_tool, gboolean vertical)
 {
   GimpUnifiedTransformTool *ut_tool = GIMP_UNIFIED_TRANSFORM_TOOL (tr_tool);
+  gint i;
+
+  gimp_draw_tool_pause (GIMP_DRAW_TOOL (tr_tool));
+
+  for (i = 0; i < 4; i++)
+    tr_tool->trans_info[X0+i*2+vertical] = 2 * tr_tool->trans_info[PIVOT_X+vertical] - tr_tool->trans_info[X0+i*2+vertical];
+
+  gimp_transform_tool_recalc_matrix (tr_tool);
+  gimp_transform_tool_push_internal_undo (tr_tool);
+
+  gimp_draw_tool_resume (GIMP_DRAW_TOOL (tr_tool));
 }
 
 void gimp_unified_transform_tool_summon_pivot (GimpTransformTool *tr_tool)

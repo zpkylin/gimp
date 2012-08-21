@@ -4,6 +4,7 @@
 <ui>
   <popup action="unified-transform-tool-popup">
     <menuitem action="unified-transform-tool-flip-horiz" />
+    <menuitem action="unified-transform-tool-flip-vert" />
     <separator />
     <menuitem action="unified-transform-tool-summon-pivot" />
   </popup>

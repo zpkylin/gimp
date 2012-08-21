@@ -54,6 +54,11 @@ static const GimpActionEntry unified_transform_tool_actions[] =
     G_CALLBACK (unified_transform_tool_flip_horiz_callback),
     NULL },
 
+  { "unified-transform-tool-flip-vert", GTK_STOCK_CUT,
+    NC_("unified-transform-tool-action", "Flip Vertically"), NULL, NULL,
+    G_CALLBACK (unified_transform_tool_flip_vert_callback),
+    NULL },
+
   { "unified-transform-tool-summon-pivot", GTK_STOCK_COPY,
     NC_("unified-transform-tool-action", "Put pivot here"), NULL, NULL,
     G_CALLBACK (unified_transform_tool_summon_pivot_callback),

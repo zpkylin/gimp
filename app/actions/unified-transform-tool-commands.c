@@ -48,7 +48,16 @@ unified_transform_tool_flip_horiz_callback (GtkAction *action,
 {
   GimpTransformTool *tr_tool = GIMP_TRANSFORM_TOOL (data);
 
-  gimp_unified_transform_tool_flip_horiz (tr_tool);
+  gimp_unified_transform_tool_flip (tr_tool, FALSE);
+}
+
+void
+unified_transform_tool_flip_vert_callback (GtkAction *action,
+                                            gpointer   data)
+{
+  GimpTransformTool *tr_tool = GIMP_TRANSFORM_TOOL (data);
+
+  gimp_unified_transform_tool_flip (tr_tool, TRUE);
 }
 
 void
