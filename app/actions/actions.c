@@ -90,6 +90,7 @@
 #include "tool-presets-actions.h"
 #include "tool-preset-editor-actions.h"
 #include "tools-actions.h"
+#include "unified-transform-tool-actions.h"
 #include "vectors-actions.h"
 #include "view-actions.h"
 #include "windows-actions.h"
@@ -226,6 +227,9 @@ static const GimpActionFactoryEntry action_groups[] =
   { "tools", N_("Tools"), GIMP_STOCK_TOOLS,
     tools_actions_setup,
     tools_actions_update },
+  { "unified-transform-tool", N_("Unified Transform Tool"), GTK_STOCK_EDIT,
+    unified_transform_tool_actions_setup,
+    unified_transform_tool_actions_update },
   { "vectors", N_("Paths"), GIMP_STOCK_PATH,
     vectors_actions_setup,
     vectors_actions_update },

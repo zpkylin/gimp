@@ -372,6 +372,14 @@ menus_init (Gimp              *gimp,
                                       NULL,
                                       NULL);
 
+  gimp_menu_factory_manager_register (global_menu_factory, "<UnifiedTransformTool>",
+                                      "unified-transform-tool",
+                                      NULL,
+                                      "/unified-transform-tool-popup",
+                                      "/unified-transform-tool-menu.xml",
+                                      NULL,
+                                      NULL);
+
   gimp_menu_factory_manager_register (global_menu_factory, "<CursorInfo>",
                                       "cursor-info",
                                       NULL,

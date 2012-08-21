@@ -169,6 +169,10 @@ libappactions_a_SOURCES = \
 	tools-actions.h			\
 	tools-commands.c		\
 	tools-commands.h		\
+	unified-transform-tool-actions.c		\
+	unified-transform-tool-actions.h		\
+	unified-transform-tool-commands.c		\
+	unified-transform-tool-commands.h		\
 	vectors-actions.c		\
 	vectors-actions.h		\
 	vectors-commands.c		\

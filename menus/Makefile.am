@@ -38,6 +38,7 @@ menudata_DATA = \
 	text-tool-menu.xml		\
 	tool-options-menu.xml		\
 	undo-menu.xml			\
+	unified-transform-tool-menu.xml		\
 	vectors-menu.xml
 
 EXTRA_DIST = \

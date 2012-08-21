@@ -37,6 +37,9 @@ struct _GimpUnifiedTransformTool
 {
   GimpTransformTool  parent_instance;
 
+  GimpUIManager     *ui_manager;
+  GimpCoords         menu_coords;
+
   GtkWidget         *label[3][3];
 };
 
@@ -50,6 +53,10 @@ void    gimp_unified_transform_tool_register (GimpToolRegisterCallback  callback
                                               gpointer                  data);
 
 GType   gimp_unified_transform_tool_get_type (void) G_GNUC_CONST;
+
+void gimp_unified_transform_tool_flip_horiz   (GimpTransformTool *tr_tool);
+void gimp_unified_transform_tool_summon_pivot (GimpTransformTool *tr_tool);
+
 
 
 #endif  /*  __GIMP_UNIFIED_TRANSFORM_TOOL_H__  */

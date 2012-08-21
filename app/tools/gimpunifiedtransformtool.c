@@ -36,7 +36,10 @@
 #include "vectors/gimpvectors.h"
 #include "vectors/gimpstroke.h"
 
+#include "widgets/gimpdialogfactory.h"
 #include "widgets/gimphelp-ids.h"
+#include "widgets/gimpmenufactory.h"
+#include "widgets/gimpuimanager.h"
 
 #include "display/gimpcanvasgroup.h"
 #include "display/gimpcanvashandle.h"
@@ -69,6 +72,7 @@ enum
 
 /*  local function prototypes  */
 
+/* transform tool methods */
 static void            gimp_unified_transform_tool_dialog        (GimpTransformTool *tr_tool);
 static void            gimp_unified_transform_tool_dialog_update (GimpTransformTool *tr_tool);
 static void            gimp_unified_transform_tool_prepare       (GimpTransformTool *tr_tool);
@@ -86,6 +90,12 @@ static void            gimp_unified_transform_tool_draw_gui      (GimpTransformT
                                                                   gint               handle_w,
                                                                   gint               handle_h);
 
+/* tool methods */
+static GimpUIManager * gimp_unified_transform_tool_get_popup     (GimpTool         *tool,
+                                                                  const GimpCoords *coords,
+                                                                  GdkModifierType   state,
+                                                                  GimpDisplay      *display,
+                                                                  const gchar     **ui_path);
 
 G_DEFINE_TYPE (GimpUnifiedTransformTool, gimp_unified_transform_tool,
                GIMP_TYPE_TRANSFORM_TOOL)
@@ -113,6 +123,7 @@ static void
 gimp_unified_transform_tool_class_init (GimpUnifiedTransformToolClass *klass)
 {
   GimpTransformToolClass *trans_class = GIMP_TRANSFORM_TOOL_CLASS (klass);
+  GimpToolClass          *tool_class  = GIMP_TOOL_CLASS (klass);
 
   trans_class->dialog        = gimp_unified_transform_tool_dialog;
   trans_class->dialog_update = gimp_unified_transform_tool_dialog_update;
@@ -123,18 +134,21 @@ gimp_unified_transform_tool_class_init (GimpUnifiedTransformToolClass *klass)
   trans_class->pick_function = gimp_unified_transform_tool_pick_function;
   trans_class->cursor_update = gimp_unified_transform_tool_cursor_update;
   trans_class->draw_gui      = gimp_unified_transform_tool_draw_gui;
+
+  tool_class->get_popup = gimp_unified_transform_tool_get_popup;
 }
 
 static void
 gimp_unified_transform_tool_init (GimpUnifiedTransformTool *unified_tool)
 {
-  GimpTool          *tool    = GIMP_TOOL (unified_tool);
   GimpTransformTool *tr_tool = GIMP_TRANSFORM_TOOL (unified_tool);
 
   tr_tool->progress_text = _("Unified transform");
 
   tr_tool->use_grid    = TRUE;
   tr_tool->use_handles = TRUE;
+
+  unified_tool->ui_manager = NULL;
 }
 
 static gboolean
@@ -1136,4 +1150,54 @@ static gchar *
 gimp_unified_transform_tool_get_undo_desc (GimpTransformTool *tr_tool)
 {
   return g_strdup (C_("undo-type", "Unified Transform"));
+}
+
+static GimpUIManager *
+gimp_unified_transform_tool_get_popup (GimpTool         *tool,
+                                       const GimpCoords *coords,
+                                       GdkModifierType   state,
+                                       GimpDisplay      *display,
+                                       const gchar     **ui_path)
+{
+  GimpUnifiedTransformTool *ut_tool = GIMP_UNIFIED_TRANSFORM_TOOL (tool);
+
+  if (! ut_tool->ui_manager)
+    {
+      GimpDialogFactory *dialog_factory;
+
+      dialog_factory = gimp_dialog_factory_get_singleton ();
+
+      ut_tool->ui_manager =
+        gimp_menu_factory_manager_new (gimp_dialog_factory_get_menu_factory (dialog_factory),
+                                       "<UnifiedTransformTool>",
+                                       ut_tool, FALSE);
+    }
+
+  gimp_ui_manager_update (ut_tool->ui_manager, ut_tool);
+
+  *ui_path = "/unified-transform-tool-popup";
+
+  ut_tool->menu_coords = *coords;
+
+  return ut_tool->ui_manager;
+}
+
+void gimp_unified_transform_tool_flip_horiz (GimpTransformTool *tr_tool)
+{
+  GimpUnifiedTransformTool *ut_tool = GIMP_UNIFIED_TRANSFORM_TOOL (tr_tool);
+}
+
+void gimp_unified_transform_tool_summon_pivot (GimpTransformTool *tr_tool)
+{
+  GimpUnifiedTransformTool *ut_tool = GIMP_UNIFIED_TRANSFORM_TOOL (tr_tool);
+
+  gimp_draw_tool_pause (GIMP_DRAW_TOOL (tr_tool));
+
+  tr_tool->trans_info[PIVOT_X] = ut_tool->menu_coords.x;
+  tr_tool->trans_info[PIVOT_Y] = ut_tool->menu_coords.y;
+
+  gimp_transform_tool_recalc_matrix (tr_tool);
+  gimp_transform_tool_push_internal_undo (tr_tool);
+
+  gimp_draw_tool_resume (GIMP_DRAW_TOOL (tr_tool));
 }

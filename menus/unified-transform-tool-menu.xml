@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE ui SYSTEM "gtkuimanager.dtd">
+
+<ui>
+  <popup action="unified-transform-tool-popup">
+    <menuitem action="unified-transform-tool-flip-horiz" />
+    <separator />
+    <menuitem action="unified-transform-tool-summon-pivot" />
+  </popup>
+</ui>
