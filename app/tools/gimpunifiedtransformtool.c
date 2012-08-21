@@ -1161,6 +1161,9 @@ gimp_unified_transform_tool_get_popup (GimpTool         *tool,
 {
   GimpUnifiedTransformTool *ut_tool = GIMP_UNIFIED_TRANSFORM_TOOL (tool);
 
+  if (GIMP_TRANSFORM_TOOL (tool)->function == TRANSFORM_HANDLE_NONE)
+    return NULL;
+
   if (! ut_tool->ui_manager)
     {
       GimpDialogFactory *dialog_factory;
