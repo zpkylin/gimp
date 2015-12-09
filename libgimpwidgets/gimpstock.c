@@ -27,7 +27,7 @@
 
 #include "gimpstock.h"
 
-#include "icons/gimp-icon-pixbufs.c"
+#include "icons/default/gimp-icon-pixbufs.c"
 
 #include "libgimp/libgimp-intl.h"
 
