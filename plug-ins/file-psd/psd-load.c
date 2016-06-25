@@ -1498,19 +1498,19 @@ add_layers (gint32     image_id,
               else
                 {
                   /* Load layer mask data */
+                  lm_x = lyr_a[lidx]->layer_mask.left;
+                  lm_y = lyr_a[lidx]->layer_mask.top;
+                  lm_w = lyr_a[lidx]->layer_mask.right  - lm_x;
+                  lm_h = lyr_a[lidx]->layer_mask.bottom - lm_y;
+
+                  /*  This is totally weird, it relative_mask is TRUE,
+                   *  the coords are not relative, what a piece of crap.
+                   *  See bug #593251.
+                   */
                   if (lyr_a[lidx]->layer_mask.mask_flags.relative_pos)
                     {
-                      lm_x = lyr_a[lidx]->layer_mask.left;
-                      lm_y = lyr_a[lidx]->layer_mask.top;
-                      lm_w = lyr_a[lidx]->layer_mask.right - lyr_a[lidx]->layer_mask.left;
-                      lm_h = lyr_a[lidx]->layer_mask.bottom - lyr_a[lidx]->layer_mask.top;
-                    }
-                  else
-                    {
-                      lm_x = lyr_a[lidx]->layer_mask.left - l_x;
-                      lm_y = lyr_a[lidx]->layer_mask.top - l_y;
-                      lm_w = lyr_a[lidx]->layer_mask.right - lyr_a[lidx]->layer_mask.left;
-                      lm_h = lyr_a[lidx]->layer_mask.bottom - lyr_a[lidx]->layer_mask.top;
+                      lm_x -= l_x;
+                      lm_y -= l_y;
                     }
                   IFDBG(3) g_debug ("Mask channel index %d", user_mask_chn);
                   IFDBG(3) g_debug ("Relative pos %d",
