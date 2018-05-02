@@ -150,7 +150,7 @@ gimp_spin_scale_class_init (GimpSpinScaleClass *klass)
   widget_class->get_preferred_width  = gimp_spin_scale_get_preferred_width;
   widget_class->get_preferred_height = gimp_spin_scale_get_preferred_height;
   widget_class->style_updated        = gimp_spin_scale_style_updated;
-  //widget_class->draw                 = gimp_spin_scale_draw;
+  widget_class->draw                 = gimp_spin_scale_draw;
   widget_class->button_press_event   = gimp_spin_scale_button_press;
   widget_class->button_release_event = gimp_spin_scale_button_release;
   widget_class->motion_notify_event  = gimp_spin_scale_motion_notify;
